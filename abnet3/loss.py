@@ -53,7 +53,7 @@ class coscos2(LossBuilder):
             Labels for inputs
         """
 
-        cos = nn.CosineSimilarity(dim=3, eps=1e-6)
+        cos = nn.CosineSimilarity(dim=1, eps=1e-6)
         assert input1.size() == input2.size(),  'Input not the same size'
         cos_sim = cos(input1,input2)
         idx = torch.eq(y,1)
@@ -75,7 +75,7 @@ class cosmargin(LossBuilder):
         self.margin = margin
     
     def forward(self, input1, input2, y, avg=True):
-        cos = nn.CosineSimilarity(dim=3, eps=1e-6)
+        cos = nn.CosineSimilarity(dim=1, eps=1e-6)
         assert input1.size() == input2.size(), 'Input not the same size'
         cos_sim = cos(input1,input2)
         idx = torch.eq(y,1)
@@ -92,10 +92,10 @@ class cosmargin(LossBuilder):
 if __name__ == '__main__':
     
     N_batch = 16
-    x1 = Variable(torch.randn(N_batch, 1, 1, 10))
-    x2 = Variable(torch.randn(N_batch, 1, 1, 10))
+    x1 = Variable(torch.randn(N_batch, 10))
+    x2 = Variable(torch.randn(N_batch, 10))
     y = Variable(torch.from_numpy(np.random.choice([1,-1],N_batch)))
     loss = coscos2()
-    y = loss.forward(x1,x2,y)
+    res = loss.forward(x1,x2,y)
 #    output = sia.forward_once(x)
 

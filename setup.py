@@ -13,6 +13,7 @@ from setuptools import setup, find_packages
 import sys
 import io
 
+
 sys.path.append("./abnet3")
 
 with io.open("requirements.txt", encoding="utf-8") as req_fp:
@@ -28,4 +29,9 @@ setup(
   packages=[
       'abnet3',
   ],
+  dependency_links=[
+        "https://github.com/bootphon/h5features/tarball/master",
+        "https://github.com/bootphon/spectral/tarball/master",
+        "https://github.com/syhw/DTW_Cython/tarball/master"
+    ],
 )

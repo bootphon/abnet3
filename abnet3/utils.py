@@ -9,7 +9,7 @@ Created on Tue Oct  3 19:22:41 2017
 
 import numpy as np
 import os
-
+import h5features
 
 def get_var_name(**variable):
     return list(variable.keys())[0]
@@ -67,6 +67,54 @@ def Parse_Dataset(path):
     batches = []
     batches += ([os.path.join(path, add) for add in os.listdir(path) if add.endswith(('.batch'))])
     return batches
+
+
+class Features_Accessor(object):
+    
+    def __init__(self, times, features):
+        self.times = times
+        self.features = features
+
+
+    def get(self, f, on, off):
+        t = np.where(np.logical_and(self.times[f] >= on,
+                                    self.times[f] <= off))[0]
+        return self.features[f][t, :]
+
+
+
+def read_pairs(pair_file):
+    with open(pair_file, 'r') as fh:
+        lines = fh.readlines()
+    pairs = {'same' : [], 'diff' : []}
+    for line in lines:
+        tokens = line.strip().split(" ")
+        assert len(tokens) == 7
+        f1, s1, e1, f2, s2, e2, pair_type = tokens
+        s1, e1, s2, e2 = float(s1), float(e1), float(s2), float(e2)
+        assert pair_type in pairs, \
+               'Unsupported pair type {0}'.format(pair_type)
+        pairs[pair_type].append((f1, s1, e1, f2, s2, e2))
+    return pairs
+
+
+def read_feats(features_file, align_features_file=None):
+    with h5features.Reader(features_file, 'features') as fh:
+        features = fh.read()  # load all at once here...
+    times = features.dict_labels()
+    feats = features.dict_features()
+    feat_dim = feats[list(feats.keys())[0]].shape[1]
+    features = Features_Accessor(times, feats)
+    if align_features_file is None:
+        align_features = None
+    else:
+        with h5features.Reader(features_file, 'features') as fh:
+            align_features = fh.read()  # load all at once here...
+        times = align_features.dict_labels()
+        feats = align_features.dict_features()
+        align_features = Features_Accessor(times, feats)
+    return features, align_features, feat_dim
+
 
 
 

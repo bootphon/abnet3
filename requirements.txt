@@ -1,1 +1,6 @@
 numpy
+cython
+h5py
+h5features
+spectral
+dtw
