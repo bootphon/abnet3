@@ -8,37 +8,50 @@ Created on Tue Oct  3 19:22:41 2017
 
 import utils
 import numpy as np
+import os
 
 class SamplerBuilder(object):
-    '''Sampler Model interface '''
-    def __init__(self, batch_size=8):
+    """Sampler Model interface
+    
+    """
+    def __init__(self, batch_size=8, already_done=False, directory_output=None):
         super(SamplerBuilder, self).__init__()
         self.batch_size = batch_size
+        self.already_done = already_done
+        self.directory_output = directory_output
         
     def whoami(self):
         raise NotImplementedError('Unimplemented whoami for class:',
                           self.__class__.__name__)
     
     def parse_input_file(self, input_file=None):
-        '''Parse input file to prepare sampler'''
+        """Parse input file to prepare sampler
+        
+        """
         raise NotImplementedError('Unimplemented parse_input_file for class:',
                           self.__class__.__name__)
     
     
     def sample_batch(self):
-        '''Generic function to generate a batch for network'''
+        """Generic function to generate a batch for network
+        
+        """
         raise NotImplementedError('Unimplemented sample_batch for class:',
                           self.__class__.__name__)
         
 
 class SamplerPairs(SamplerBuilder):
-    '''Sampler Model interface based on pairs of similar words'''
+    """Sampler Model interface based on pairs of similar words
+    
+    """
     def __init__(self):
         super(SamplerPairs, self).__init__()        
 
 
 class SamplerCluster(SamplerBuilder):
-    '''Sampler Model interface based on clusters of words'''
+    """Sampler Model interface based on clusters of words
+    
+    """
     def __init__(self):
         super(SamplerCluster, self).__init__()        
         
@@ -73,9 +86,9 @@ class SamplerCluster(SamplerBuilder):
         return clusters
     
     def analysis_description(self, clusters, get_spkid_from_fid=None):
-        '''Analysis input file to prepare sampler'''
-#        raise NotImplementedError('Unimplemented analysis_description for class:',
-#                          self.__class__.__name__)
+        """Analysis input file to prepare sampler
+        
+        """
         if get_spkid_from_fid is None:
             get_spkid_from_fid = lambda x: x
         tokens = [f for c in clusters for f in c]
@@ -107,15 +120,14 @@ class SamplerCluster(SamplerBuilder):
     
     
     def type_sample_p(self, std_descr,  type_samp = 'log'):
-        '''
-        Sampling proba modes for the types:
+        """Sampling proba modes for the types:
             - 1 : equiprobable
             - f2 : proportional to type probabilities
             - f : proportional to square root of type probabilities
             - fcube : proportional to cube root of type probabilities
             - log : proportional to log of type probabilities
-        TODO: Enable to inject directly custom function?
-        '''
+
+        """
         nb_tok = len(std_descr['tokens'])
         tokens_type = std_descr['tokens_type']
         W_types = {}
@@ -148,14 +160,13 @@ class SamplerCluster(SamplerBuilder):
         return p_types 
 
     def sample_spk_p(self, std_descr, spk_samp = 'log'):
-        '''
-        Sampling proba modes for the speakers conditionned by the drawn type(s)
+        """Sampling proba modes for the speakers conditionned by the drawn type(s)
             - 1 : equiprobable
             - f2 : proportional to type probabilities
             - f : proportional to square root of type probabilities
             - fcube : proportional to cube root of type probabilites
             - log : proportional to log of type probabilities
-        '''
+        """
         nb_tok = len(std_descr['tokens'])
         tokens_type = std_descr['tokens_type']
         p_spk_types = {'Stype_Sspk' : {}, 'Stype_Dspk' : {}, 'Dtype_Sspk' : {}, 'Dtype_Dspk' : {}}
@@ -201,9 +212,9 @@ class SamplerCluster(SamplerBuilder):
         
     
     def generate_possibilities(self, std_descr):
-        '''
-        Generate possibilities between (types,speakers) and tokens/realisations
-        '''
+        """Generate possibilities between (types,speakers) and tokens/realisations
+        
+        """
         pairs = {'Stype_Sspk' : {},
                  'Stype_Dspk' : {},
                  'Dtype_Sspk' : {},
@@ -242,8 +253,7 @@ class SamplerCluster(SamplerBuilder):
                 
     
     def type_speaker_sampling_p(self, std_descr, type_samp = 'f', speaker_samp='f'):
-        '''
-        Sampling proba modes for p_i1,i2,j1,j2 based on conditionnal Bayes proba:
+        """Sampling proba modes for p_i1,i2,j1,j2 based on conditionnal Bayes proba:
             - log : proporitonal to log of speaker or type probabilities
             - f : proportional to square roots of speaker
                 or type probabilities (in order to obtain sampling
@@ -253,12 +263,13 @@ class SamplerCluster(SamplerBuilder):
                 or type probabilities
             - fcube: proportionnal to log probabilities
             - 1 : equiprobable
-        '''
+            
+        """
         assert type_samp in ['1', 'f', 'f2','log', 'fcube']
         assert speaker_samp in ['1', 'f', 'f2','log', 'fcube'] 
-        W_types = std_descr['types']
-        speakers = [e for e in std_descr['speakers']]
-        W_speakers = [std_descr['speakers'][e] for e in speakers]
+        #W_types = std_descr['types']
+        #speakers = [e for e in std_descr['speakers']]
+        #W_speakers = [std_descr['speakers'][e] for e in speakers]
         p_types = self.type_sample_p(std_descr,  type_samp = type_samp)
         p_spk_types = self.sample_spk_p(std_descr, spk_samp = speaker_samp)
         
@@ -286,17 +297,124 @@ class SamplerCluster(SamplerBuilder):
             p_spk_types[config] = utils.normalize_distribution(p_spk_types[config])
     
         return p_spk_types
-        
+    
+    def compute_cdf(self, proba):
+        cdf = {}
+        for key in proba.keys():
+            cdf[key] = utils.cumulative_distribution(proba[key])
+        return cdf
 
 class SamplerClusterSiamese(SamplerCluster):
-    '''Sampler for Siamese network based on clusters of words'''
+    """Sampler for Siamese network based on clusters of words
+    
+    """
     def __init__(self, type_samp='log', spk_samp='log'):
         super(SamplerClusterSiamese, self).__init__() 
         self.type_samp = type_samp
         self.spk_samp = spk_samp
         
     def whoami(self):
+        return {'params':self.__dict__,'class_name': self.__class__.__name__} 
         
+    def sample_batch(self,
+                     p_spk_types,
+                     cdf,
+                     pairs,
+                     seed=0, prefix='',
+                     num_examples = 5012,
+                     ratio_same_diff=0.25):
+            
+        np.random.seed(seed)
+        sampled_tokens = {'Stype_Sspk' : [],
+                 'Stype_Dspk' : [],
+                 'Dtype_Sspk' : [],
+                 'Dtype_Dspk' : []}
+        num_same_spk = int((num_examples)*ratio_same_diff)
+        num_diff_spk = num_examples - num_same_spk
+        sampled_ratio = {
+                 'Stype_Sspk' : num_same_spk/2,
+                 'Stype_Dspk' : num_diff_spk/2,
+                 'Dtype_Sspk' : num_same_spk/2,
+                 'Dtype_Dspk' : num_diff_spk/2}
+        for config in p_spk_types.keys():
+            #proba_config = np.array(p_spk_types[config].values())
+            #sizes = len(p_spk_types[config].keys())
+            keys = np.array(p_spk_types[config].keys())
+            sample_idx = utils.sample_searchidx(cdf,config,sampled_ratio[config])
+            sample = keys[sample_idx]
+            if config == 'Stype_Sspk':
+                for key in sample:
+                    spk, type_idx = key
+                    pot_tok = pairs[config][spk,int(type_idx)]
+                    num_tok = len(pot_tok)
+                    sampled_tokens[config].append(pot_tok[np.random.choice(num_tok)])
+            if config == 'Stype_Dspk':
+                for key in sample:
+                    spk1,spk2, type_idx = key
+                    try:
+                        pot_tok = pairs[config][spk1,spk2,int(type_idx)]
+                    except:
+                        pot_tok = pairs[config][spk2,spk1,int(type_idx)]
+                    num_tok = len(pot_tok)
+                    sampled_tokens[config].append(pot_tok[np.random.choice(num_tok)])
+            if config == 'Dtype_Sspk':
+                for key in sample:
+                    spk, type_idx, type_jdx = key
+                    pot_tok = pairs[config][spk,int(type_idx),int(type_jdx)]
+                    num_tok = len(pot_tok)
+                    sampled_tokens[config].append(pot_tok[np.random.choice(num_tok)])
+            if config == 'Dtype_Dspk':
+                for key in sample:
+                    spk1,spk2 ,type_idx, type_jdx = key
+                    try:
+                        pot_tok = pairs[config][spk1,spk2,int(type_idx),int(type_jdx)]
+                    except:
+                        pot_tok = pairs[config][spk2,spk1,int(type_idx),int(type_jdx)]
+                    num_tok = len(pot_tok)
+                    sampled_tokens[config].append(pot_tok[np.random.choice(num_tok)])
+        return sampled_tokens
+    
+    def write_tokens(self, descr,proba,cdf,pairs,size_batch,num_batches,out_dir,idx_batch,seed=0):
+        lines = []
+        np.random.seed(seed)
+        sampled_batch = self.sample_batch(proba,cdf,pairs,num_pairs_batch=num_batches)
+        for config in sampled_batch.keys():
+            if config == 'Stype_Sspk':
+                pair_type = 'same'
+                for pair in sampled_batch[config]:
+                    tok1 = utils.print_token(descr['tokens'][pair[0]])
+                    tok2 = utils.print_token(descr['tokens'][pair[1]])
+                    lines.append(tok1 + " " + tok2 + " " +  pair_type + "\n")
+            if config == 'Stype_Dspk':
+                pair_type = 'same'
+                for pair in sampled_batch[config]:
+                    tok1 = utils.print_token(descr['tokens'][pair[0]])
+                    tok2 = utils.print_token(descr['tokens'][pair[1]])
+                    lines.append(tok1 + " " + tok2 + " " +  pair_type + "\n")
+            if config == 'Dtype_Sspk':
+                pair_type = 'diff'
+                for pair in sampled_batch[config]:
+                    tok1 = utils.print_token(descr['tokens'][pair[0]])
+                    tok2 = utils.print_token(descr['tokens'][pair[1]])
+                    lines.append(tok1 + " " + tok2 + " " +  pair_type + "\n")
+            if config == 'Dtype_Dspk':
+                pair_type = 'diff'
+                for pair in sampled_batch[config]:
+                    tok1 = utils.print_token(descr['tokens'][pair[0]])
+                    tok2 = utils.print_token(descr['tokens'][pair[1]])
+                    lines.append(tok1 + " " + tok2 + " " +  pair_type + "\n")
+        
+        np.random.shuffle(lines)
+        #prev_idx = 0
+        for idx in range(1,num_batches//size_batch):    
+            with open(os.path.join(out_dir,'pair_'+str(idx_batch))+'_'+str(idx)+'.batch', 'w') as fh:
+                    fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
+
+if __name__ == '__main__':
+    
+    sam = SamplerClusterSiamese()
+    
+
         
         
         

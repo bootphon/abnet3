@@ -14,7 +14,9 @@ from torch.autograd import Variable
 import numpy as np
 
 class NetworkBuilder(nn.Module):
-    '''Neural Network Model interface'''
+    """Generic Neural Network Model class
+    
+    """
     def __init__(self):
         super(NetworkBuilder, self).__init__()
     
@@ -23,22 +25,30 @@ class NetworkBuilder(nn.Module):
                                   self.__class__.__name__)
         
     def whoami(self, *args, **kwargs):
-        '''Output description for the neural network and all parameters'''
+        """Output description for the neural network and all parameters
+        
+        """
         raise NotImplementedError('Unimplemented whoami for class:',
                           self.__class__.__name__)
     
     def save_network(self, *args, **kwargs):
-        '''Save network weights'''
+        """Save network weights
+        
+        """
         raise NotImplementedError('Unimplemented save_network for class:',
                           self.__class__.__name__)
     
     def load_network(self, *args, **kwargs):
-        '''Load network weights'''
+        """Load network weights
+        
+        """
         raise NotImplementedError('Unimplemented load_network for class:',
                           self.__class__.__name__)
 
 class SiameseNetwork(NetworkBuilder):
-    '''Siamese neural network Architecture'''
+    """Siamese neural network Architecture
+    
+    """
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None, 
                  output_dim=None, dropout=None, batch_norm=False,
                  activation_function=None):
@@ -63,7 +73,9 @@ class SiameseNetwork(NetworkBuilder):
 
         
     def forward_once(self, x):
-        '''Simple forward pass for one instance x'''
+        """Simple forward pass for one instance x
+        
+        """
         output = self.input_emb(x)
         for idx in range(self.num_hidden_layers):
             output = self.hidden_layer(output)
@@ -71,16 +83,19 @@ class SiameseNetwork(NetworkBuilder):
         return output
         
     def forward(self, input1, input2):
-        '''Forward pass through the same network'''
+        """Forward pass through the same network
+        
+        """
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
         return output1, output2
     
     
     def whoami(self):
-        '''Output description for the neural network and all parameters'''
-        ''' TODO format better for whoami'''
-        return self.__dict__       
+        """Output description for the neural network and all parameters
+        
+        """
+        return {'params':self.__dict__,'class_name': self.__class__.__name__}       
         
     def save_network(self, output_path=None):
         torch.save(self.state_dict(), output_path)

@@ -10,30 +10,49 @@ Created on Tue Oct  3 19:22:41 2017
 
 import torch
 import torch.nn as nn
+import numpy as np
 
 class LossBuilder(nn.Module):
-    '''Generic Loss function for ABnet3'''
+    """Generic Loss class for ABnet3
+    
+    """
     
     def __init__(self):
         super(LossBuilder, self).__init__()
         
     def forward(self,  *args, **kwargs):
-        '''Compute Loss function'''
+        """Compute Loss function
+        
+        """
         raise NotImplementedError('Unimplemented forward for class:',
                                   self.__class__.__name__)
     
     def whoami(self, *args, **kwargs):
-        '''Output description for the loss function'''
-        return self.__class__.__name__
+        """Output description for the loss function
+        
+        """
+        return {'params':self.__dict__,'class_name': self.__class__.__name__} 
     
     
 class coscos2(LossBuilder):
-    '''coscos2 Loss function'''
+    """coscos2 Loss function
+    
+    """
     
     def __init__(self):
         super(coscos2, self).__init__()
     
     def forward(self, input1, input2, y, avg=True):
+        """Return loss value
+        
+        Parameters
+        ----------
+        input1, input2 : Pytorch Variable
+            Input continuous vectors
+        y : Pytorch Variable
+            Labels for inputs
+        """
+
         cos = nn.CosineSimilarity(dim=3, eps=1e-6)
         assert input1.size() == input2.size(),  'Input not the same size'
         cos_sim = cos(input1,input2)
@@ -47,7 +66,9 @@ class coscos2(LossBuilder):
         return output
     
 class cosmargin(LossBuilder):
-    '''cosmargin Loss function'''
+    """cosmargin Loss function
+    
+    """
     
     def __init__(self, margin=0.5):
         super(cosmargin, self).__init__()
@@ -68,8 +89,13 @@ class cosmargin(LossBuilder):
         
         
 #
-#if __name__ == '__main__':
-#    
-##    x = Variable(torch.randn(N_batch, 1, 1, 3))
-##    output = sia.forward_once(x)
-#
+if __name__ == '__main__':
+    
+    N_batch = 16
+    x1 = Variable(torch.randn(N_batch, 1, 1, 10))
+    x2 = Variable(torch.randn(N_batch, 1, 1, 10))
+    y = Variable(torch.from_numpy(np.random.choice([1,-1],N_batch)))
+    loss = coscos2()
+    y = loss.forward(x1,x2,y)
+#    output = sia.forward_once(x)
+
