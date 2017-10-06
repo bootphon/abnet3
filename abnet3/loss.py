@@ -17,8 +17,8 @@ class LossBuilder(nn.Module):
     
     """
     
-    def __init__(self):
-        super(LossBuilder, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(LossBuilder, self).__init__(*args, **kwargs)
         
     def forward(self,  *args, **kwargs):
         """Compute Loss function
@@ -39,8 +39,8 @@ class coscos2(LossBuilder):
     
     """
     
-    def __init__(self):
-        super(coscos2, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(coscos2, self).__init__(*args, **kwargs)
     
     def forward(self, input1, input2, y, avg=True):
         """Return loss value
@@ -70,8 +70,8 @@ class cosmargin(LossBuilder):
     
     """
     
-    def __init__(self, margin=0.5):
-        super(cosmargin, self).__init__()
+    def __init__(self, margin=0.5, *args, **kwargs):
+        super(cosmargin, self).__init__(*args, **kwargs)
         self.margin = margin
     
     def forward(self, input1, input2, y, avg=True):

@@ -5,27 +5,37 @@ Created on Tue Oct  3 19:24:59 2017
 
 @author: Rachid Riad
 """
-
+import abnet3
 from abnet3.model import *
 from abnet3.loss import *
 from abnet3.sampler import *
 from abnet3.utils import *
 import numpy as np
-import h5features
+import torch
+import torch.optim as optim
+import time
+import pickle
+import os
 
-class TrainerBuilder(object):
+class TrainerBuilder:
     """Generic Trainer class for ABnet3
     
     """
     def __init__(self, sampler, network, loss, feature_path=None,
-                 num_epochs=200, patience=20):
-        super(TrainerBuilder, self).__init__()
+                 num_epochs=200, patience=20, num_max_minibatches=1000,
+                 optimizer_type='SGD', lr=0.001, momentum=0.9):
+#        super(TrainerBuilder, self).__init__()
         self.sampler = sampler
         self.network = network
         self.loss = loss
         self.feature_path = feature_path
         self.num_epochs = num_epochs
         self.patience = patience
+        self.num_max_minibatches = num_max_minibatches
+        self.lr = lr
+        self.momentum = momentum
+        if optimizer_type == 'SGD':
+            self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         
     def whoami(self):
         return {'params':self.__dict__,
@@ -46,15 +56,20 @@ class TrainerSiamese(TrainerBuilder):
     """Siamese Trainer class for ABnet3
     
     """
-    def __init__(self):
-        super(TrainerSiamese, self).__init__() 
-        assert type(self.sampler) == 'abnet3.sampler.SamplerClusterSiamese'
-        assert type(self.network) == 'abnet3.model.SiameseNetwork'
+    def __init__(self,*args, **kwargs):
+        super(TrainerSiamese, self).__init__(*args, **kwargs) 
+        assert type(self.sampler) == abnet3.sampler.SamplerClusterSiamese
+        assert type(self.network) == abnet3.model.SiameseNetwork
     
-    def prepare_batch_from_pair_words(self, pairs_path, features, seed=0):
+    def prepare_batch_from_pair_words(self, pairs_path, train_mode=True,seed=0):
         """Prepare a batch in Pytorch format based on a batch file
         
         """
+        if train:
+            features = os.path.join(self.feature_path,'train_pairs')
+        else:
+            features = os.path.join(self.feature_path,'dev_pairs')
+        #TODO should not be here, should be somewhere in the dataloader 
         #TODO : Encapsulate X preparation in another function 
         #TODO : Replace Numpy operation by Pytorch operation
         pairs = read_pairs(pairs_path)
@@ -101,28 +116,90 @@ class TrainerSiamese(TrainerBuilder):
         np.random.seed(seed)
         n_pairs = len(y)
         ind = np.random.permutation(n_pairs)
-        y = Variable(torch.from_numpy(y[ind]))
-        X1 = Variable(torch.from_numpy(X1[ind,:]))
-        X2 = Variable(torch.from_numpy(X2[ind,:]))
+        y = torch.from_numpy(y[ind])
+        X1 = torch.from_numpy(X1[ind,:])
+        X2 = torch.from_numpy(X2[ind,:])
         return X1, X2, y
     
-    
+    def get_batches(self, train_mode=True):
+        """Build iteratior next batch from folder for a specific epoch
+        
+        """
+        batches = Parse_Dataset(folder)
+        num_batches = len(batches)
+        if self.num_max_minibatches<num_batches:
+            selected_batches = np.random.choice(range(num_batches), self.num_max_minibatches, replace=False)
+        else:
+            print("Number of batches not sufficient, iterating over all the batches")
+            selected_batches = np.random.permutation(range(num_batches))
+        for idx in selected_batches:
+            X_batch1, X_batch2, y_batch = self.prepare_batch_from_pair_words(batches[idx],train_mode=train_mode)
+            yield Variable(X_batch1), Variable(X_batch2), Variable(y_batch)
+        
+        
     def train(self):
-        return 0
-
+        """ Train method to train the model
+        
+        """
+        patience_dev = 0
+        best_dev = None
+        best_epoch = None
+        
+        for epoch in range(self.num_epochs,seed=self.seed):
+            train_loss = 0.0
+            dev_loss = 0.0
+            start_time = time.time()
+            
+            for minibatch in self.get_batches(train_mode=True):
+                #TODO refactor here for a step function based on specific loss
+                # enable generic train
+                X_batch1, X_batch2, y_batch = minibatch
+                self.network.train()
+                self.optimizer.zero_grad()
+                emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
+                train_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
+                train_loss_value.backward()
+                self.optimizer.step()
+                train_loss += train_loss_value.data[0]
+                
+            for minibatch in self.get_batches(train_mode=False):
+                self.network.eval()
+                emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
+                dev_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
+                dev_loss += dev_loss_value.data[0]
+            
+            print("Epoch {} of {} took {:.3f}s".format(
+                    epoch + 1, self.num_epochs, time.time() - start_time))
+            
+            print("  training loss:\t\t{:.6f}".format(train_loss))
+            print("  dev loss:\t\t{:.6f}".format(dev_loss))
+            if best_dev == None or dev_loss < best_dev:
+                best_dev = dev_loss
+                patience_dev = 0
+                self.network.save_network()
+                pickle.dump(self.whoami(),  
+                            open(self.network.output_path+'.params',"wb" ))
+                best_epoch = epoch
+            else:
+                patience_dev += 1
+                if patience_dev > self.patience:
+                    print("No improvements after {} iterations, "
+                      "stopping now".format(self.patience))
+                    break
+            
+            return best_epoch
 
 if __name__ == '__main__':
     
     sia = SiameseNetwork(input_dim=3,num_hidden_layers=2,hidden_dim=10,
-                     output_dim=19,dropout=0.1,
+                     output_dim=19,p_dropout=0.1,
                      activation_function=nn.ReLU(inplace=True),
                      batch_norm=True)
     sam = SamplerClusterSiamese()
     loss = coscos2()
-    tra = TrainerBuilder(sam,sia,loss)
-    
-    
+    tra = TrainerSiamese(sam,sia,loss)
 
+    
 
         
         

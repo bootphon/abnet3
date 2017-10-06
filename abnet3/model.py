@@ -17,7 +17,7 @@ class NetworkBuilder(nn.Module):
     """Generic Neural Network Model class
     
     """
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super(NetworkBuilder, self).__init__()
     
     def forward(self, *args, **kwargs):
@@ -50,26 +50,29 @@ class SiameseNetwork(NetworkBuilder):
     
     """
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None, 
-                 output_dim=None, dropout=None, batch_norm=False,
-                 activation_function=None):
+                 output_dim=None, p_dropout=0.1, batch_norm=False,
+                 activation_function=None, output_path=None, *args, **kwargs):
         super(SiameseNetwork,self).__init__()
         self.input_dim = input_dim
         self.num_hidden_layers = num_hidden_layers
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
-        self.dropout = dropout
         self.activation_function = activation_function
         self.batch_norm = batch_norm
         # Pass forward network functions
         self.input_emb = nn.Sequential(
                 nn.Linear(input_dim,hidden_dim),
+                nn.Dropout(p=p_dropout, inplace=False),
                 activation_function)
         self.hidden_layer = nn.Sequential(
                 nn.Linear(hidden_dim,hidden_dim),
+                nn.Dropout(p=p_dropout, inplace=False),
                 activation_function)
         self.output_layer = nn.Sequential(
                 nn.Linear(hidden_dim,output_dim),
+                nn.Dropout(p=p_dropout, inplace=False),
                 activation_function)
+        self.output_path = output_path
 
         
     def forward_once(self, x):
@@ -97,8 +100,8 @@ class SiameseNetwork(NetworkBuilder):
         """
         return {'params':self.__dict__,'class_name': self.__class__.__name__}       
         
-    def save_network(self, output_path=None):
-        torch.save(self.state_dict(), output_path)
+    def save_network(self):
+        torch.save(self.state_dict(), self.output_path)
     
     def load_network(self, network_path=None):
         self.load_state_dict(torch.load(network_path))
