@@ -23,7 +23,8 @@ class TrainerBuilder:
     """
     def __init__(self, sampler, network, loss, feature_path=None,
                  num_epochs=200, patience=20, num_max_minibatches=1000,
-                 optimizer_type='SGD', lr=0.001, momentum=0.9, cuda=True):
+                 optimizer_type='SGD', lr=0.001, momentum=0.9, cuda=True,
+                 seed=0):
 #        super(TrainerBuilder, self).__init__()
         self.sampler = sampler
         self.network = network
@@ -35,6 +36,7 @@ class TrainerBuilder:
         self.lr = lr
         self.momentum = momentum
         self.best_epoch = None
+        self.seed = seed
         if optimizer_type == 'SGD':
             self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         if cuda:
@@ -69,7 +71,7 @@ class TrainerSiamese(TrainerBuilder):
         assert type(self.sampler) == abnet3.sampler.SamplerClusterSiamese
         assert type(self.network) == abnet3.model.SiameseNetwork
     
-    def prepare_batch_from_pair_words(self, pairs_path, train_mode=True,seed=0):
+    def prepare_batch_from_pair_words(self, features, pairs_path, train_mode=True,seed=0):
         """Prepare a batch in Pytorch format based on a batch file
         
         """
@@ -127,7 +129,7 @@ class TrainerSiamese(TrainerBuilder):
         X2 = torch.from_numpy(X2[ind,:])
         return X1, X2, y
     
-    def get_batches(self, train_mode=True):
+    def get_batches(self, features, train_mode=True):
         """Build iteratior next batch from folder for a specific epoch
         
         """
@@ -145,7 +147,7 @@ class TrainerSiamese(TrainerBuilder):
             print("Number of batches not sufficient, iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
-            X_batch1, X_batch2, y_batch = self.prepare_batch_from_pair_words(batches[idx],train_mode=train_mode)
+            X_batch1, X_batch2, y_batch = self.prepare_batch_from_pair_words(batches[idx], features, train_mode=train_mode)
             yield Variable(X_batch1), Variable(X_batch2), Variable(y_batch)
         
         
@@ -158,7 +160,7 @@ class TrainerSiamese(TrainerBuilder):
         
         features, align_features, feat_dim = read_feats(self.feature_path)
         
-        for epoch in range(self.num_epochs,seed=self.seed):
+        for epoch in range(self.num_epochs):
             train_loss = 0.0
             dev_loss = 0.0
             start_time = time.time()
@@ -175,7 +177,7 @@ class TrainerSiamese(TrainerBuilder):
                 self.optimizer.step()
                 train_loss += train_loss_value.data[0]
                 
-            for minibatch in self.get_batches(train_mode=False):
+            for minibatch in self.get_batches(features, train_mode=False):
                 self.network.eval()
                 emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
                 dev_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
