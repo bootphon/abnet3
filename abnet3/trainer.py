@@ -74,10 +74,7 @@ class TrainerSiamese(TrainerBuilder):
         
         """
         
-        if train_mode:
-            features = os.path.join(self.feature_path,'train_pairs')
-        else:
-            features = os.path.join(self.feature_path,'dev_pairs')
+
         #TODO should not be here, should be somewhere in the dataloader 
         #TODO : Encapsulate X preparation in another function 
         #TODO : Replace Numpy operation by Pytorch operation
@@ -134,7 +131,13 @@ class TrainerSiamese(TrainerBuilder):
         """Build iteratior next batch from folder for a specific epoch
         
         """
-        batches = Parse_Dataset(self.sampler.directory_output)
+        
+        if train_mode:
+            batch_dir = os.path.join(self.sampler.directory_output,'train_pairs')
+        else:
+            batch_dir = os.path.join(self.sampler.directory_output,'dev_pairs')
+            
+        batches = Parse_Dataset(batch_dir)
         num_batches = len(batches)
         if self.num_max_minibatches<num_batches:
             selected_batches = np.random.choice(range(num_batches), self.num_max_minibatches, replace=False)
@@ -153,12 +156,14 @@ class TrainerSiamese(TrainerBuilder):
         patience_dev = 0
         best_dev = None
         
+        features, align_features, feat_dim = read_feats(self.feature_path)
+        
         for epoch in range(self.num_epochs,seed=self.seed):
             train_loss = 0.0
             dev_loss = 0.0
             start_time = time.time()
             
-            for minibatch in self.get_batches(train_mode=True):
+            for minibatch in self.get_batches(features, train_mode=True):
                 #TODO refactor here for a step function based on specific loss
                 # enable generic train
                 X_batch1, X_batch2, y_batch = minibatch
