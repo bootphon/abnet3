@@ -34,6 +34,7 @@ class TrainerBuilder:
         self.num_max_minibatches = num_max_minibatches
         self.lr = lr
         self.momentum = momentum
+        self.best_epoch = None
         if optimizer_type == 'SGD':
             self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         
@@ -43,7 +44,11 @@ class TrainerBuilder:
                 'loss':self.loss.whoami(),
                 'sampler':self.sampler.whoami(),
                 'class_name': self.__class__.__name__}
-    
+        
+    def save_whoami(self):
+        pickle.dump(self.whoami(),  
+            open(self.network.output_path+'.params',"wb" ))
+        
     def train(self):
         """Train function 
     
@@ -143,7 +148,6 @@ class TrainerSiamese(TrainerBuilder):
         """
         patience_dev = 0
         best_dev = None
-        best_epoch = None
         
         for epoch in range(self.num_epochs,seed=self.seed):
             train_loss = 0.0
@@ -177,17 +181,18 @@ class TrainerSiamese(TrainerBuilder):
                 best_dev = dev_loss
                 patience_dev = 0
                 self.network.save_network()
-                pickle.dump(self.whoami(),  
-                            open(self.network.output_path+'.params',"wb" ))
-                best_epoch = epoch
+                self.save_whoami()
+                self.best_epoch  = epoch
             else:
                 patience_dev += 1
                 if patience_dev > self.patience:
                     print("No improvements after {} iterations, "
                       "stopping now".format(self.patience))
+                    print('Finished Training')
                     break
-            
-            return best_epoch
+                
+            print('Still Training but no more patience.')
+            print('Finished Training')
 
 if __name__ == '__main__':
     

@@ -6,7 +6,7 @@ Created on Tue Oct  3 19:22:41 2017
 @author: Rachid Riad
 """
 
-import utils
+import abnet3.utils
 import numpy as np
 import os
 
