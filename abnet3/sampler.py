@@ -44,16 +44,16 @@ class SamplerPairs(SamplerBuilder):
     """Sampler Model interface based on pairs of similar words
     
     """
-    def __init__(self):
-        super(SamplerPairs, self).__init__()        
+    def __init__(self, *args, **kwargs):
+        super(SamplerPairs, self).__init__(*args, **kwargs)        
 
 
 class SamplerCluster(SamplerBuilder):
     """Sampler Model interface based on clusters of words
     
     """
-    def __init__(self):
-        super(SamplerCluster, self).__init__()        
+    def __init__(self, *args, **kwargs):
+        super(SamplerCluster, self).__init__(*args, **kwargs)        
         
     def parse_input_file(self, input_file=None):
         with open(input_file, 'r') as fh:
@@ -308,8 +308,8 @@ class SamplerClusterSiamese(SamplerCluster):
     """Sampler for Siamese network based on clusters of words
     
     """
-    def __init__(self, type_samp='log', spk_samp='log'):
-        super(SamplerClusterSiamese, self).__init__() 
+    def __init__(self, type_samp='log', spk_samp='log', *args, **kwargs):
+        super(SamplerClusterSiamese, self).__init__(*args, **kwargs) 
         self.type_samp = type_samp
         self.spk_samp = spk_samp
         

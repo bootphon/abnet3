@@ -23,7 +23,7 @@ class TrainerBuilder:
     """
     def __init__(self, sampler, network, loss, feature_path=None,
                  num_epochs=200, patience=20, num_max_minibatches=1000,
-                 optimizer_type='SGD', lr=0.001, momentum=0.9):
+                 optimizer_type='SGD', lr=0.001, momentum=0.9, cuda=True):
 #        super(TrainerBuilder, self).__init__()
         self.sampler = sampler
         self.network = network
@@ -37,7 +37,10 @@ class TrainerBuilder:
         self.best_epoch = None
         if optimizer_type == 'SGD':
             self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
-        
+        if cuda:
+            self.loss.cuda()
+            self.network.cuda()
+            
     def whoami(self):
         return {'params':self.__dict__,
                 'network':self.network.whoami(),
@@ -70,7 +73,8 @@ class TrainerSiamese(TrainerBuilder):
         """Prepare a batch in Pytorch format based on a batch file
         
         """
-        if train:
+        
+        if train_mode:
             features = os.path.join(self.feature_path,'train_pairs')
         else:
             features = os.path.join(self.feature_path,'dev_pairs')
@@ -130,7 +134,7 @@ class TrainerSiamese(TrainerBuilder):
         """Build iteratior next batch from folder for a specific epoch
         
         """
-        batches = Parse_Dataset(folder)
+        batches = Parse_Dataset(self.sampler.directory_output)
         num_batches = len(batches)
         if self.num_max_minibatches<num_batches:
             selected_batches = np.random.choice(range(num_batches), self.num_max_minibatches, replace=False)
@@ -198,9 +202,9 @@ if __name__ == '__main__':
     
     sia = SiameseNetwork(input_dim=3,num_hidden_layers=2,hidden_dim=10,
                      output_dim=19,p_dropout=0.1,
-                     activation_function=nn.ReLU(inplace=True),
+                     activation_function=nn.Sigmoid(),
                      batch_norm=True)
-    sam = SamplerClusterSiamese()
+    sam = SamplerClusterSiamese(already_done=True, directory_output=None)
     loss = coscos2()
     tra = TrainerSiamese(sam,sia,loss)
 
