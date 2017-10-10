@@ -37,6 +37,7 @@ class TrainerBuilder:
         self.momentum = momentum
         self.best_epoch = None
         self.seed = seed
+        self.cuda = cuda
         if optimizer_type == 'SGD':
             self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         if cuda:
@@ -169,6 +170,10 @@ class TrainerSiamese(TrainerBuilder):
                 #TODO refactor here for a step function based on specific loss
                 # enable generic train
                 X_batch1, X_batch2, y_batch = minibatch
+                if self.cuda:
+                    X_batch1 = X_batch1.cuda()
+                    X_batch2 = X_batch2.cuda()
+                    y_batch  = y_batch.cuda()
                 self.network.train()
                 self.optimizer.zero_grad()
                 emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
