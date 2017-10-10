@@ -207,8 +207,8 @@ class TrainerSiamese(TrainerBuilder):
                     print('Finished Training')
                     break
                 
-            print('Still Training but no more patience.')
-            print('Finished Training')
+        print('Still Training but no more patience.')
+        print('Finished Training')
 
 if __name__ == '__main__':
     
