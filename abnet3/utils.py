@@ -11,9 +11,33 @@ import numpy as np
 import os
 import h5features
 from dtw import DTW
+import scipy
 
 def get_var_name(**variable):
     return list(variable.keys())[0]
+
+
+def cosine_distance(x, y):
+    assert (x.dtype == np.float64 and y.dtype == np.float64) or (
+        x.dtype == np.float32 and y.dtype == np.float32)
+    x2 = np.sqrt(np.sum(x ** 2, axis=1))
+    y2 = np.sqrt(np.sum(y ** 2, axis=1))
+    ix = x2 == 0.
+    iy = y2 == 0.
+    d = np.dot(x, y.T) / (np.outer(x2, y2))
+    # DPX: to prevent the stupid scipy to collapse the array into scalar
+    if d.shape == (1, 1):
+        d = np.array([[np.float64(scipy.arccos(d) / np.pi)]])
+    else:
+        # costly in time (half of the time), so check if really useful for dtw
+        d = np.float64(scipy.arccos(d) / np.pi)
+
+    d[ix, :] = 1.
+    d[:, iy] = 1.
+    for i in np.where(ix)[0]:
+        d[i, iy] = 0.
+    assert np.all(d >= 0)
+    return d
 
 
 def normalize_distribution(p):
