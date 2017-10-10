@@ -38,8 +38,13 @@ class TrainerBuilder:
         self.best_epoch = None
         self.seed = seed
         self.cuda = cuda
-        if optimizer_type == 'SGD':
+        assert optimizer_type in ('sgd', 'adaelta','adam')
+        if optimizer_type == 'sgd':
             self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
+        if optimizer_type == 'adadelta':
+            self.optimizer = optim.Adadelta(self.network.parameters())
+        if optimizer_type == 'adam':
+            self.optimizer = optim.Adam(self.network.parameters())
         if cuda:
             self.loss.cuda()
             self.network.cuda()
@@ -218,7 +223,7 @@ if __name__ == '__main__':
                      batch_norm=True)
     sam = SamplerClusterSiamese(already_done=True, directory_output=None)
     loss = coscos2()
-    tra = TrainerSiamese(sam,sia,loss)
+    tra = TrainerSiamese(sam,sia,loss, optimizer_type='adam')
 
     
 
