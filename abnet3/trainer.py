@@ -148,7 +148,7 @@ class TrainerSiamese(TrainerBuilder):
             print("Number of batches not sufficient, iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
-            X_batch1, X_batch2, y_batch = self.prepare_batch_from_pair_words(batches[idx], features, train_mode=train_mode)
+            X_batch1, X_batch2, y_batch = self.prepare_batch_from_pair_words(features, batches[idx],  train_mode=train_mode)
             yield Variable(X_batch1), Variable(X_batch2), Variable(y_batch)
         
         
