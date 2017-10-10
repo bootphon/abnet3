@@ -32,6 +32,6 @@ setup(
   dependency_links=[
         "https://github.com/bootphon/h5features/tarball/master",
         "https://github.com/bootphon/spectral/tarball/master",
-        "https://github.com/syhw/DTW_Cython/tarball/master"
+        "https://github.com/Rachine/DTW_Cython/tarball/master"
     ],
 )
