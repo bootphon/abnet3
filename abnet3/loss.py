@@ -11,6 +11,7 @@ Created on Tue Oct  3 19:22:41 2017
 import torch
 import torch.nn as nn
 import numpy as np
+from torch.autograd import Variable
 
 class LossBuilder(nn.Module):
     """Generic Loss class for ABnet3
@@ -43,7 +44,7 @@ class coscos2(LossBuilder):
         super(coscos2, self).__init__(*args, **kwargs)
     
     def forward(self, input1, input2, y, avg=True):
-        """Return loss value
+        """Return loss value coscos2 for a batch
         
         Parameters
         ----------
@@ -68,6 +69,7 @@ class coscos2(LossBuilder):
 class cosmargin(LossBuilder):
     """cosmargin Loss function
     
+    
     """
     
     def __init__(self, margin=0.5, *args, **kwargs):
@@ -75,6 +77,15 @@ class cosmargin(LossBuilder):
         self.margin = margin
     
     def forward(self, input1, input2, y, avg=True):
+        """Return loss value cos margin for a batch
+        
+        Parameters
+        ----------
+        input1, input2 : Pytorch Variable
+            Input continuous vectors
+        y : Pytorch Variable
+            Labels for inputs
+        """
         cos = nn.CosineSimilarity(dim=1, eps=1e-6)
         assert input1.size() == input2.size(), 'Input not the same size'
         cos_sim = cos(input1,input2)

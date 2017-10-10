@@ -10,6 +10,7 @@ Created on Tue Oct  3 19:22:41 2017
 import numpy as np
 import os
 import h5features
+from dtw import DTW
 
 def get_var_name(**variable):
     return list(variable.keys())[0]
@@ -81,7 +82,13 @@ class Features_Accessor(object):
                                     self.times[f.encode('UTF-8')] <= off))[0]
         return self.features[f.encode('UTF-8')][t, :]
 
-
+def get_dtw_alignment(feat1, feat2):
+    distance_array = cosine_distance(feat1, feat2)
+    _, _, paths = DTW(feat1, feat2, return_alignment=True,
+                             dist_array=distance_array)
+    path1, path2 = paths[1:]
+    assert len(path1) == len(path2)
+    return path1, path2 
 
 def read_pairs(pair_file):
     with open(pair_file, 'r') as fh:
