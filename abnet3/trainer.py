@@ -38,7 +38,7 @@ class TrainerBuilder:
         self.best_epoch = None
         self.seed = seed
         self.cuda = cuda
-        assert optimizer_type in ('sgd', 'adaelta','adam')
+        assert optimizer_type in ('sgd', 'adadelta','adam')
         if optimizer_type == 'sgd':
             self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         if optimizer_type == 'adadelta':
@@ -196,8 +196,8 @@ class TrainerSiamese(TrainerBuilder):
             print("Epoch {} of {} took {:.3f}s".format(
                     epoch + 1, self.num_epochs, time.time() - start_time))
             
-            print("  training loss:\t\t{:.6f}".format(train_loss))
-            print("  dev loss:\t\t{:.6f}".format(dev_loss))
+            print("  training loss:\t\t{:.6f}".format(train_loss/self.num_max_minibatches))
+            print("  dev loss:\t\t\t{:.6f}".format(dev_loss/self.num_max_minibatches))
             if best_dev == None or dev_loss < best_dev:
                 best_dev = dev_loss
                 patience_dev = 0

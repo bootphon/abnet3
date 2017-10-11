@@ -92,7 +92,7 @@ class cosmargin(LossBuilder):
         idx = torch.eq(y,1)
         cos_sim[idx] = -cos_sim[idx] 
         idx = torch.eq(y,-1)
-        cos_sim[idx] = torch.clamp(cos_sim[idx]-self.margin,0)
+        cos_sim[idx] = torch.clamp(cos_sim[idx]-self.margin, min=0)
         output = cos_sim.sum()
         if avg:
             output = torch.div(output,input1.size()[0])
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     x1 = Variable(torch.randn(N_batch, 10))
     x2 = Variable(torch.randn(N_batch, 10))
     y = Variable(torch.from_numpy(np.random.choice([1,-1],N_batch)))
-    loss = coscos2()
+    loss = cosmargin()
     res = loss.forward(x1,x2,y)
 #    output = sia.forward_once(x)
 

@@ -3,3 +3,5 @@ cython
 h5py
 h5features
 spectral
+pytest
+numpydoc
