@@ -25,12 +25,15 @@ class EmebedderBuilder:
     def embed(self):
         """ Embed method to embed features based on a save network
         
-        """        
-        features, _, _ = read_feats(self.feature_path)
+        """
+
+        with h5features.Reader(self.feature_path, 'features') as fh:
+            features = fh.read()
+
         items = features.items()
         times = features.labels()
         feats = features.features()
-        
+
         embeddings = []
         for feat in feats:
             feat_torch = Variable(torch.from_numpy(feat))
