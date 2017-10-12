@@ -13,15 +13,17 @@ import h5features
 from abnet3.utils import read_feats
 
 
-class EmebedderBuilder:
+class EmbedderBuilder:
     """Generic Embedder class for ABnet3
     
     """
-    def __init__(self, network, feature_path=None, output_path=None):
+    def __init__(self, network, feature_path=None, output_path=None, 
+                 cuda=True):
         self.network = network
         self.feature_path = feature_path
         self.output_path = output_path
-    
+        self.cuda = cuda
+        
     def embed(self):
         """ Embed method to embed features based on a save network
         
@@ -37,6 +39,8 @@ class EmebedderBuilder:
         embeddings = []
         for feat in feats:
             feat_torch = Variable(torch.from_numpy(feat))
+            if self.cuda:
+                feat_torch.cuda()
             emb = self.network.forward_once(feat_torch)
             embeddings.append(emb.data.numpy())
         
