@@ -40,8 +40,8 @@ class EmbedderBuilder:
         for feat in feats:
             feat_torch = Variable(torch.from_numpy(feat))
             if self.cuda:
-                feat_torch.cuda()
-            emb = self.network.forward_once(feat_torch)
+                feat_torch = feat_torch.cuda()
+            emb = self.network.forward_once(feat_torch).cpu()
             embeddings.append(emb.data.numpy())
         
         data = h5features.Data(items, times, embeddings, check=True)
