@@ -231,7 +231,9 @@ class TrainerSiamese(TrainerBuilder):
                       "stopping now".format(self.patience))
                     print('Finished Training')
                     break
-                
+        
+        self.network.load_network(network_path = self.network.outpath+'.nnet')
+        
         print('Still Training but no more patience.')
         print('Finished Training')
     
