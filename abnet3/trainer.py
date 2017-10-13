@@ -16,6 +16,8 @@ import torch.optim as optim
 import time
 import pickle
 import os
+import matplotlib.pyplot as plt
+
 
 class TrainerBuilder:
     """Generic Trainer class for ABnet3
@@ -65,6 +67,13 @@ class TrainerBuilder:
     
         """
         raise NotImplementedError('Unimplemented train for class:',
+                          self.__class__.__name__)
+
+    def plot_train_erros(self):
+        """Plot function for training losses 
+    
+        """
+        raise NotImplementedError('Unimplemented plot_train_erros for class:',
                           self.__class__.__name__)
 
        
@@ -158,11 +167,14 @@ class TrainerSiamese(TrainerBuilder):
         
         
     def train(self):
-        """ Train method to train the model
+        """Train method to train the model
         
         """
         patience_dev = 0
         best_dev = None
+        
+        self.train_losses = []
+        self.dev_losses = []
         
         features, align_features, feat_dim = read_feats(self.feature_path)
         
@@ -187,11 +199,19 @@ class TrainerSiamese(TrainerBuilder):
                 self.optimizer.step()
                 train_loss += train_loss_value.data[0]
                 
+            self.train_losses.append(train_loss)
             for minibatch in self.get_batches(features, train_mode=False):
+                X_batch1, X_batch2, y_batch = minibatch
+                if self.cuda:
+                    X_batch1 = X_batch1.cuda()
+                    X_batch2 = X_batch2.cuda()
+                    y_batch  = y_batch.cuda()
                 self.network.eval()
                 emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
                 dev_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
                 dev_loss += dev_loss_value.data[0]
+            
+            self.dev_losses.append(dev_loss)
             
             print("Epoch {} of {} took {:.3f}s".format(
                     epoch + 1, self.num_epochs, time.time() - start_time))
@@ -214,7 +234,18 @@ class TrainerSiamese(TrainerBuilder):
                 
         print('Still Training but no more patience.')
         print('Finished Training')
-
+    
+#    def plot_train_erros(self):
+#        """Plot method to vizualize the train and dev errors
+#        
+#        """
+        
+        
+        
+        
+        
+        
+    
 if __name__ == '__main__':
     
     sia = SiameseNetwork(input_dim=3,num_hidden_layers=2,hidden_dim=10,
