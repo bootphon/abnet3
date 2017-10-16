@@ -13,6 +13,14 @@ import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
 
+activation_functions = {'relu':nn.ReLU(inplace=True),
+                        'sigmoid':nn.Sigmoid(),
+                        'tanh':nn.Tanh()}
+
+init_functions = {'xavier_uni':nn.init.xavier_uniform,
+                        'xavier_normal':nn.init.xavier_normal,
+                        'orthogonal':torch.nn.init.orthogonal}
+
 class NetworkBuilder(nn.Module):
     """Generic Neural Network Model class
     
@@ -48,6 +56,23 @@ class NetworkBuilder(nn.Module):
         """
         raise NotImplementedError('Unimplemented load_network for class:',
                           self.__class__.__name__)
+    
+    def init_weight_method(self, *args, **kwargs):
+        """Init network weights 
+        
+        """
+        raise NotImplementedError('Unimplemented init_weight_method for class:',
+                          self.__class__.__name__)
+    
+    def plot_network(self, *args, **kwargs):        
+        """Vizualize network graphviz
+        
+        """
+        raise NotImplementedError('Unimplemented plot_network for class:',
+                          self.__class__.__name__)
+        
+        
+        
 
 class SiameseNetwork(NetworkBuilder):
     """Siamese neural network Architecture
@@ -55,30 +80,41 @@ class SiameseNetwork(NetworkBuilder):
     """
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None, 
                  output_dim=None, p_dropout=0.1, batch_norm=False,
-                 activation_function=None, output_path=None, *args, **kwargs):
+                 type_init='xavier_uni', activation_layer=None,
+                 output_path=None, *args, **kwargs):
         super(SiameseNetwork,self).__init__()
+        assert activation_layer in ('relu','sigmoid','tanh')
+        assert type_init in ('xavier_uni','xavier_normal','orthogonal')
         self.input_dim = input_dim
         self.num_hidden_layers = num_hidden_layers
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
-        self.activation_function = activation_function
+        self.activation_layer = activation_layer
         self.batch_norm = batch_norm
+        self.type_init = type_init
         # Pass forward network functions
         self.input_emb = nn.Sequential(
                 nn.Linear(input_dim,hidden_dim),
                 nn.Dropout(p=p_dropout, inplace=False),
-                activation_function)
+                activation_functions[activation_layer])
         self.hidden_layer = nn.Sequential(
                 nn.Linear(hidden_dim,hidden_dim),
                 nn.Dropout(p=p_dropout, inplace=False),
-                activation_function)
+                activation_functions[activation_layer])
         self.output_layer = nn.Sequential(
                 nn.Linear(hidden_dim,output_dim),
                 nn.Dropout(p=p_dropout, inplace=False),
-                activation_function)
+                activation_functions[activation_layer])
         self.output_path = output_path
 
-        
+
+    def init_weight_method(self,layer):
+        if isinstance(layer, nn.Linear):
+            init_func = init_functions[self.type_init]
+            init_func(layer.weight.data, gain=nn.init.calculate_gain(self.activation_layer))
+            layer.bias.data.fill_(0.0)
+            
+            
     def forward_once(self, x):
         """Simple forward pass for one instance x
         
@@ -109,18 +145,21 @@ class SiameseNetwork(NetworkBuilder):
     
     def load_network(self, network_path=None):
         self.load_state_dict(torch.load(network_path))
+    
 
 if __name__ == '__main__':
     sia = SiameseNetwork(input_dim=3,num_hidden_layers=2,hidden_dim=10,
                          output_dim=19,dropout=0.1,
-                         activation_function=nn.ReLU(inplace=True),
+                         activation_layer='relu',
                          batch_norm=True)
     
+    sia.apply(sia.init_weight_method)
     N_batch = 64
     x1 = Variable(torch.randn(N_batch, 1, 1, 3))
     x2 = Variable(torch.randn(N_batch, 1, 1, 3))
     output1, output2 = sia.forward(x1,x2)
     y = Variable(torch.LongTensor(np.random.choice([1,-1],N_batch)))
+#    pl = sia.plot_network()
 
 
 
