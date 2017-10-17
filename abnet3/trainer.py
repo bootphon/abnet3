@@ -17,6 +17,7 @@ import time
 import pickle
 import os
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 class TrainerBuilder:
@@ -163,7 +164,7 @@ class TrainerSiamese(TrainerBuilder):
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
             X_batch1, X_batch2, y_batch = self.prepare_batch_from_pair_words(features, batches[idx],  train_mode=train_mode)
-            yield Variable(X_batch1), Variable(X_batch2), Variable(y_batch)
+            yield Variable(X_batch1, requires_grad=False), Variable(X_batch2, requires_grad=False), Variable(y_batch, requires_grad=False)
         
         
     def train(self):
@@ -200,6 +201,7 @@ class TrainerSiamese(TrainerBuilder):
                 train_loss += train_loss_value.data[0]
                 
             self.train_losses.append(train_loss)
+            
             for minibatch in self.get_batches(features, train_mode=False):
                 X_batch1, X_batch2, y_batch = minibatch
                 if self.cuda:
@@ -237,13 +239,16 @@ class TrainerSiamese(TrainerBuilder):
         print('Still Training but no more patience.')
         print('Finished Training')
     
-#    def plot_train_erros(self):
-#        """Plot method to vizualize the train and dev errors
-#        
-#        """
+    def plot_train_erros(self):
+        """Plot method to vizualize the train and dev errors
         
-        
-        
+        """
+        fig = plt.figure()        
+#        plt.gca().set_color_cycle(['red', 'blue'])
+        x = range(len(self.train_losses))
+        plt.plot(x,self.train_losses,'r-')
+        plt.plot(x,self.dev_losses,'b+')
+        plt.show()
         
         
         
