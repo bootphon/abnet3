@@ -178,12 +178,52 @@ class TrainerSiamese(TrainerBuilder):
         self.dev_losses = []
         
         features, align_features, feat_dim = read_feats(self.feature_path)
+        train_loss = 0.0
+        dev_loss = 0.0
+        
+        self.network.train()
+        for minibatch in self.get_batches(features, train_mode=True):
+            #TODO refactor here for a step function based on specific loss
+            # enable generic train
+            
+            X_batch1, X_batch2, y_batch = minibatch
+            if self.cuda:
+                X_batch1 = X_batch1.cuda()
+                X_batch2 = X_batch2.cuda()
+                y_batch  = y_batch.cuda()
+            emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
+            train_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
+            train_loss += train_loss_value.data[0]
+            
+            self.train_losses.append(train_loss)
+          
+        self.network.eval()    
+        for minibatch in self.get_batches(features, train_mode=False):
+            X_batch1, X_batch2, y_batch = minibatch
+            if self.cuda:
+                X_batch1 = X_batch1.cuda()
+                X_batch2 = X_batch2.cuda()
+                y_batch  = y_batch.cuda()
+            
+            emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
+            dev_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
+            dev_loss += dev_loss_value.data[0]
+                
+            self.dev_losses.append(dev_loss)
+                
+            
+        print("Epoch {} of {} took {:.3f}s".format(
+                0, self.num_epochs, time.time() - start_time))
+        
+        print("  training loss:\t\t{:.6f}".format(train_loss/self.num_max_minibatches))
+        print("  dev loss:\t\t\t{:.6f}".format(dev_loss/self.num_max_minibatches))
         
         for epoch in range(self.num_epochs):
             train_loss = 0.0
             dev_loss = 0.0
             start_time = time.time()
             
+            self.network.train()
             for minibatch in self.get_batches(features, train_mode=True):
                 #TODO refactor here for a step function based on specific loss
                 # enable generic train
@@ -192,7 +232,7 @@ class TrainerSiamese(TrainerBuilder):
                     X_batch1 = X_batch1.cuda()
                     X_batch2 = X_batch2.cuda()
                     y_batch  = y_batch.cuda()
-                self.network.train()
+                
                 self.optimizer.zero_grad()
                 emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
                 train_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
@@ -202,13 +242,14 @@ class TrainerSiamese(TrainerBuilder):
                 
             self.train_losses.append(train_loss)
             
+            self.network.eval()
             for minibatch in self.get_batches(features, train_mode=False):
                 X_batch1, X_batch2, y_batch = minibatch
                 if self.cuda:
                     X_batch1 = X_batch1.cuda()
                     X_batch2 = X_batch2.cuda()
                     y_batch  = y_batch.cuda()
-                self.network.eval()
+                
                 emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
                 dev_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
                 dev_loss += dev_loss_value.data[0]
@@ -257,10 +298,11 @@ if __name__ == '__main__':
     
     sia = SiameseNetwork(input_dim=3,num_hidden_layers=2,hidden_dim=10,
                      output_dim=19,p_dropout=0.1,
-                     activation_function=nn.Sigmoid(),
-                     batch_norm=True)
+                     activation_layer='sigmoid',
+                     batch_norm=True, output_path='/home/rachine/abnet3/exp')
     sam = SamplerClusterSiamese(already_done=True, directory_output=None)
     loss = coscos2()
+    sia.save_network()
     tra = TrainerSiamese(sam,sia,loss, optimizer_type='adam')
 
     

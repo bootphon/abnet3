@@ -28,7 +28,7 @@ class EmbedderBuilder:
         """ Embed method to embed features based on a save network
         
         """
-
+        self.network.eval()
         with h5features.Reader(self.feature_path, 'features') as fh:
             features = fh.read()
 
