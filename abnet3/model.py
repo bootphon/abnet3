@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
+#from graphviz import Digraph
 
 activation_functions = {'relu':nn.ReLU(inplace=True),
                         'sigmoid':nn.Sigmoid(),
@@ -97,10 +98,14 @@ class SiameseNetwork(NetworkBuilder):
                 nn.Linear(input_dim,hidden_dim),
                 nn.Dropout(p=p_dropout, inplace=False),
                 activation_functions[activation_layer])
-        self.hidden_layer = nn.Sequential(
-                nn.Linear(hidden_dim,hidden_dim),
-                nn.Dropout(p=p_dropout, inplace=False),
-                activation_functions[activation_layer])
+        self.hidden_layers = []
+        for idx in range(self.num_hidden_layers):
+            self.hidden_layers.append(nn.Linear(hidden_dim,hidden_dim))
+            self.hidden_layers.append(nn.Dropout(p=p_dropout, inplace=False))
+            self.hidden_layers.append(activation_functions[activation_layer]) 
+        
+        # * is used for pointing to the list
+        self.hidden_layers = nn.Sequential(*self.hidden_layers)
         self.output_layer = nn.Sequential(
                 nn.Linear(hidden_dim,output_dim),
                 nn.Dropout(p=p_dropout, inplace=False),
@@ -120,8 +125,7 @@ class SiameseNetwork(NetworkBuilder):
         
         """
         output = self.input_emb(x)
-        for idx in range(self.num_hidden_layers):
-            output = self.hidden_layer(output)
+        output = self.hidden_layers(output)
         output = self.output_layer(output)
         return output
         
@@ -140,8 +144,8 @@ class SiameseNetwork(NetworkBuilder):
         """
         return {'params':self.__dict__,'class_name': self.__class__.__name__}       
         
-    def save_network(self):
-        torch.save(self.state_dict(), self.output_path +'.nnet')
+    def save_network(self, epoch=''):
+        torch.save(self.state_dict(), self.output_path+ epoch +'.nnet')
     
     def load_network(self, network_path=None):
         self.load_state_dict(torch.load(network_path))
