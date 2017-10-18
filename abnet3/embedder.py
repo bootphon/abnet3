@@ -25,7 +25,7 @@ class EmbedderBuilder:
         self.cuda = cuda
         
     def embed(self):
-        """ Embed method to embed features based on a save network
+        """ Embed method to embed features based on a saved network
         
         """
         self.network.eval()

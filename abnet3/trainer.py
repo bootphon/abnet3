@@ -182,6 +182,7 @@ class TrainerSiamese(TrainerBuilder):
         dev_loss = 0.0
         
         self.network.train()
+        num_batches_train = 0
         for minibatch in self.get_batches(features, train_mode=True):
             #TODO refactor here for a step function based on specific loss
             # enable generic train
@@ -196,8 +197,10 @@ class TrainerSiamese(TrainerBuilder):
             train_loss += train_loss_value.data[0]
             
             self.train_losses.append(train_loss)
-          
-        self.network.eval()    
+            num_batches_train +=1
+            
+        self.network.eval()   
+        num_batches_dev = 0
         for minibatch in self.get_batches(features, train_mode=False):
             X_batch1, X_batch2, y_batch = minibatch
             if self.cuda:
@@ -210,13 +213,11 @@ class TrainerSiamese(TrainerBuilder):
             dev_loss += dev_loss_value.data[0]
                 
             self.dev_losses.append(dev_loss)
+            num_batches_dev += 1
                 
-            
-        print("Epoch {} of {} took {:.3f}s".format(
-                0, self.num_epochs, time.time() - start_time))
         
-        print("  training loss:\t\t{:.6f}".format(train_loss/self.num_max_minibatches))
-        print("  dev loss:\t\t\t{:.6f}".format(dev_loss/self.num_max_minibatches))
+        print("  training loss:\t\t{:.6f}".format(train_loss/num_batches_train))
+        print("  dev loss:\t\t\t{:.6f}".format(dev_loss/num_batches_dev))
         
         for epoch in range(self.num_epochs):
             train_loss = 0.0
@@ -259,8 +260,8 @@ class TrainerSiamese(TrainerBuilder):
             print("Epoch {} of {} took {:.3f}s".format(
                     epoch + 1, self.num_epochs, time.time() - start_time))
             
-            print("  training loss:\t\t{:.6f}".format(train_loss/self.num_max_minibatches))
-            print("  dev loss:\t\t\t{:.6f}".format(dev_loss/self.num_max_minibatches))
+            print("  training loss:\t\t{:.6f}".format(train_loss/num_batches_train))
+            print("  dev loss:\t\t\t{:.6f}".format(dev_loss/num_batches_dev))
             if best_dev == None or dev_loss < best_dev:
                 best_dev = dev_loss
                 patience_dev = 0
