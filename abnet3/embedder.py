@@ -17,9 +17,10 @@ class EmbedderBuilder:
     """Generic Embedder class for ABnet3
     
     """
-    def __init__(self, network, feature_path=None, output_path=None, 
-                 cuda=True):
+    def __init__(self, network, network_path, feature_path=None,
+                 output_path=None, cuda=True):
         self.network = network
+        self.network_path = network_path
         self.feature_path = feature_path
         self.output_path = output_path
         self.cuda = cuda
@@ -28,7 +29,9 @@ class EmbedderBuilder:
         """ Embed method to embed features based on a saved network
         
         """
+        self.network.load_network(self.network_path)
         self.network.eval()
+        
         with h5features.Reader(self.feature_path, 'features') as fh:
             features = fh.read()
 
