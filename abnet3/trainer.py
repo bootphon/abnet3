@@ -41,13 +41,15 @@ class TrainerBuilder:
         self.best_epoch = None
         self.seed = seed
         self.cuda = cuda
-        assert optimizer_type in ('sgd', 'adadelta','adam')
+        assert optimizer_type in ('sgd', 'adadelta','adam','adagrad')
         if optimizer_type == 'sgd':
             self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         if optimizer_type == 'adadelta':
             self.optimizer = optim.Adadelta(self.network.parameters())
         if optimizer_type == 'adam':
             self.optimizer = optim.Adam(self.network.parameters())
+        if optimizer_type == 'adagrad':
+            self.optimizer = optim.Adagrad(self.network.parameters())
         if cuda:
             self.loss.cuda()
             self.network.cuda()

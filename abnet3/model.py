@@ -111,7 +111,7 @@ class SiameseNetwork(NetworkBuilder):
                 nn.Dropout(p=p_dropout, inplace=False),
                 activation_functions[activation_layer])
         self.output_path = output_path
-
+        self.apply(self.init_weight_method)
 
     def init_weight_method(self,layer):
         if isinstance(layer, nn.Linear):
