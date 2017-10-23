@@ -65,6 +65,12 @@ class TrainerBuilder:
         pickle.dump(self.whoami(),  
             open(self.network.output_path+'.params',"wb" ))
         
+    def optimize_model(self):
+        """Optimization model step
+        """
+        raise NotImplementedError('Unimplemented optimize_model for class:',
+                  self.__class__.__name__)
+        
     def train(self):
         """Train function 
     
@@ -182,6 +188,8 @@ class TrainerSiamese(TrainerBuilder):
         features, align_features, feat_dim = read_feats(self.feature_path)
         train_loss = 0.0
         dev_loss = 0.0
+        self.network.eval()
+        self.network.save_network()
         
         self.network.train()
         num_batches_train = 0
@@ -267,6 +275,7 @@ class TrainerSiamese(TrainerBuilder):
             if best_dev == None or dev_loss < best_dev:
                 best_dev = dev_loss
                 patience_dev = 0
+                print('Saving best model so far, epoch {}'.format(epoch+1))
                 self.network.save_network()
                 self.save_whoami()
                 self.best_epoch  = epoch
@@ -278,8 +287,12 @@ class TrainerSiamese(TrainerBuilder):
                     print('Finished Training')
                     break
         
-        self.network.load_network(network_path = self.network.output_path+'.nnet')
+        print('Saving best checkpoint network')
         
+        self.network.load_network(network_path = self.network.output_path+'.pth')
+        print('The best epoch is the {}-th'.format(self.best_epoch))
+        print('The best train is the {}'.format(self.train_losses[self.best_epoch]))
+        print('The best dev is the {}'.format(self.dev_losses[self.best_epoch]))
         print('Still Training but no more patience.')
         print('Finished Training')
     
@@ -292,7 +305,8 @@ class TrainerSiamese(TrainerBuilder):
         x = range(len(self.train_losses))
         plt.plot(x,self.train_losses,'r-')
         plt.plot(x,self.dev_losses,'b+')
-        plt.show()
+        fig.savefig(self.network.output_path+ "_plot.pdf",
+                    bbox_inches='tight')
         
         
         
