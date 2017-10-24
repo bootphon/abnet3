@@ -253,7 +253,7 @@ class TrainerSiamese(TrainerBuilder):
                 self.optimizer.step()
                 train_loss += train_loss_value.data[0]
                 
-            self.train_losses.append(train_loss)
+            self.train_losses.append(train_loss/num_batches_train)
             
             self.network.eval()
             for minibatch in self.get_batches(features, train_mode=False):
@@ -267,7 +267,7 @@ class TrainerSiamese(TrainerBuilder):
                 dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
                 dev_loss += dev_loss_value.data[0]
             
-            self.dev_losses.append(dev_loss)
+            self.dev_losses.append(dev_loss/num_batches_dev)
             
             print("Epoch {} of {} took {:.3f}s".format(
                     epoch + 1, self.num_epochs, time.time() - start_time))
