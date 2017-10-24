@@ -131,7 +131,8 @@ class SiameseNetwork(NetworkBuilder):
         
     def forward(self, input1, input2):
         """Forward pass through the same network
-        
+        https://discuss.pytorch.org/t/how-to-create-model-with-sharing-weight/398/2
+        reason for design of the siamese
         """
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
@@ -161,7 +162,7 @@ if __name__ == '__main__':
     N_batch = 64
     x1 = Variable(torch.randn(N_batch, 1, 1, 3))
     x2 = Variable(torch.randn(N_batch, 1, 1, 3))
-    output1, output2 = sia.forward(x1,x2)
+    output1, output2 = sia(x1,x2)
     y = Variable(torch.LongTensor(np.random.choice([1,-1],N_batch)))
 #    pl = sia.plot_network()
 

@@ -204,8 +204,8 @@ class TrainerSiamese(TrainerBuilder):
                 X_batch1 = X_batch1.cuda()
                 X_batch2 = X_batch2.cuda()
                 y_batch  = y_batch.cuda()
-            emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
-            train_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
+            emb_batch1, emb_batch2 = self.network(X_batch1,X_batch2)
+            train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
             train_loss += train_loss_value.data[0]
             
             num_batches_train +=1
@@ -220,8 +220,8 @@ class TrainerSiamese(TrainerBuilder):
                 X_batch2 = X_batch2.cuda()
                 y_batch  = y_batch.cuda()
             
-            emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
-            dev_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
+            emb_batch1, emb_batch2 = self.network(X_batch1,X_batch2)
+            dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
             dev_loss += dev_loss_value.data[0]
                 
             num_batches_dev += 1
@@ -247,8 +247,8 @@ class TrainerSiamese(TrainerBuilder):
                     y_batch  = y_batch.cuda()
                 
                 self.optimizer.zero_grad()
-                emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
-                train_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
+                emb_batch1, emb_batch2 = self.network(X_batch1,X_batch2)
+                train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
                 train_loss_value.backward()
                 self.optimizer.step()
                 train_loss += train_loss_value.data[0]
@@ -263,8 +263,8 @@ class TrainerSiamese(TrainerBuilder):
                     X_batch2 = X_batch2.cuda()
                     y_batch  = y_batch.cuda()
                 
-                emb_batch1, emb_batch2 = self.network.forward(X_batch1,X_batch2)
-                dev_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
+                emb_batch1, emb_batch2 = self.network(X_batch1,X_batch2)
+                dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
                 dev_loss += dev_loss_value.data[0]
             
             self.dev_losses.append(dev_loss)
