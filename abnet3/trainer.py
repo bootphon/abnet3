@@ -47,11 +47,11 @@ class TrainerBuilder:
         if optimizer_type == 'sgd':
             self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         if optimizer_type == 'adadelta':
-            self.optimizer = optim.Adadelta(self.network.parameters())
+            self.optimizer = self.optimizer = optim.Adadelta(self.network.parameters(), lr=self.lr)
         if optimizer_type == 'adam':
-            self.optimizer = optim.Adam(self.network.parameters())
+            self.optimizer = optim.Adam(self.network.parameters(), lr=self.lr)
         if optimizer_type == 'adagrad':
-            self.optimizer = optim.Adagrad(self.network.parameters())
+            self.optimizer = optim.Adagrad(self.network.parameters(), lr=self.lr)
         if cuda:
             self.loss.cuda()
             self.network.cuda()
