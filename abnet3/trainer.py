@@ -16,6 +16,8 @@ import torch.optim as optim
 import time
 import pickle
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -206,9 +208,9 @@ class TrainerSiamese(TrainerBuilder):
             train_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
             train_loss += train_loss_value.data[0]
             
-            self.train_losses.append(train_loss)
             num_batches_train +=1
             
+        self.train_losses.append(train_loss)
         self.network.eval()   
         num_batches_dev = 0
         for minibatch in self.get_batches(features, train_mode=False):
@@ -222,9 +224,9 @@ class TrainerSiamese(TrainerBuilder):
             dev_loss_value = self.loss.forward(emb_batch1, emb_batch2, y_batch)
             dev_loss += dev_loss_value.data[0]
                 
-            self.dev_losses.append(dev_loss)
             num_batches_dev += 1
-                
+        
+        self.dev_losses.append(dev_loss)
         
         print("  training loss:\t\t{:.6f}".format(train_loss/num_batches_train))
         print("  dev loss:\t\t\t{:.6f}".format(dev_loss/num_batches_dev))
