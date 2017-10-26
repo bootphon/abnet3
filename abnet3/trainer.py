@@ -45,13 +45,17 @@ class TrainerBuilder:
         self.cuda = cuda
         assert optimizer_type in ('sgd', 'adadelta','adam','adagrad')
         if optimizer_type == 'sgd':
-            self.optimizer = optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
+            self.optimizer = optim.SGD(self.network.parameters(),
+                                       lr=self.lr, momentum=self.momentum)
         if optimizer_type == 'adadelta':
-            self.optimizer = self.optimizer = optim.Adadelta(self.network.parameters(), lr=self.lr)
+            self.optimizer = optim.Adadelta(self.network.parameters(),
+                                            lr=self.lr)
         if optimizer_type == 'adam':
-            self.optimizer = optim.Adam(self.network.parameters(), lr=self.lr)
+            self.optimizer = optim.Adam(self.network.parameters(),
+                                        lr=self.lr)
         if optimizer_type == 'adagrad':
-            self.optimizer = optim.Adagrad(self.network.parameters(), lr=self.lr)
+            self.optimizer = optim.Adagrad(self.network.parameters(),
+                                           lr=self.lr)
         if cuda:
             self.loss.cuda()
             self.network.cuda()
@@ -97,7 +101,8 @@ class TrainerSiamese(TrainerBuilder):
         assert type(self.sampler) == abnet3.sampler.SamplerClusterSiamese
         assert type(self.network) == abnet3.model.SiameseNetwork
     
-    def prepare_batch_from_pair_words(self, features, pairs_path, train_mode=True,seed=0):
+    def prepare_batch_from_pair_words(self, features, pairs_path,
+                                      train_mode=True,seed=0):
         """Prepare a batch in Pytorch format based on a batch file
         
         """
@@ -161,20 +166,28 @@ class TrainerSiamese(TrainerBuilder):
         """
         
         if train_mode:
-            batch_dir = os.path.join(self.sampler.directory_output,'train_pairs')
+            batch_dir = os.path.join(self.sampler.directory_output,
+                                     'train_pairs')
         else:
-            batch_dir = os.path.join(self.sampler.directory_output,'dev_pairs')
+            batch_dir = os.path.join(self.sampler.directory_output,
+                                     'dev_pairs')
             
         batches = Parse_Dataset(batch_dir)
         num_batches = len(batches)
         if self.num_max_minibatches<num_batches:
-            selected_batches = np.random.choice(range(num_batches), self.num_max_minibatches, replace=False)
+            selected_batches = np.random.choice(range(num_batches),
+                                                self.num_max_minibatches,
+                                                replace=False)
         else:
-            print("Number of batches not sufficient, iterating over all the batches")
+            print("Number of batches not sufficient," + 
+                  " iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
-            X_batch1, X_batch2, y_batch = self.prepare_batch_from_pair_words(features, batches[idx],  train_mode=train_mode)
-            yield Variable(X_batch1, requires_grad=False), Variable(X_batch2, requires_grad=False), Variable(y_batch, requires_grad=False)
+            bacth_els = self.prepare_batch_from_pair_words(
+                    features, batches[idx], train_mode=train_mode)
+            
+            X_batch1, X_batch2, y_batch = map(Variable, bacth_els)
+            yield X_batch1, X_batch2, y_batch
         
         
     def train(self):
@@ -227,9 +240,10 @@ class TrainerSiamese(TrainerBuilder):
             num_batches_dev += 1
         
         self.dev_losses.append(dev_loss)
-        
-        print("  training loss:\t\t{:.6f}".format(train_loss/num_batches_train))
-        print("  dev loss:\t\t\t{:.6f}".format(dev_loss/num_batches_dev))
+        normalized_train_loss = train_loss/num_batches_train
+        normalized_dev_loss = dev_loss/num_batches_dev
+        print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
+        print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
         
         for epoch in range(self.num_epochs):
             train_loss = 0.0
@@ -272,8 +286,10 @@ class TrainerSiamese(TrainerBuilder):
             print("Epoch {} of {} took {:.3f}s".format(
                     epoch + 1, self.num_epochs, time.time() - start_time))
             
-            print("  training loss:\t\t{:.6f}".format(train_loss/num_batches_train))
-            print("  dev loss:\t\t\t{:.6f}".format(dev_loss/num_batches_dev))
+            normalized_train_loss = train_loss/num_batches_train
+            normalized_dev_loss = dev_loss/num_batches_dev
+            print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
+            print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
             if best_dev == None or dev_loss < best_dev:
                 best_dev = dev_loss
                 patience_dev = 0
@@ -291,10 +307,13 @@ class TrainerSiamese(TrainerBuilder):
         
         print('Saving best checkpoint network')
         
-        self.network.load_network(network_path = self.network.output_path+'.pth')
+        self.network.load_network(
+                network_path = self.network.output_path+'.pth')
         print('The best epoch is the {}-th'.format(self.best_epoch))
-        print('The best train is the {}'.format(self.train_losses[self.best_epoch]))
-        print('The best dev is the {}'.format(self.dev_losses[self.best_epoch]))
+        print('The best train is the {}'.format(
+                self.train_losses[self.best_epoch]))
+        print('The best dev is the {}'.format(
+                self.dev_losses[self.best_epoch]))
         print('Still Training but no more patience.')
         print('Finished Training')
     

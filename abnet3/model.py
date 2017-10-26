@@ -62,7 +62,8 @@ class NetworkBuilder(nn.Module):
         """Init network weights 
         
         """
-        raise NotImplementedError('Unimplemented init_weight_method for class:',
+        raise NotImplementedError('Unimplemented init_weight_method'+
+                                  'for class:',
                           self.__class__.__name__)
     
     def plot_network(self, *args, **kwargs):        
@@ -108,7 +109,7 @@ class SiameseNetwork(NetworkBuilder):
         self.hidden_layers = nn.Sequential(*self.hidden_layers)
         self.output_layer = nn.Sequential(
                 nn.Linear(hidden_dim,output_dim),
-                nn.Dropout(p=p_dropout, inplace=False),
+                nn.Dropout(p=p_dropout, inplace=True),
                 activation_functions[activation_layer])
         self.output_path = output_path
         self.apply(self.init_weight_method)
