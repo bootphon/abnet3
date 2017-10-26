@@ -79,6 +79,26 @@ class NetworkBuilder(nn.Module):
 class SiameseNetwork(NetworkBuilder):
     """Siamese neural network Architecture
     
+    Parameters
+    ----------
+    input_dim : Int
+        Input dimension to the siamese network
+    num_hidden_layers: Int 
+        Number of hidden layers
+    hidden_dim: Int, or list of Int
+        Dimension of hidden layers
+    output_dim: Int
+        Dimension of output layer
+    p_dropout: Float
+        Probability to drop a unit during forward training
+    batch_norm: Bool
+        Add batch normalization layer
+    type_init: String
+        Type of weight initialization
+    activation_layer: String
+        Type of activation layer
+    output_path: String
+        Path to save network, params
     """
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None, 
                  output_dim=None, p_dropout=0.1, batch_norm=False,
@@ -87,6 +107,11 @@ class SiameseNetwork(NetworkBuilder):
         super(SiameseNetwork,self).__init__()
         assert activation_layer in ('relu','sigmoid','tanh')
         assert type_init in ('xavier_uni','xavier_normal','orthogonal')
+        assert type(input_dim) == int, 'input dim should be int'
+        assert type(hidden_dim) == int, 'hidden dim should be int'
+        assert type(num_hidden_layers) == int, 'num hidden lay should be int'
+        assert type(output_dim) == int, 'output dim should be int'
+        
         self.input_dim = input_dim
         self.num_hidden_layers = num_hidden_layers
         self.hidden_dim = hidden_dim
@@ -132,6 +157,7 @@ class SiameseNetwork(NetworkBuilder):
         
     def forward(self, input1, input2):
         """Forward pass through the same network
+        
         https://discuss.pytorch.org/t/how-to-create-model-with-sharing-weight/398/2
         reason for design of the siamese
         """

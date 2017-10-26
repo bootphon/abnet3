@@ -82,4 +82,11 @@ def test_update_all_weights_with_optim(model_func,loss_func):
     for layer1, layer2 in zip(param_before,param_after):
         assert (layer1 != layer2).data.numpy().any()
     
+
+if __name__ == '__main__':
+    pytest.main([__file__])
+        
+        
+        
+        
     

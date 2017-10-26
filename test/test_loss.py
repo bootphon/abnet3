@@ -29,3 +29,6 @@ def test_forward(loss_func):
     res = loss(x1,x2,y)
     assert res.dim() == 1, 'fail for {}'.format(loss_func)
 
+
+if __name__ == '__main__':
+    pytest.main([__file__])

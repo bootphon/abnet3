@@ -69,13 +69,17 @@ class coscos2(LossBuilder):
 class cosmargin(LossBuilder):
     """cosmargin Loss function
     
-    
+    Parameters
+    ----------
+    margin : float variable between 0 and 1
+        
     """
     
     def __init__(self, margin=0.5, *args, **kwargs):
         super(cosmargin, self).__init__(*args, **kwargs)
         self.margin = margin
-    
+        assert (margin >=0 and margin <=1)
+        
     def forward(self, input1, input2, y, avg=True):
         """Return loss value cos margin for a batch
         
