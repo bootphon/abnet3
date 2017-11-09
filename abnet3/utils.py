@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Created on Tue Oct  3 19:22:41 2017
+"""This script is composed of the different utilities functions for the
+different parts for the ABnet3 package.
 
-@author: Rachid Riad
+TODO: list the different utilis functions
+
 """
 
 import numpy as np
@@ -42,29 +43,29 @@ def cosine_distance(x, y):
 
 def normalize_distribution(p):
     """Normalize distribution p for a dictionnary k/v class
-    
+
     """
     assert type(p)==dict, 'Distribution p is not a dictionnary'
     sum_norm = 0.0
     keys = p.keys()
     for key in keys:
         sum_norm += p[key]
-    
+
     for key in keys:
         p[key] = p[key]/sum_norm
 
     return p
-    
 
-# Inspiration from numpy code source 
+
+# Inspiration from numpy code source
 
 def cumulative_distribution(distribution):
     """Cumulative sums for multinomial sampling
-    
+
     """
     assert type(distribution) == list, 'distribution variable needs to be list'
     assert np.sum(distribution) == 1.0, 'distribution needs to be normalized'
-    
+
     cdf = np.cumsum(np.array(distribution))
     cdf /= cdf[-1]
     return cdf
@@ -72,7 +73,7 @@ def cumulative_distribution(distribution):
 
 def sample_searchidx(cdf, num_samples):
     """Sample indexes based on cdf distribution
-    
+
     """
     uniform_samples = np.random.random_sample(num_samples)
     idx = cdf.searchsorted(uniform_samples, side='right')
@@ -80,14 +81,14 @@ def sample_searchidx(cdf, num_samples):
 
 def print_token(tok):
     """Pretty print token for batches
-    
+
     """
     return "{0} {1:.2f} {2:.2f}".format(tok[0], tok[1], tok[2])
 
 
 def Parse_Dataset(path):
     """Parse folder for batch names
-    
+
     """
     batches = []
     batches += ([os.path.join(path, add) for add in os.listdir(path) if add.endswith(('.batch'))])
@@ -95,7 +96,7 @@ def Parse_Dataset(path):
 
 
 class Features_Accessor(object):
-    
+
     def __init__(self, times, features):
         self.times = times
         self.features = features
@@ -112,7 +113,7 @@ def get_dtw_alignment(feat1, feat2):
                              dist_array=distance_array)
     path1, path2 = paths[1:]
     assert len(path1) == len(path2)
-    return path1, path2 
+    return path1, path2
 
 def read_pairs(pair_file):
     with open(pair_file, 'r') as fh:
@@ -145,10 +146,3 @@ def read_feats(features_file, align_features_file=None):
         feats = align_features.dict_features()
         align_features = Features_Accessor(times, feats)
     return features, align_features, feat_dim
-
-
-
-
-
-
-
