@@ -20,9 +20,10 @@ class SamplerBuilder(object):
     """Sampler Model interface
 
     """
-    def __init__(self, batch_size=8, already_done=False,
+    def __init__(self, batch_size=8, already_done=False, input_file=None,
                  directory_output=None):
         super(SamplerBuilder, self).__init__()
+        self.input_file = input_file
         self.batch_size = batch_size
         self.already_done = already_done
         self.directory_output = directory_output
@@ -58,8 +59,9 @@ class SamplerCluster(SamplerBuilder):
     """Sampler Model interface based on clusters of words
 
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, max_clusters=-1, *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
+        self.max_clusters = max_clusters
 
     def parse_input_file(self, input_file=None, max_clusters=-1):
         """Parse input file:
@@ -222,9 +224,9 @@ class SamplerCluster(SamplerBuilder):
         for type_idx in range(nb_types):
             p_types["Stype"][type_idx] = type_samp_func(W_types[type_idx])
             for type_jdx in range(type_idx+1, nb_types):
-                p_types["Dtype"][(type_idx, type_jdx)] =
-                type_samp_func(W_types[type_idx]) *
-                type_samp_func(W_types[type_jdx])
+                p_types["Dtype"][(type_idx, type_jdx)] = \
+                    type_samp_func(W_types[type_idx]) * \
+                    type_samp_func(W_types[type_jdx])
         return p_types
 
     def sample_spk_p(self, std_descr, spk_samp='log'):
@@ -266,26 +268,26 @@ class SamplerCluster(SamplerBuilder):
                         if (W_spk_types[(spk, type_idx)] - 1) == 0:
                             p_spk_types['Stype_Sspk'][(spk, type_idx)] = 0.0
                         else:
-                            p_spk_types['Stype_Sspk'][(spk, type_idx)] =
-                            spk_samp_func(W_spk_types[(spk, type_idx)])
+                            p_spk_types['Stype_Sspk'][(spk, type_idx)] = \
+                                spk_samp_func(W_spk_types[(spk, type_idx)])
                     else:
                         min_idx = np.min([type_idx, type_jdx])
                         max_idx = np.max([type_idx, type_jdx])
-                        p_spk_types['Dtype_Sspk'][(spk, min_idx, max_idx)] =
-                        spk_samp_func(W_spk_types[(spk, type_idx)]) *
-                        spk_samp_func(W_spk_types[(spk, type_jdx)])
+                        p_spk_types['Dtype_Sspk'][(spk, min_idx, max_idx)] = \
+                            spk_samp_func(W_spk_types[(spk, type_idx)]) * \
+                            spk_samp_func(W_spk_types[(spk, type_jdx)])
                 else:
                     if type_idx == type_jdx:
-                        p_spk_types['Stype_Dspk'][(spk, spk2, type_idx)] =
-                        spk_samp_func(W_spk_types[(spk, type_idx)]) *
-                        spk_samp_func(W_spk_types[(spk2, type_idx)])
+                        p_spk_types['Stype_Dspk'][(spk, spk2, type_idx)] = \
+                            spk_samp_func(W_spk_types[(spk, type_idx)]) * \
+                            spk_samp_func(W_spk_types[(spk2, type_idx)])
                     else:
                         min_idx = np.min([type_idx, type_jdx])
                         max_idx = np.max([type_idx, type_jdx])
                         p_spk_types['Dtype_Dspk'][(spk, spk2,
-                                                   min_idx, max_idx)] =
-                        spk_samp_func(W_spk_types[(spk, type_idx)]) *
-                        spk_samp_func(W_spk_types[(spk2, type_jdx)])
+                                                   min_idx, max_idx)] = \
+                            spk_samp_func(W_spk_types[(spk, type_idx)]) * \
+                            spk_samp_func(W_spk_types[(spk2, type_jdx)])
         return p_spk_types
 
     def generate_possibilities(self, std_descr):
@@ -382,24 +384,24 @@ class SamplerCluster(SamplerBuilder):
         for config in p_spk_types.keys():
             if config == 'Stype_Sspk':
                 for el in p_spk_types[config].keys():
-                    p_spk_types[config][el] = p_types['Stype'][el[1]] *
-                    p_spk_types[config][el]
+                    p_spk_types[config][el] = p_types['Stype'][el[1]] * \
+                        p_spk_types[config][el]
             if config == 'Stype_Dspk':
                 for el in p_spk_types[config].keys():
-                    p_spk_types[config][el] = p_types['Stype'][el[2]] *
-                    p_spk_types[config][el]
+                    p_spk_types[config][el] = p_types['Stype'][el[2]] * \
+                        p_spk_types[config][el]
             if config == 'Dtype_Sspk':
                 for el in p_spk_types[config].keys():
                     p_spk_types[config][el] = p_types['Dtype'][
                                                                (el[1],
-                                                                el[2])] *
-                    p_spk_types[config][el]
+                                                                el[2])] * \
+                        p_spk_types[config][el]
             if config == 'Dtype_Dspk':
                 for el in p_spk_types[config].keys():
                     p_spk_types[config][el] = p_types['Dtype'][
                                                                (el[2],
-                                                                el[3])] *
-                    p_spk_types[config][el]
+                                                                el[3])] * \
+                        p_spk_types[config][el]
 
         for config in p_spk_types.keys():
             p_spk_types[config] = normalize_distribution(p_spk_types[config])
@@ -530,5 +532,4 @@ class SamplerClusterSiamese(SamplerCluster):
 
 
 if __name__ == '__main__':
-
     sam = SamplerClusterSiamese()
