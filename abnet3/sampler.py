@@ -11,6 +11,8 @@ correct format for the Neural Network.
 
 from abnet3.utils import normalize_distribution, cumulative_distribution
 from abnet3.utils import print_token, sample_searchidx
+from abnet3.utils import read_spkid_file, read_spk_list
+
 import numpy as np
 import os
 import codecs
@@ -19,9 +21,22 @@ import codecs
 class SamplerBuilder(object):
     """Sampler Model interface
 
+        Parameters
+        ----------
+        input_file : String
+            Path to clusters of words
+        batch_size : Int
+            Number of words per batch
+        already_done : Bool
+            If already sampled, specify it
+        directory_output : String
+            Path folder where train/dev pairs folder will be
+        seed : int
+            Seed
+
     """
     def __init__(self, batch_size=8, already_done=False, input_file=None,
-                 directory_output=None):
+                 directory_output=None, seed=0):
         super(SamplerBuilder, self).__init__()
         self.input_file = input_file
         self.batch_size = batch_size
@@ -418,7 +433,14 @@ class SamplerCluster(SamplerBuilder):
 class SamplerClusterSiamese(SamplerCluster):
     """Sampler for Siamese network based on clusters of words
 
+        Parameters
+        ----------
+        type_samp : String
+            function applied to the observed type frequencies
+        spk_samp : String
+            function applied to the observed speaker frequencies
     """
+
     def __init__(self, type_samp='log', spk_samp='log', *args, **kwargs):
         super(SamplerClusterSiamese, self).__init__(*args, **kwargs)
         self.type_samp = type_samp
@@ -435,6 +457,19 @@ class SamplerClusterSiamese(SamplerCluster):
                      num_examples=5012,
                      ratio_same_diff=0.25):
 
+        """Sampling proba modes for p_i1,i2,j1,j2
+        It is based on Bayes rule:
+            - log : proporitonal to log of speaker or type probabilities
+            - f : proportional to square roots of speaker
+                or type probabilities (in order to obtain sampling
+                probas for pairs proportional to geometric mean of
+                the members of the pair probabilities)
+            - f2 : proportional to speaker
+                or type probabilities
+            - fcube: proportionnal to log probabilities
+            - 1 : equiprobable
+
+        """
         np.random.seed(seed)
         sampled_tokens = {'Stype_Sspk': [],
                           'Stype_Dspk': [],
@@ -530,6 +565,50 @@ class SamplerClusterSiamese(SamplerCluster):
                       str(idx_batch))+'_'+str(idx)+'.batch', 'w') as fh:
                     fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
 
+    def export_pairs(self):
+
+        # all the different types of pairs are randomly mixed in the output file
+        # with an added 'same' or 'different' label added for types
+        # same and different speakers pairs are not distinguishable in the output
+        # TODO generate pairs for speaker labels
+        np.random.seed(seed)
+        same_pairs = ['Stype_Sspk', 'Stype_Dspk']
+        diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
+        timing = time.time()
+        if os.path.isfile(os.path.join(out_dir,"pairs_possibilities.p")):
+            print('loading possibilities')
+            pairs = pickle.load(open(os.path.join(out_dir,"pairs_possibilities.p"),"rb"))
+        else:
+            print('generate possibilities')
+            pairs = generate_possibilities(descr)
+            pickle.dump(pairs, open(os.path.join(out_dir,"pairs_possibilities.p"),"wb"))
+        print("Generate possibilites done, took {} s".format(time.time()-timing))
+        timing = time.time()
+        proba = type_speaker_sampling_p(descr, type_samp = type_sampling_mode, speaker_samp = spk_sampling_mode)
+        cdf = prepare_multinomial_sampling(proba)
+        print("Proba done in {} s, start sampling batches and writing".format(time.time()-timing))
+        num = np.min(descr['speakers'].values())
+        num_batches = num*(num-1) / 2
+        num_batches = num_batches
+        print( 'Number of batches to sample {}'.format(num_batches))
+        #train_batch = True
+        idx_batch = 0
+        write_tokens_batch(descr,proba,cdf,pairs,size_batch,num_batches,out_dir,idx_batch,seed=seed+idx_batch)
+
 
 if __name__ == '__main__':
-    sam = SamplerClusterSiamese()
+
+    input_file = '/Users/rachine/abnet3/english.wrd.classes'
+    batch_size = 8
+    directory_output = '/Users/rachine/abnet3/results/test_pairs_sampler'
+    seed = 0
+    already_done = False
+    max_clusters = 2000
+    type_samp = 'log'
+    spk_samp = 'log'
+
+    sam = SamplerClusterSiamese(input_file=input_file, batch_size=batch_size,
+                                already_done=already_done, seed=seed,
+                                type_samp=type_samp, spk_samp=spk_samp,
+                                max_clusters=max_clusters,
+                                directory_output=directory_output)
