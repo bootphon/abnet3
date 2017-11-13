@@ -370,16 +370,25 @@ class SamplerCluster(SamplerBuilder):
     def type_speaker_sampling_p(self, std_descr,
                                 type_samp='f', speaker_samp='f'):
         """Sampling proba modes for p_i1,i2,j1,j2
-        It is based on Bayes rule:
-            - log : proporitonal to log of speaker or type probabilities
-            - f : proportional to square roots of speaker
-                or type probabilities (in order to obtain sampling
-                probas for pairs proportional to geometric mean of
-                the members of the pair probabilities)
-            - f2 : proportional to speaker
-                or type probabilities
-            - fcube: proportionnal to log probabilities
-            - 1 : equiprobable
+            It is based on Bayes rule:
+                - log : proporitonal to log of speaker or type probabilities
+                - f : proportional to square roots of speaker
+                    or type probabilities (in order to obtain sampling
+                    probas for pairs proportional to geometric mean of
+                    the members of the pair probabilities)
+                - f2 : proportional to speaker
+                    or type probabilities
+                - fcube: proportionnal to log probabilities
+                - 1 : equiprobable
+
+            Parameters
+            ----------
+            std_descr : dict
+                dictionnary with all description of the clusters
+            type_samp : String
+                function applied to the observed type frequencies
+            spk_samp : String
+                function applied to the observed speaker frequencies
 
         """
         assert type_samp in ['1', 'f', 'f2', 'log', 'fcube']
@@ -453,35 +462,54 @@ class SamplerClusterSiamese(SamplerCluster):
                      p_spk_types,
                      cdf,
                      pairs,
-                     seed=0, prefix='',
+                     seed=0,
                      num_examples=5012,
                      ratio_same_diff=0.25):
 
         """Sampling proba modes for p_i1,i2,j1,j2
-        It is based on Bayes rule:
-            - log : proporitonal to log of speaker or type probabilities
-            - f : proportional to square roots of speaker
-                or type probabilities (in order to obtain sampling
-                probas for pairs proportional to geometric mean of
-                the members of the pair probabilities)
-            - f2 : proportional to speaker
-                or type probabilities
-            - fcube: proportionnal to log probabilities
-            - 1 : equiprobable
+            It is based on Bayes rule:
+                - log : proporitonal to log of speaker or type probabilities
+                - f : proportional to square roots of speaker
+                    or type probabilities (in order to obtain sampling
+                    probas for pairs proportional to geometric mean of
+                    the members of the pair probabilities)
+                - f2 : proportional to speaker
+                    or type probabilities
+                - fcube: proportionnal to log probabilities
+                - 1 : equiprobable
 
+            Parameters
+            ----------
+            p_spk_types : dict
+                dictionnary with the probabilites of all different config
+            cdf : dict
+                dictionnary with the Cumulative distribution computed for
+                the different configurations
+            pairs : dict
+                dictionnary with the possible pairs
+            seed : int
+                seed
+            num_examples : int
+                number of pairs to compute
+            ratio_same_diff : float
+                float between 0 and 1 which is the ration of same and different
+                speaker for the pairs fed to the ABnet3
         """
         np.random.seed(seed)
-        sampled_tokens = {'Stype_Sspk': [],
+        sampled_tokens = {
+                          'Stype_Sspk': [],
                           'Stype_Dspk': [],
                           'Dtype_Sspk': [],
-                          'Dtype_Dspk': []}
+                          'Dtype_Dspk': []
+                          }
         num_same_spk = int((num_examples)*ratio_same_diff)
         num_diff_spk = num_examples - num_same_spk
         sampled_ratio = {
-                 'Stype_Sspk': num_same_spk/2,
-                 'Stype_Dspk': num_diff_spk/2,
-                 'Dtype_Sspk': num_same_spk/2,
-                 'Dtype_Dspk': num_diff_spk/2}
+                         'Stype_Sspk': num_same_spk/2,
+                         'Stype_Dspk': num_diff_spk/2,
+                         'Dtype_Sspk': num_same_spk/2,
+                         'Dtype_Dspk': num_diff_spk/2
+                         }
         for config in p_spk_types.keys():
             # proba_config = np.array(p_spk_types[config].values())
             # sizes = len(p_spk_types[config].keys())
@@ -527,7 +555,11 @@ class SamplerClusterSiamese(SamplerCluster):
         return sampled_tokens
 
     def write_tokens(self, descr, proba, cdf, pairs, size_batch,
-                     num_batches, out_dir, idx_batch, seed=0):
+                     num_batches, out_dir, seed=0):
+        """Write tokens based on all different parameters and write the tokens
+        in a batch.
+
+        """
         lines = []
         np.random.seed(seed)
         sampled_batch = self.sample_batch(proba, cdf, pairs,
@@ -562,38 +594,37 @@ class SamplerClusterSiamese(SamplerCluster):
         # prev_idx = 0
         for idx in range(1, num_batches//size_batch):
             with open(os.path.join(out_dir, 'pair_' +
-                      str(idx_batch))+'_'+str(idx)+'.batch', 'w') as fh:
-                    fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
+                      str(idx)+'.batch', 'w') as fh:
+                        fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
 
     def export_pairs(self):
-
-        # all the different types of pairs are randomly mixed in the output file
-        # with an added 'same' or 'different' label added for types
-        # same and different speakers pairs are not distinguishable in the output
-        # TODO generate pairs for speaker labels
-        np.random.seed(seed)
-        same_pairs = ['Stype_Sspk', 'Stype_Dspk']
-        diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
-        timing = time.time()
-        if os.path.isfile(os.path.join(out_dir,"pairs_possibilities.p")):
-            print('loading possibilities')
-            pairs = pickle.load(open(os.path.join(out_dir,"pairs_possibilities.p"),"rb"))
-        else:
-            print('generate possibilities')
-            pairs = generate_possibilities(descr)
-            pickle.dump(pairs, open(os.path.join(out_dir,"pairs_possibilities.p"),"wb"))
-        print("Generate possibilites done, took {} s".format(time.time()-timing))
-        timing = time.time()
-        proba = type_speaker_sampling_p(descr, type_samp = type_sampling_mode, speaker_samp = spk_sampling_mode)
-        cdf = prepare_multinomial_sampling(proba)
-        print("Proba done in {} s, start sampling batches and writing".format(time.time()-timing))
-        num = np.min(descr['speakers'].values())
-        num_batches = num*(num-1) / 2
-        num_batches = num_batches
-        print( 'Number of batches to sample {}'.format(num_batches))
-        #train_batch = True
-        idx_batch = 0
-        write_tokens_batch(descr,proba,cdf,pairs,size_batch,num_batches,out_dir,idx_batch,seed=seed+idx_batch)
+            # all the different types of pairs are randomly mixed in the output file
+            # with an added 'same' or 'different' label added for types
+            # same and different speakers pairs are not distinguishable in the output
+            # TODO generate pairs for speaker labels
+            np.random.seed(seed)
+            same_pairs = ['Stype_Sspk', 'Stype_Dspk']
+            diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
+            timing = time.time()
+            if os.path.isfile(os.path.join(out_dir,"pairs_possibilities.p")):
+                print('loading possibilities')
+                pairs = pickle.load(open(os.path.join(out_dir,"pairs_possibilities.p"),"rb"))
+            else:
+                print('generate possibilities')
+                pairs = generate_possibilities(descr)
+                pickle.dump(pairs, open(os.path.join(out_dir,"pairs_possibilities.p"),"wb"))
+            print("Generate possibilites done, took {} s".format(time.time()-timing))
+            timing = time.time()
+            proba = type_speaker_sampling_p(descr, type_samp = type_sampling_mode, speaker_samp = spk_sampling_mode)
+            cdf = prepare_multinomial_sampling(proba)
+            print("Proba done in {} s, start sampling batches and writing".format(time.time()-timing))
+            num = np.min(descr['speakers'].values())
+            num_batches = num*(num-1) / 2
+            num_batches = num_batches
+            print( 'Number of batches to sample {}'.format(num_batches))
+            #train_batch = True
+            idx_batch = 0
+            write_tokens_batch(descr,proba,cdf,pairs,size_batch,num_batches,out_dir,idx_batch,seed=seed+idx_batch)
 
 
 if __name__ == '__main__':

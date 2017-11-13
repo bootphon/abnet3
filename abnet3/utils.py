@@ -14,8 +14,26 @@ import h5features
 from dtw import DTW
 import scipy
 
+
 def get_var_name(**variable):
     return list(variable.keys())[0]
+
+
+def read_spkid_file(spkid_file):
+    with open(spkid_file, 'r') as fh:
+        lines = fh.readlines()
+    spk = {}
+    for line in lines:
+        fid, spkid = line.strip().split(" ")
+        assert not(fid in spk)
+        spk[fid] = spkid
+    return lambda x: spk[x]
+
+
+def read_spk_list(spk_file):
+    with open(spk_file, 'r') as fh:
+        lines = fh.readlines()
+    return [line.strip() for line in lines]
 
 
 def cosine_distance(x, y):
