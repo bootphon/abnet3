@@ -103,7 +103,45 @@ class cosmargin(LossBuilder):
         return output
 
 
-#
+class weighted_loss_multi(LossBuilder):
+    """weighted_loss_multi Loss function
+    This a weighted loss for multi-task training based on another loss
+
+    Parameters
+    ----------
+    loss : abnet3.loss functions
+        loss for both tasks
+    weight : float
+        variable between 0 and 1, to weight one or the other task.
+
+    """
+
+    def __init__(self, *args, **kwargs, loss=coscos2, weight=0.5):
+        super(weighted_loss_multi, self).__init__(*args, **kwargs)
+        assert type(weight) is int
+        assert loss in (coscos2, cosmargin), 'basis loss not implemented'
+        self.weight = weight
+        self.loss = loss
+
+    def forward(self, input1, input2, y_spk, y_phn, avg=True):
+        """Return loss value coscos2_weighted_multi for a batch
+
+        Parameters
+        ----------
+        input1, input2 : Pytorch Variable
+            Input continuous vectors
+        y_spk : Pytorch Variable
+            Labels for input speakers
+        y_phn : Pytorch Variable
+            Labels for input phones
+        """
+
+        output_spk = self.loss(input1, input2, y_spk, avg=avg)
+        output_phn = self.loss(input1, input2, y_phn, avg=avg)
+        output = self.weight*output_spk + (1.0-self.weight)*output_phn
+        return output
+
+
 if __name__ == '__main__':
 
     N_batch = 16
@@ -111,5 +149,5 @@ if __name__ == '__main__':
     x2 = Variable(torch.randn(N_batch, 10))
     y = Variable(torch.from_numpy(np.random.choice([1, -1], N_batch)))
     loss = cosmargin()
-    res = loss.forward(x1, x2, y)
+    res = loss(x1, x2, y)
 #    output = sia.forward_once(x)
