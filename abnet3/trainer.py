@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""This script is composed of the different modules for training neural networks
-based on pairs of words, specific features from speech (usually stacked
-filterbanks), a loss function, and a model.
+"""This script is composed of the different modules for training neural
+networks based on pairs of words, specific features from speech (usually
+stacked filterbanks), a loss function, and a model.
 
 It will generate models saved as .pth files to keep the weights and the
 architecture of the best performance on the dev set.
@@ -425,7 +425,8 @@ class TrainerSiameseMultitask(TrainerBuilder):
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
             bacth_els = self.prepare_batch_from_pair_words(
-                    features, batches[idx], train_mode=train_mode)
+                    features, batches[idx], train_mode=train_mode,
+                    read_spkid_file)
 
             X_batch1, X_batch2, y_phn_batch, y_spk_batch = map(Variable,
                                                                bacth_els)
@@ -509,7 +510,8 @@ class TrainerSiameseMultitask(TrainerBuilder):
 
                 self.optimizer.zero_grad()
                 emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-                train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+                train_loss_value = self.loss(emb_batch1, emb_batch2,
+                                             y_phn_batch, y_spk_batch)
                 train_loss_value.backward()
                 self.optimizer.step()
                 train_loss += train_loss_value.data[0]
@@ -526,7 +528,8 @@ class TrainerSiameseMultitask(TrainerBuilder):
                     y_spk_batch = y_spk_batch.cuda()
 
                 emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-                dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+                dev_loss_value = self.loss(emb_batch1, emb_batch2,
+                                           y_phn_batch, y_spk_batch)
                 dev_loss += dev_loss_value.data[0]
 
             self.dev_losses.append(dev_loss/num_batches_dev)
