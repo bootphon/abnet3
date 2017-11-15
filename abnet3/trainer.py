@@ -329,10 +329,11 @@ class TrainerSiameseMultitask(TrainerBuilder):
     """Siamese Trainer class for ABnet3 for multi task phn and spk
 
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, fid2spk_file=None, *args, **kwargs):
         super(TrainerSiameseMultitask, self).__init__(*args, **kwargs)
         assert type(self.sampler) == abnet3.sampler.SamplerClusterSiamese
         assert type(self.network) == abnet3.model.SiameseMultitaskNetwork
+        self.fid2spk_file = fid2spk_file
 
     def prepare_batch_from_pair_words(self, features, pairs_path,
                                       train_mode=True, seed=0, fid2spk=None):
@@ -426,7 +427,7 @@ class TrainerSiameseMultitask(TrainerBuilder):
         for idx in selected_batches:
             bacth_els = self.prepare_batch_from_pair_words(
                     features, batches[idx], train_mode=train_mode,
-                    read_spkid_file)
+                    fid2spk=read_spkid_file(self.fid2spk_file))
 
             X_batch1, X_batch2, y_phn_batch, y_spk_batch = map(Variable,
                                                                bacth_els)
@@ -575,8 +576,9 @@ if __name__ == '__main__':
                          output_dim=19, p_dropout=0.1,
                          activation_layer='sigmoid',
                          batch_norm=True,
-                         output_path='/home/rachine/abnet3/exp')
+                         output_path='/Users/rachine/abnet3/exp',
+                         cuda=False)
     sam = SamplerClusterSiamese(already_done=True, directory_output=None)
     loss = coscos2()
     sia.save_network()
-    tra = TrainerSiamese(sam, sia, loss, optimizer_type='adam')
+    tra = TrainerSiamese(sam, sia, loss, optimizer_type='adam', cuda=False)
