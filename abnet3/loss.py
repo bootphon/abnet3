@@ -116,7 +116,7 @@ class weighted_loss_multi(LossBuilder):
 
     """
 
-    def __init__(self, *args, **kwargs, loss=coscos2, weight=0.5):
+    def __init__(self, loss=coscos2, weight=0.5, *args, **kwargs):
         super(weighted_loss_multi, self).__init__(*args, **kwargs)
         assert type(weight) is int
         assert loss in (coscos2, cosmargin), 'basis loss not implemented'
