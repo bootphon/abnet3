@@ -594,8 +594,8 @@ class SamplerClusterSiamese(SamplerCluster):
         # prev_idx = 0
         for idx in range(1, num_batches//size_batch):
             with open(os.path.join(out_dir, 'pair_' +
-                      str(idx)+'.batch', 'w') as fh:
-                        fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
+                      str(idx)+'.batch', 'w')) as fh:
+                    fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
 
     def export_pairs(self):
             # all the different types of pairs are randomly mixed in the output file
