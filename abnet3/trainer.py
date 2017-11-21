@@ -29,7 +29,8 @@ class TrainerBuilder:
     """Generic Trainer class for ABnet3
 
     """
-    def __init__(self, sampler, network, loss, feature_path=None,
+    def __init__(self, sampler=None, network=None, loss=None,
+                 feature_path=None,
                  num_epochs=200, patience=20, num_max_minibatches=1000,
                  optimizer_type='SGD', lr=0.001, momentum=0.9, cuda=True,
                  seed=0):
