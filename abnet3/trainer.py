@@ -21,10 +21,8 @@ import torch.optim as optim
 import time
 import pickle
 import os
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-matplotlib.use('Agg')
 
 
 class TrainerBuilder:
