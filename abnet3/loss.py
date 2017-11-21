@@ -120,9 +120,10 @@ class weighted_loss_multi(LossBuilder):
     def __init__(self, avg=True, loss=coscos2, weight=0.5, *args, **kwargs):
         super(weighted_loss_multi, self).__init__(*args, **kwargs)
         assert type(weight) is float
+        assert (weight >= 0 and weight <= 1)
         assert loss in (coscos2, cosmargin), 'basis loss not implemented'
         self.weight = weight
-        self.loss = loss
+        self.loss = loss(avg=self.avg)
         self.avg = avg
 
     def forward(self, emb_spk1, emb_phn1, emb_spk2, emb_phn2,
@@ -139,8 +140,8 @@ class weighted_loss_multi(LossBuilder):
             Labels for input phones
         """
 
-        output_spk = self.loss(emb_spk1, emb_spk2, y_spk, avg=self.avg)
-        output_phn = self.loss(emb_phn1, emb_phn2, y_phn, avg=self.avg)
+        output_spk = self.loss(emb_spk1, emb_spk2, y_spk)
+        output_phn = self.loss(emb_phn1, emb_phn2, y_phn)
         output = self.weight*output_spk + (1.0-self.weight)*output_phn
         return output
 
