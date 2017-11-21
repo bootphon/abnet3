@@ -461,8 +461,10 @@ class TrainerSiameseMultitask(TrainerBuilder):
                 y_phn_batch = y_phn_batch.cuda()
                 y_spk_batch = y_spk_batch.cuda()
 
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            train_loss_value = self.loss(emb_batch1, emb_batch2,
+            emb = self.network(X_batch1, X_batch2)
+            emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
+            train_loss_value = self.loss(emb_spk1, emb_phn1,
+                                         emb_spk2, emb_phn2,
                                          y_phn_batch, y_spk_batch)
             train_loss += train_loss_value.data[0]
 
@@ -479,8 +481,10 @@ class TrainerSiameseMultitask(TrainerBuilder):
                 y_phn_batch = y_phn_batch.cuda()
                 y_spk_batch = y_spk_batch.cuda()
 
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            dev_loss_value = self.loss(emb_batch1, emb_batch2,
+            emb = self.network(X_batch1, X_batch2)
+            emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
+            dev_loss_value = self.loss(emb_spk1, emb_phn1,
+                                       emb_spk2, emb_phn2,
                                        y_phn_batch, y_spk_batch)
             dev_loss += dev_loss_value.data[0]
 
@@ -509,8 +513,10 @@ class TrainerSiameseMultitask(TrainerBuilder):
                     y_spk_batch = y_spk_batch.cuda()
 
                 self.optimizer.zero_grad()
-                emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-                train_loss_value = self.loss(emb_batch1, emb_batch2,
+                emb = self.network(X_batch1, X_batch2)
+                emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
+                train_loss_value = self.loss(emb_spk1, emb_phn1,
+                                             emb_spk2, emb_phn2,
                                              y_phn_batch, y_spk_batch)
                 train_loss_value.backward()
                 self.optimizer.step()
@@ -527,8 +533,10 @@ class TrainerSiameseMultitask(TrainerBuilder):
                     y_phn_batch = y_phn_batch.cuda()
                     y_spk_batch = y_spk_batch.cuda()
 
-                emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-                dev_loss_value = self.loss(emb_batch1, emb_batch2,
+                emb = self.network(X_batch1, X_batch2)
+                emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
+                dev_loss_value = self.loss(emb_spk1, emb_phn1,
+                                           emb_spk2, emb_phn2,
                                            y_phn_batch, y_spk_batch)
                 dev_loss += dev_loss_value.data[0]
 

@@ -123,7 +123,8 @@ class weighted_loss_multi(LossBuilder):
         self.weight = weight
         self.loss = loss
 
-    def forward(self, input1, input2, y_spk, y_phn, avg=True):
+    def forward(self, emb_spk1, emb_phn1, emb_spk2, emb_phn2,
+                y_spk, y_phn, avg=True):
         """Return loss value coscos2_weighted_multi for a batch
 
         Parameters
@@ -136,8 +137,8 @@ class weighted_loss_multi(LossBuilder):
             Labels for input phones
         """
 
-        output_spk = self.loss(input1, input2, y_spk, avg=avg)
-        output_phn = self.loss(input1, input2, y_phn, avg=avg)
+        output_spk = self.loss(emb_spk1, emb_spk2, y_spk, avg=avg)
+        output_phn = self.loss(emb_phn1, emb_phn2, y_phn, avg=avg)
         output = self.weight*output_spk + (1.0-self.weight)*output_phn
         return output
 
