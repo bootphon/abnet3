@@ -123,8 +123,8 @@ class weighted_loss_multi(LossBuilder):
         assert (weight >= 0 and weight <= 1)
         assert loss in (coscos2, cosmargin), 'basis loss not implemented'
         self.weight = weight
-        self.loss = loss(avg=self.avg)
         self.avg = avg
+        self.loss = loss(avg=self.avg)
 
     def forward(self, emb_spk1, emb_phn1, emb_spk2, emb_phn2,
                 y_spk, y_phn):
