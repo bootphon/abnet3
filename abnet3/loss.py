@@ -39,10 +39,11 @@ class coscos2(LossBuilder):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, avg=True, *args, **kwargs):
         super(coscos2, self).__init__(*args, **kwargs)
+        self.avg = avg
 
-    def forward(self, input1, input2, y, avg=True):
+    def forward(self, input1, input2, y):
         """Return loss value coscos2 for a batch
 
         Parameters
@@ -61,7 +62,7 @@ class coscos2(LossBuilder):
         idx = torch.eq(y, -1)
         cos_sim[idx] = torch.pow(cos_sim[idx], 2)
         output = cos_sim.sum()
-        if avg:
+        if self.avg:
             output = torch.div(output, input1.size()[0])
         return output
 
@@ -75,7 +76,7 @@ class cosmargin(LossBuilder):
 
     """
 
-    def __init__(self, margin=0.5, *args, **kwargs):
+    def __init__(self, avg=True, margin=0.5, *args, **kwargs):
         super(cosmargin, self).__init__(*args, **kwargs)
         self.margin = margin
         assert (margin >= 0 and margin <= 1)
@@ -98,7 +99,7 @@ class cosmargin(LossBuilder):
         idx = torch.eq(y, -1)
         cos_sim[idx] = torch.clamp(cos_sim[idx]-self.margin, min=0)
         output = cos_sim.sum()
-        if avg:
+        if self.avg:
             output = torch.div(output, input1.size()[0])
         return output
 
@@ -116,15 +117,16 @@ class weighted_loss_multi(LossBuilder):
 
     """
 
-    def __init__(self, loss=coscos2, weight=0.5, *args, **kwargs):
+    def __init__(self, avg=True, loss=coscos2, weight=0.5, *args, **kwargs):
         super(weighted_loss_multi, self).__init__(*args, **kwargs)
         assert type(weight) is float
         assert loss in (coscos2, cosmargin), 'basis loss not implemented'
         self.weight = weight
         self.loss = loss
+        self.avg = avg
 
     def forward(self, emb_spk1, emb_phn1, emb_spk2, emb_phn2,
-                y_spk, y_phn, avg=True):
+                y_spk, y_phn):
         """Return loss value coscos2_weighted_multi for a batch
 
         Parameters
@@ -137,8 +139,8 @@ class weighted_loss_multi(LossBuilder):
             Labels for input phones
         """
 
-        output_spk = self.loss(emb_spk1, emb_spk2, y_spk, avg=avg)
-        output_phn = self.loss(emb_phn1, emb_phn2, y_phn, avg=avg)
+        output_spk = self.loss(emb_spk1, emb_spk2, y_spk, avg=self.avg)
+        output_phn = self.loss(emb_phn1, emb_phn2, y_phn, avg=self.avg)
         output = self.weight*output_spk + (1.0-self.weight)*output_phn
         return output
 
