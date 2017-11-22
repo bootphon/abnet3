@@ -88,7 +88,7 @@ class EmbedderSiameseMultitask(LossBuilder):
     """
 
     def __init__(self, avg=True, *args, **kwargs):
-        super(EmbedderSiamese, self).__init__(*args, **kwargs)
+        super(EmbedderSiameseMultitask, self).__init__(*args, **kwargs)
 
     def embed(self):
         """ Embed method to embed features based on a saved network
