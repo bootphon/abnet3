@@ -45,7 +45,7 @@ class EmbedderBuilder:
                                   self.__class__.__name__)
 
 
-class EmbedderSiamese(LossBuilder):
+class EmbedderSiamese(EmbedderBuilder):
     """Embedder class for siamese network on monotask
 
     """
@@ -82,7 +82,7 @@ class EmbedderSiamese(LossBuilder):
             fh.write(data, 'features')
 
 
-class EmbedderSiameseMultitask(LossBuilder):
+class EmbedderSiameseMultitask(EmbedderBuilder):
     """Embedder class for siamese network on multitask
 
     """
