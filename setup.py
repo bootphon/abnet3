@@ -10,14 +10,37 @@ Licensed under GPLv3.
 '''
 
 from setuptools import setup, find_packages
+from setuptools.command.install import install
+
 import sys
 import io
+
+
+class RequiredPackagedInstall(install):
+    """ Install needed Github repositories"""
+
+    def run(self):
+        """ Get DTW_Cython, H5features & Spectral 
+        from github.com/bootphon, by launching pip via
+        subprocess
+        """
+        import pip
+
+        # github repositories we want to get
+        DTW_cython = "git+http://github.com/Rachine/DTW_Cython.git"
+        spectral = "git+http://github.com/Rachine/DTW_Cython.git"
+        h5features = "git+https://github.com/bootphon/h5features.git"
+
+        # install with pip
+        pip.main(['install', DTW_cython])
+        pip.main(['install', spectral])
+        pip.main(['install', h5features])
 
 
 sys.path.append("./abnet3")
 
 with io.open("requirements.txt", encoding="utf-8") as req_fp:
-  install_requires = req_fp.readlines()
+    install_requires = req_fp.readlines()
 
 setup(
   name='abnet3',
@@ -25,13 +48,10 @@ setup(
   description='ABnet neural network in Pytorch',
   author='Rachid Riad',
   license='GPLv3',
-  install_requires=install_requires,
   packages=[
       'abnet3',
   ],
-  dependency_links=[
-        "https://github.com/bootphon/h5features/tarball/master",
-        "https://github.com/bootphon/spectral/tarball/master",
-        "https://github.com/Rachine/DTW_Cython/tarball/master"
-    ],
+  cmdclass={
+      'install': RequiredPackagedInstall,
+  }
 )

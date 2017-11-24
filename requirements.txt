@@ -1,7 +1,8 @@
 numpy>=1.13
 cython
-h5py
-h5features
-spectral
+h5py >= 2.3.0
 pytest
 numpydoc
+scipy >= 0.13.0
+matplotlib
+
