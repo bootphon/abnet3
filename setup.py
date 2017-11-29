@@ -14,7 +14,7 @@ from setuptools.command.install import install
 
 import sys
 import io
-
+import subprocess
 
 class RequiredPackagedInstall(install):
     """ Install needed Github repositories"""
@@ -36,22 +36,29 @@ class RequiredPackagedInstall(install):
         pip.main(['install', spectral])
         pip.main(['install', h5features])
 
+        # install cuda80 from channel soumith
+        # TODO find if there's a prettier way than calling subprocess
+        _ = subprocess.call(['conda', 'install', 'cuda80', '-c', 'soumith'])
+        
+        # run ABnet3 package installation
+        install.run(self)
 
-sys.path.append("./abnet3")
+
+#sys.path.append("./abnet3")
 
 with io.open("requirements.txt", encoding="utf-8") as req_fp:
     install_requires = req_fp.readlines()
 
 setup(
   name='abnet3',
-  version='0.0.1',
+  version='0.0.1', 
+  packages=['abnet3'],
   description='ABnet neural network in Pytorch',
   author='Rachid Riad',
   license='GPLv3',
-  packages=[
-      'abnet3',
-  ],
   cmdclass={
       'install': RequiredPackagedInstall,
   }
+
 )
+

@@ -7,4 +7,3 @@ scipy >= 0.13.0
 matplotlib
 pytorch
 torchvision
-cuda80 -c soumith
