@@ -11,6 +11,7 @@ replicate results.
 
 import torch
 import torch.nn as nn
+import torch.nn.init as nn.init
 from torch.autograd import Variable
 import numpy as np
 # from graphviz import Digraph
