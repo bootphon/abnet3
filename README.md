@@ -1,6 +1,6 @@
 # ABnet3
 
-Representation learning package using side information, system for subword modeling for [Zeroresource challenge]().
+Representation learning package using side information, system for subword modeling for [Zeroresource challenge](sapience.dec.ens.fr/bootphon/2017/index.html).
 
 ### Overview
 
@@ -45,9 +45,14 @@ The package comes with a unit-tests suit. To run it, first install *pytest* on y
     pip install pytest
     pytest test
 #### References
-[Thiolliere, R. et al. 2014] A hybrid dynamic time warping-deep neural network architecture for unsupervised acoustic modeling. In Sixteenth Annual Conference of the International Speech Communication Association
 
-[Zeghidour, N. et al. 2016] Zeghidour, N., Synnaeve, G., Usunier, N. & Dupoux, E. (2016). Joint Learning of Speaker and Phonetic Similarities with Siamese Networks. In INTERSPEECH-2016, (pp 1295-1299)
+    .. [1] Thiolliere, R., Dunbar, E., Synnaeve, G., Versteegh, M., & Dupoux, E.
+           *A hybrid dynamic time warping-deep neural network architecture for unsupervised acoustic modeling.*
+           In Sixteenth Annual Conference of the International Speech Communication Association
+
+    .. [2] Zeghidour, N., Synnaeve, G., Usunier, N. & Dupoux, E.
+           *Joint Learning of Speaker and Phonetic Similarities with Siamese Networks.*
+           In: INTERSPEECH-2016, (pp 1295-1299)
 
 
 
