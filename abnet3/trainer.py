@@ -432,7 +432,7 @@ class TrainerSiameseMultitask(TrainerBuilder):
 
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = map(Variable,
                                                                bacth_els)
-            yield X_batch1, X_batch2, y_spk_batch, y_phm_batch
+            yield X_batch1, X_batch2, y_spk_batch, y_phn_batch
 
     def train(self):
         """Train method to train the model
