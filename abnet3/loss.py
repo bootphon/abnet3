@@ -79,6 +79,7 @@ class cosmargin(LossBuilder):
     def __init__(self, avg=True, margin=0.5, *args, **kwargs):
         super(cosmargin, self).__init__(*args, **kwargs)
         self.margin = margin
+        self.avg = avg
         assert (margin >= 0 and margin <= 1)
 
     def forward(self, input1, input2, y, avg=True):
