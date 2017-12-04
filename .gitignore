@@ -3,5 +3,5 @@ abnet3.egg-info/*
 abnet3/__pycache__/*
 build/*
 dist/*
-
-
+*.pyc
+.cache/*
