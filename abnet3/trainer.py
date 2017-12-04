@@ -401,7 +401,7 @@ class TrainerSiameseMultitask(TrainerBuilder):
         y_spk = torch.from_numpy(y_spk[ind])
         X1 = torch.from_numpy(X1[ind, :])
         X2 = torch.from_numpy(X2[ind, :])
-        return X1, X2, y_phn, y_spk
+        return X1, X2, y_spk, y_phn
 
     def get_batches(self, features, train_mode=True):
         """Build iteratior next batch from folder for a specific epoch
@@ -430,9 +430,9 @@ class TrainerSiameseMultitask(TrainerBuilder):
                     features, batches[idx], train_mode=train_mode,
                     fid2spk=read_spkid_file(self.fid2spk_file))
 
-            X_batch1, X_batch2, y_phn_batch, y_spk_batch = map(Variable,
+            X_batch1, X_batch2, y_spk_batch, y_phn_batch = map(Variable,
                                                                bacth_els)
-            yield X_batch1, X_batch2, y_phn_batch, y_spk_batch
+            yield X_batch1, X_batch2, y_spk_batch, y_phm_batch
 
     def train(self):
         """Train method to train the model
@@ -456,18 +456,18 @@ class TrainerSiameseMultitask(TrainerBuilder):
             # TODO refactor here for a step function based on specific loss
             # enable generic train
 
-            X_batch1, X_batch2, y_phn_batch, y_spk_batch = minibatch
+            X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
                 X_batch2 = X_batch2.cuda()
-                y_phn_batch = y_phn_batch.cuda()
                 y_spk_batch = y_spk_batch.cuda()
+                y_phn_batch = y_phn_batch.cuda()
 
             emb = self.network(X_batch1, X_batch2)
             emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
             train_loss_value = self.loss(emb_spk1, emb_phn1,
                                          emb_spk2, emb_phn2,
-                                         y_phn_batch, y_spk_batch)
+                                         y_spk_batch, y_phn_batch)
             train_loss += train_loss_value.data[0]
 
             num_batches_train += 1
@@ -480,14 +480,14 @@ class TrainerSiameseMultitask(TrainerBuilder):
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
                 X_batch2 = X_batch2.cuda()
-                y_phn_batch = y_phn_batch.cuda()
                 y_spk_batch = y_spk_batch.cuda()
+                y_phn_batch = y_phn_batch.cuda()
 
             emb = self.network(X_batch1, X_batch2)
             emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
             dev_loss_value = self.loss(emb_spk1, emb_phn1,
                                        emb_spk2, emb_phn2,
-                                       y_phn_batch, y_spk_batch)
+                                       y_spk_batch, y_phn_batch)
             dev_loss += dev_loss_value.data[0]
 
             num_batches_dev += 1
@@ -507,19 +507,19 @@ class TrainerSiameseMultitask(TrainerBuilder):
             for minibatch in self.get_batches(features, train_mode=True):
                 # TODO refactor here for a step function based on specific loss
                 # enable generic train
-                X_batch1, X_batch2, y_phn_batch, y_spk_batch = minibatch
+                X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
                 if self.cuda:
                     X_batch1 = X_batch1.cuda()
                     X_batch2 = X_batch2.cuda()
-                    y_phn_batch = y_phn_batch.cuda()
                     y_spk_batch = y_spk_batch.cuda()
+                    y_phn_batch = y_phn_batch.cuda()
 
                 self.optimizer.zero_grad()
                 emb = self.network(X_batch1, X_batch2)
                 emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
                 train_loss_value = self.loss(emb_spk1, emb_phn1,
                                              emb_spk2, emb_phn2,
-                                             y_phn_batch, y_spk_batch)
+                                             y_spk_batch, y_phn_batch)
                 train_loss_value.backward()
                 self.optimizer.step()
                 train_loss += train_loss_value.data[0]
@@ -528,18 +528,18 @@ class TrainerSiameseMultitask(TrainerBuilder):
 
             self.network.eval()
             for minibatch in self.get_batches(features, train_mode=False):
-                X_batch1, X_batch2, y_phn_batch, y_spk_batch = minibatch
+                X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
                 if self.cuda:
                     X_batch1 = X_batch1.cuda()
                     X_batch2 = X_batch2.cuda()
-                    y_phn_batch = y_phn_batch.cuda()
                     y_spk_batch = y_spk_batch.cuda()
+                    y_phn_batch = y_phn_batch.cuda()
 
                 emb = self.network(X_batch1, X_batch2)
                 emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
                 dev_loss_value = self.loss(emb_spk1, emb_phn1,
                                            emb_spk2, emb_phn2,
-                                           y_phn_batch, y_spk_batch)
+                                           y_spk_batch, y_phn_batch)
                 dev_loss += dev_loss_value.data[0]
 
             self.dev_losses.append(dev_loss/num_batches_dev)
@@ -581,13 +581,19 @@ class TrainerSiameseMultitask(TrainerBuilder):
 
 if __name__ == '__main__':
 
-    sia = SiameseNetwork(input_dim=3, num_hidden_layers=2, hidden_dim=10,
-                         output_dim=19, p_dropout=0.1,
-                         activation_layer='sigmoid',
-                         batch_norm=True,
-                         output_path='/Users/rachine/abnet3/exp',
-                         cuda=False)
+    sia = SiameseMultitaskNetwork(input_dim=280, num_hidden_layers_shared=2,
+                                  hidden_dim=500,
+                                  output_dim=100, p_dropout=0.,
+                                  num_hidden_layers_spk=1,
+                                  num_hidden_layers_phn=1,
+                                  activation_layer='sigmoid',
+                                  type_init='xavier_uni',
+                                  batch_norm=False,
+                                  output_path='/Users/rachine/abnet3/exp',
+                                  cuda=False)
     sam = SamplerClusterSiamese(already_done=True, directory_output=None)
-    loss = coscos2()
-    sia.save_network()
-    tra = TrainerSiamese(sam, sia, loss, optimizer_type='adam', cuda=False)
+    coscos2_multi = weighted_loss_multi(loss=coscos2, weight=0.5)
+    # sia.save_network()
+    tra = TrainerSiameseMultitask(sampler=sam, network=sia,
+                                  loss=coscos2_multi, optimizer_type='adam',
+                                  cuda=False)
