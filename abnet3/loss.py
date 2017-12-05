@@ -123,7 +123,8 @@ class weighted_loss_multi(LossBuilder):
         super(weighted_loss_multi, self).__init__(*args, **kwargs)
         assert type(weight) is float
         assert (weight >= 0 and weight <= 1)
-        assert loss in (coscos2, cosmargin), 'basis loss not implemented'
+        assert loss_phn in (coscos2, cosmargin), 'basis loss not implemented'
+        assert loss_spk in (coscos2, cosmargin), 'basis loss not implemented'
         self.weight = weight
         self.avg = avg
         self.loss_phn = loss_phn(avg=self.avg)
