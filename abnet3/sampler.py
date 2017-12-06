@@ -36,13 +36,14 @@ class SamplerBuilder(object):
 
     """
     def __init__(self, batch_size=8, already_done=False, input_file=None,
-                 directory_output=None, seed=0):
+                 directory_output=None, ratio_train_dev=0.7, seed=0):
         super(SamplerBuilder, self).__init__()
         self.input_file = input_file
         self.batch_size = batch_size
         self.already_done = already_done
         self.directory_output = directory_output
         self.seed = seed
+        self.ratio_train_dev = ratio_train_dev
 
     def whoami(self):
         raise NotImplementedError('Unimplemented whoami for class:',
@@ -75,10 +76,11 @@ class SamplerCluster(SamplerBuilder):
     """Sampler Model interface based on clusters of words
 
     """
-    def __init__(self, max_clusters=-1, ratio_same_diff=0.25, *args, **kwargs):
+    def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.25,
+                 *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
-        self.max_clusters = max_clusters
-        self.ratio_same_diff = ratio_same_diff
+        self.max_size_cluster = max_size_cluster
+        self.ratio_same_diff_spk = ratio_same_diff_spk
 
     def parse_input_file(self, input_file=None, max_clusters=-1):
         """Parse input file:
@@ -87,7 +89,7 @@ class SamplerCluster(SamplerBuilder):
         ----------
         input_file : String
             Path to clusters of words
-        max_clusters : Int
+        max_size_cluster : Int
             Number max of clusters, useful for debugging
         """
         with codecs.open(input_file, "r", "utf-8") as fh:
@@ -118,15 +120,10 @@ class SamplerCluster(SamplerBuilder):
                     clusters.append(cluster)
                     i = i+1
 
-        if max_clusters > 1:
-            indexes = np.range(len(clusters))
-            rand_idx = np.random.permutation(indexes)[:max_clusters]
-            clusters = [cluster[idx] for idx in rand_idx]
-
         return clusters
 
     def split_clusters_ratio(self, clusters,
-                             get_spkid_from_fid, ratio=0.7):
+                             get_spkid_from_fid=None):
         """Split clusters, two type of splits involved for the train and
             dev. Biggest clusters are going to be split with the ratio and
             the result parts goes to train and dev. The other smaller
@@ -138,7 +135,7 @@ class SamplerCluster(SamplerBuilder):
                 List of cluster parsed from parse_input_file
             get_spkid_from_fid : dict
                 Mapping dictionnary between files and speaker id
-            ratio: float
+            ratio_train_dev: float
                 Ratio number between 0 and 1 to randomly split train and
                 dev clusters
         """
@@ -147,8 +144,7 @@ class SamplerCluster(SamplerBuilder):
         size_clusters = np.array([len(cluster) for cluster in clusters])
         new_clusters = []
         num_clusters = len(clusters)
-        num_train = int(ratio*num_clusters)
-        # TODO: split big clusters first
+        num_train = int(self.ratio_train_dev*num_clusters)
         train_idx = np.random.choice(num_clusters, num_train, replace=False)
 
         for idx, cluster in enumerate(clusters):
@@ -157,7 +153,17 @@ class SamplerCluster(SamplerBuilder):
             dev_cluster = [tok for tok in cluster
                            if idx not in train_idx]
             if train_cluster:
-                train_clusters.append(train_cluster)
+                # Tricky move here to split big clusters for train and dev
+                size_cluster = len(train_cluster)
+                if self.max_size_cluster > 1 and \
+                   self.max_size_cluster < size_cluster:
+                    num_train = int(self.ratio_train_dev*size_cluster)
+                    indexes = range(size_cluster)
+                    rand_idx = np.random.permutation(indexes)
+                    train_clusters.append(train_cluster[rand_idx[:num_train]])
+                    dev_clusters.append(train_cluster[rand_idx[num_train:]])
+                else:
+                    train_clusters.append(train_cluster)
             if dev_cluster:
                 dev_clusters.append(dev_cluster)
         return train_clusters, dev_clusters
@@ -491,7 +497,7 @@ class SamplerClusterSiamese(SamplerCluster):
                 seed
             num_examples : int
                 number of pairs to compute
-            ratio_same_diff : float
+            ratio_same_diff_spk : float
                 float between 0 and 1 which is the ration of same and different
                 speaker for the pairs fed to the ABnet3
         """
@@ -502,7 +508,7 @@ class SamplerClusterSiamese(SamplerCluster):
                           'Dtype_Sspk': [],
                           'Dtype_Dspk': []
                           }
-        num_same_spk = int((num_examples)*self.ratio_same_diff)
+        num_same_spk = int((num_examples)*self.ratio_same_diff_spk)
         num_diff_spk = num_examples - num_same_spk
         sampled_ratio = {
                          'Stype_Sspk': num_same_spk/2,
