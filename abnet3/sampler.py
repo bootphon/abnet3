@@ -75,12 +75,32 @@ class SamplerPairs(SamplerBuilder):
 class SamplerCluster(SamplerBuilder):
     """Sampler Model interface based on clusters of words
 
+    Parameters
+    ----------
+    std_file : String
+        Path to the file with the cluster of words
+    spk_list_file : String
+        Path to the file with the speaker list
+    spkid_file : String
+        Path to the file with file_id to Speaker_id mapping
+    type_samp : String
+        function applied to the observed type frequencies
+    spk_samp : String
+        function applied to the observed speaker frequencies
+
     """
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.25,
+                 type_samp='log', spk_samp='log',
+                 std_file=None, spk_list_file=None, spkid_file=None,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
         self.ratio_same_diff_spk = ratio_same_diff_spk
+        self.type_samp = type_samp
+        self.spk_samp = spk_samp
+        self.std_file = std_file
+        self.spk_list_file = spk_list_file
+        self.spkid_file = spkid_file
 
     def parse_input_file(self, input_file=None, max_clusters=-1):
         """Parse input file:
@@ -450,18 +470,10 @@ class SamplerCluster(SamplerBuilder):
 class SamplerClusterSiamese(SamplerCluster):
     """Sampler for Siamese network based on clusters of words
 
-        Parameters
-        ----------
-        type_samp : String
-            function applied to the observed type frequencies
-        spk_samp : String
-            function applied to the observed speaker frequencies
     """
 
-    def __init__(self, type_samp='log', spk_samp='log', *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(SamplerClusterSiamese, self).__init__(*args, **kwargs)
-        self.type_samp = type_samp
-        self.spk_samp = spk_samp
 
     def whoami(self):
         return {'params': self.__dict__, 'class_name': self.__class__.__name__}
@@ -612,7 +624,7 @@ class SamplerClusterSiamese(SamplerCluster):
         same_pairs = ['Stype_Sspk', 'Stype_Dspk']
         diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
         pairs = self.generate_possibilities(descr)
-        proba = type_speaker_sampling_p(descr, type_samp = type_sampling_mode, speaker_samp = spk_sampling_mode)
+        proba = self.type_speaker_sampling_p(descr, type_samp = type_sampling_mode, speaker_samp = spk_sampling_mode)
         cdf = prepare_multinomial_sampling(proba)
         print("Proba done in {} s, start sampling batches and writing".format(time.time()-timing))
         num = np.min(descr['speakers'].values())
@@ -623,9 +635,80 @@ class SamplerClusterSiamese(SamplerCluster):
         idx_batch = 0
         write_tokens_batch(descr,proba,cdf,pairs,size_batch,num_batches,out_dir,idx_batch,seed=seed+idx_batch)
 
-    def launch_sample(self):
+    def sample(self):
+        """
+        Main function : takes Term Discovery results and sample pairs
+            for training and dev set to train ABnet from it.
+            Input :
+                std_file : Term Discovery results (.class file)
+                spkid_file : mapping between wav_id and spk_id
+                out_dir : target directory for output files
+                stats : if True the function outputs 'figures.pdf' containing
+                        some stats on the Term Discovery results;
+                        otherwise the function outputs files train.pairs and
+                        dev.pairs containing the sampled pairs
+                seed : random seed
+                type_sampling_mode : sampling mode for token types
+                                    ('1', 'f','f2','fcube' or 'log')
+                spk_sampling_mode : sampling mode for token speakers
+                                    ('1', 'f','f2','fcube' or 'log')
+                size_batch : number of pairs per batch,
+            Output :
+                train.pairs and dev.pairs files in out_dir (or figures.pdf if
+                stat=True)
+        """
+        # 0) Read mapping for id to speaker
+        get_spkid_from_fid = read_spkid_file(self.spkid_file)
 
-
+        # 1) parsing STD results to get clusters
+        clusters = self.parse_STD_results(self.std_file)
+        #std_descr = analyze_clusters(clusters, get_spkid_from_fid)
+        print("Analysis clusters done")
+        # parsing train/dev split
+        spk_list = read_spk_list(self.spk_list_file)
+        # check that no speaker is present twice
+        assert len(np.array(train+dev)) == len(np.unique(np.array(train+dev)))
+        # check that all speakers match speakers in the STD results
+        #for spk in train + dev:
+        #    assert spk in std_descr['speakers'].keys(), spk
+        # train, dev split
+        train_clusters, dev_clusters = split_clusters(clusters, train, dev,
+                                                       get_spkid_from_fid)
+        train_descr = analyze_clusters(train_clusters, get_spkid_from_fid)
+        dev_descr = analyze_clusters(dev_clusters, get_spkid_from_fid)
+        print("Split and cluster analysis done")
+        # train and dev stats
+        if stats:
+            try:
+                #TODO remake a plot_stats function with new functions.
+                pdf_file = os.path.join(out_dir, 'figures.pdf')
+                pdf_pages = PdfPages(pdf_file)
+                plot_stats(std_descr, 'Whole data', pdf_pages)
+                plot_stats(train_descr, 'Train set', pdf_pages)
+                plot_stats(test_descr, 'Test set', pdf_pages)
+            finally:
+                pdf_pages.close()
+        else:
+            # generate and write pairs to disk
+            seed = seed+1
+            if train_mode:
+                print('train mode true')
+                os.makedirs(os.path.join(out_dir, 'train_pairs'))
+                export_pairs(os.path.join(out_dir, 'train_pairs'),
+                             train_descr, type_sampling_mode = type_sampling_mode,
+                             spk_sampling_mode = spk_sampling_mode,
+                             seed=seed, size_batch = size_batch,
+                             num_jobs=num_jobs)
+                print("Train Pairs done")
+                seed = seed+1
+            else:
+                os.makedirs(os.path.join(out_dir, 'dev_pairs'))
+                export_pairs(os.path.join(out_dir,'dev_pairs'),
+                             dev_descr, type_sampling_mode = type_sampling_mode,
+                             spk_sampling_mode = spk_sampling_mode,
+                             seed = seed,size_batch = size_batch,
+                             num_jobs=num_jobs)
+                print("Dev Pairs done")
 
 if __name__ == '__main__':
 
