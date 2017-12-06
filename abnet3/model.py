@@ -122,19 +122,19 @@ class SiameseNetwork(NetworkBuilder):
         # Pass forward network functions
         self.input_emb = nn.Sequential(
                 nn.Linear(input_dim, hidden_dim),
-                nn.Dropout(p=p_dropout, inplace=False),
+                nn.Dropout(p=p_dropout),
                 activation_functions[activation_layer])
         self.hidden_layers = []
         for idx in range(self.num_hidden_layers):
             self.hidden_layers.append(nn.Linear(hidden_dim, hidden_dim))
-            self.hidden_layers.append(nn.Dropout(p=p_dropout, inplace=False))
+            self.hidden_layers.append(nn.Dropout(p=p_dropout))
             self.hidden_layers.append(activation_functions[activation_layer])
 
         # * is used for pointing to the list
         self.hidden_layers = nn.Sequential(*self.hidden_layers)
         self.output_layer = nn.Sequential(
                 nn.Linear(hidden_dim, output_dim),
-                nn.Dropout(p=p_dropout, inplace=True),
+                nn.Dropout(p=p_dropout),
                 activation_functions[activation_layer])
         self.output_path = output_path
         self.apply(self.init_weight_method)
@@ -236,7 +236,7 @@ class SiameseMultitaskNetwork(NetworkBuilder):
         # Pass forward network functions
         self.input_emb = nn.Sequential(
                 nn.Linear(input_dim, hidden_dim),
-                nn.Dropout(p=p_dropout, inplace=False),
+                nn.Dropout(p=p_dropout),
                 activation_functions[activation_layer])
 
         self.hidden_layers_shared = []
@@ -247,7 +247,7 @@ class SiameseMultitaskNetwork(NetworkBuilder):
             self.hidden_layers_shared.append(
                     nn.Linear(hidden_dim, hidden_dim))
             self.hidden_layers_shared.append(
-                    nn.Dropout(p=p_dropout, inplace=False))
+                    nn.Dropout(p=p_dropout))
             self.hidden_layers_shared.append(
                     activation_functions[activation_layer])
 
@@ -255,7 +255,7 @@ class SiameseMultitaskNetwork(NetworkBuilder):
             self.hidden_layers_spk.append(
                     nn.Linear(hidden_dim, hidden_dim))
             self.hidden_layers_spk.append(
-                    nn.Dropout(p=p_dropout, inplace=False))
+                    nn.Dropout(p=p_dropout))
             self.hidden_layers_spk.append(
                     activation_functions[activation_layer])
 
@@ -263,7 +263,7 @@ class SiameseMultitaskNetwork(NetworkBuilder):
             self.hidden_layers_phn.append(
                     nn.Linear(hidden_dim, hidden_dim))
             self.hidden_layers_phn.append(
-                    nn.Dropout(p=p_dropout, inplace=False))
+                    nn.Dropout(p=p_dropout))
             self.hidden_layers_phn.append(
                     activation_functions[activation_layer])
 
@@ -274,12 +274,12 @@ class SiameseMultitaskNetwork(NetworkBuilder):
 
         self.output_layer_spk = nn.Sequential(
                 nn.Linear(hidden_dim, output_dim),
-                nn.Dropout(p=p_dropout, inplace=True),
+                nn.Dropout(p=p_dropout),
                 activation_functions[activation_layer])
 
         self.output_layer_phn = nn.Sequential(
                 nn.Linear(hidden_dim, output_dim),
-                nn.Dropout(p=p_dropout, inplace=True),
+                nn.Dropout(p=p_dropout),
                 activation_functions[activation_layer])
 
         self.output_path = output_path
