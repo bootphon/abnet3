@@ -42,6 +42,7 @@ class SamplerBuilder(object):
         self.batch_size = batch_size
         self.already_done = already_done
         self.directory_output = directory_output
+        self.seed = seed
 
     def whoami(self):
         raise NotImplementedError('Unimplemented whoami for class:',
@@ -74,9 +75,10 @@ class SamplerCluster(SamplerBuilder):
     """Sampler Model interface based on clusters of words
 
     """
-    def __init__(self, max_clusters=-1, *args, **kwargs):
+    def __init__(self, max_clusters=-1, ratio_same_diff=0.25, *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_clusters = max_clusters
+        self.ratio_same_diff = ratio_same_diff
 
     def parse_input_file(self, input_file=None, max_clusters=-1):
         """Parse input file:
@@ -462,9 +464,7 @@ class SamplerClusterSiamese(SamplerCluster):
                      p_spk_types,
                      cdf,
                      pairs,
-                     seed=0,
-                     num_examples=5012,
-                     ratio_same_diff=0.25):
+                     num_examples=5012):
 
         """Sampling proba modes for p_i1,i2,j1,j2
             It is based on Bayes rule:
@@ -495,14 +495,14 @@ class SamplerClusterSiamese(SamplerCluster):
                 float between 0 and 1 which is the ration of same and different
                 speaker for the pairs fed to the ABnet3
         """
-        np.random.seed(seed)
+        np.random.seed(self.seed)
         sampled_tokens = {
                           'Stype_Sspk': [],
                           'Stype_Dspk': [],
                           'Dtype_Sspk': [],
                           'Dtype_Dspk': []
                           }
-        num_same_spk = int((num_examples)*ratio_same_diff)
+        num_same_spk = int((num_examples)*self.ratio_same_diff)
         num_diff_spk = num_examples - num_same_spk
         sampled_ratio = {
                          'Stype_Sspk': num_same_spk/2,
@@ -598,33 +598,27 @@ class SamplerClusterSiamese(SamplerCluster):
                     fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
 
     def export_pairs(self):
-            # all the different types of pairs are randomly mixed in the output file
-            # with an added 'same' or 'different' label added for types
-            # same and different speakers pairs are not distinguishable in the output
-            # TODO generate pairs for speaker labels
-            np.random.seed(seed)
-            same_pairs = ['Stype_Sspk', 'Stype_Dspk']
-            diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
-            timing = time.time()
-            if os.path.isfile(os.path.join(out_dir,"pairs_possibilities.p")):
-                print('loading possibilities')
-                pairs = pickle.load(open(os.path.join(out_dir,"pairs_possibilities.p"),"rb"))
-            else:
-                print('generate possibilities')
-                pairs = generate_possibilities(descr)
-                pickle.dump(pairs, open(os.path.join(out_dir,"pairs_possibilities.p"),"wb"))
-            print("Generate possibilites done, took {} s".format(time.time()-timing))
-            timing = time.time()
-            proba = type_speaker_sampling_p(descr, type_samp = type_sampling_mode, speaker_samp = spk_sampling_mode)
-            cdf = prepare_multinomial_sampling(proba)
-            print("Proba done in {} s, start sampling batches and writing".format(time.time()-timing))
-            num = np.min(descr['speakers'].values())
-            num_batches = num*(num-1) / 2
-            num_batches = num_batches
-            print( 'Number of batches to sample {}'.format(num_batches))
-            #train_batch = True
-            idx_batch = 0
-            write_tokens_batch(descr,proba,cdf,pairs,size_batch,num_batches,out_dir,idx_batch,seed=seed+idx_batch)
+        # all the different types of pairs are randomly mixed in the output file
+        # with an added 'same' or 'different' label added for types
+        # same and different speakers pairs are not distinguishable in the output
+        # TODO generate pairs for speaker labels
+        np.random.seed(seed)
+        same_pairs = ['Stype_Sspk', 'Stype_Dspk']
+        diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
+        pairs = self.generate_possibilities(descr)
+        proba = type_speaker_sampling_p(descr, type_samp = type_sampling_mode, speaker_samp = spk_sampling_mode)
+        cdf = prepare_multinomial_sampling(proba)
+        print("Proba done in {} s, start sampling batches and writing".format(time.time()-timing))
+        num = np.min(descr['speakers'].values())
+        num_batches = num*(num-1) / 2
+        num_batches = num_batches
+        print( 'Number of batches to sample {}'.format(num_batches))
+        #train_batch = True
+        idx_batch = 0
+        write_tokens_batch(descr,proba,cdf,pairs,size_batch,num_batches,out_dir,idx_batch,seed=seed+idx_batch)
+
+    def launch_sample(self):
+
 
 
 if __name__ == '__main__':
