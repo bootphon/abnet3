@@ -1,6 +1,6 @@
 # ABnet3
 
-Representation learning package using side information, system for subword modeling for [Zeroresource challenge](sapience.dec.ens.fr/bootphon/2017/index.html).
+Representation learning package using side information, system for subword modeling for [Zeroresource challenge](http://sapience.dec.ens.fr/bootphon/2017/index.html).
 
 ### Overview
 
