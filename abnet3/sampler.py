@@ -395,7 +395,7 @@ class SamplerCluster(SamplerBuilder):
                                          ] = [(tok1, tok2)]
         return pairs
 
-    def type_speaker_sampling_p(self, std_descr,
+    def type_speaker_sampling_p(self, std_descr=None,
                                 type_samp='f', speaker_samp='f'):
         """Sampling proba modes for p_i1,i2,j1,j2
             It is based on Bayes rule:
@@ -532,7 +532,7 @@ class SamplerClusterSiamese(SamplerCluster):
             # proba_config = np.array(p_spk_types[config].values())
             # sizes = len(p_spk_types[config].keys())
             keys = np.array(p_spk_types[config].keys())
-            sample_idx = sample_searchidx(cdf, config, sampled_ratio[config])
+            sample_idx = sample_searchidx(cdf[config], sampled_ratio[config])
             sample = keys[sample_idx]
             if config == 'Stype_Sspk':
                 for key in sample:
@@ -572,8 +572,9 @@ class SamplerClusterSiamese(SamplerCluster):
                         pot_tok[np.random.choice(num_tok)])
         return sampled_tokens
 
-    def write_tokens(self, descr, proba, cdf, pairs, size_batch,
-                     num_batches, out_dir, seed=0):
+    def write_tokens(self, descr=None, proba=None, cdf=None,
+                     pairs={}, size_batch=8, num_batches=0,
+                     out_dir=None, seed=0):
         """Write tokens based on all different parameters and write the tokens
         in a batch.
 
@@ -615,28 +616,27 @@ class SamplerClusterSiamese(SamplerCluster):
                       str(idx)+'.batch', 'w')) as fh:
                     fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
 
-    def export_pairs(self, out_dir,
-                     descr, type_sampling_mode=self.type_sampling_mode,
+    def export_pairs(self, out_dir=None,
+                     descr=None, type_sampling_mode=type_sampling_mode,
                      spk_sampling_mode=spk_sampling_mode,
                      seed=seed, size_batch=size_batch):
-        # all the different types of pairs are randomly mixed in the output file
-        # with an added 'same' or 'different' label added for types
-        # same and different speakers pairs are not distinguishable in the output
-        # TODO generate pairs for speaker labels
         np.random.seed(seed)
         same_pairs = ['Stype_Sspk', 'Stype_Dspk']
         diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
         pairs = self.generate_possibilities(descr)
-        proba = self.type_speaker_sampling_p(descr, type_samp = type_sampling_mode, speaker_samp = spk_sampling_mode)
-        cdf = prepare_multinomial_sampling(proba)
-        print("Proba done in {} s, start sampling batches and writing".format(time.time()-timing))
+        proba = self.type_speaker_sampling_p(std_descr=descr,
+                                             type_samp=type_sampling_mode,
+                                             speaker_samp=spk_sampling_mode)
+        cdf = {}
+        for key in proba.keys():
+            cdf[key] = cumulative_distribution(proba[key])
+
         num = np.min(descr['speakers'].values())
-        num_batches = num*(num-1) / 2
-        num_batches = num_batches
-        print( 'Number of batches to sample {}'.format(num_batches))
-        #train_batch = True
+        num_batches = num*(num-1)/2
         idx_batch = 0
-        write_tokens_batch(descr,proba,cdf,pairs,size_batch,num_batches,out_dir,idx_batch,seed=seed+idx_batch)
+        self.write_tokens(descr=descr, proba=proba, cdf=cdf,
+                          pairs=pairs, size_batch=self.size_batch,
+                          num_batches=num_batches, out_dir=out_dir, seed=seed)
 
     def sample(self):
         """
@@ -697,17 +697,20 @@ class SamplerClusterSiamese(SamplerCluster):
         # generate and write pairs to disk
 
         # 4) Make directory and export pairs to the disk
+        train_pairs_dir = os.path.join(self.directory_output, 'train_pairs')
         os.makedirs(os.path.join(self.directory_output, 'train_pairs'))
-        self.export_pairs(os.path.join(self.directory_output, 'train_pairs'),
-                     train_descr, type_sampling_mode=self.type_sampling_mode,
-                     spk_sampling_mode=spk_sampling_mode,
-                     seed=seed, size_batch=size_batch)
-
-        os.makedirs(os.path.join(self.directory_output, 'dev_pairs'))
-        self.export_pairs(os.path.join(self.directory_output, 'dev_pairs'),
-                     dev_descr, type_sampling_mode=self.type_sampling_mode,
-                     spk_sampling_mode=self.spk_sampling_mode,
-                     seed=self.seed+1, size_batch=self.size_batch)
+        self.export_pairs(out_dir=train_pairs_dir,
+                          descr=train_descr,
+                          type_sampling_mode=self.type_sampling_mode,
+                          spk_sampling_mode=spk_sampling_mode,
+                          seed=seed, size_batch=size_batch)
+        dev_pairs_dir = os.path.join(self.directory_output, 'dev_pairs')
+        os.makedirs(dev_pairs_dir)
+        self.export_pairs(out_dir=dev_pairs_dir,
+                          descr=dev_descr,
+                          type_sampling_mode=self.type_sampling_mode,
+                          spk_sampling_mode=self.spk_sampling_mode,
+                          seed=self.seed+1, size_batch=self.size_batch)
 
 
 if __name__ == '__main__':
