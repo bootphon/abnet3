@@ -617,8 +617,8 @@ class SamplerClusterSiamese(SamplerCluster):
                     fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
 
     def export_pairs(self, out_dir=None,
-                     descr=None, type_sampling_mode=type_sampling_mode,
-                     spk_sampling_mode=spk_sampling_mode,
+                     descr=None, type_sampling_mode='',
+                     spk_sampling_mode='',
                      seed=seed, size_batch=size_batch):
         np.random.seed(seed)
         same_pairs = ['Stype_Sspk', 'Stype_Dspk']
