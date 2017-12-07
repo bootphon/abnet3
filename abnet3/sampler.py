@@ -90,7 +90,7 @@ class SamplerCluster(SamplerBuilder):
 
     """
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.25,
-                 type_samp='log', spk_samp='log',
+                 type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
@@ -272,7 +272,7 @@ class SamplerCluster(SamplerBuilder):
                     type_samp_func(W_types[type_jdx])
         return p_types
 
-    def sample_spk_p(self, std_descr, spk_samp='log'):
+    def sample_spk_p(self, std_descr, spk_sampling_mode='log'):
         """Sampling proba modes for the speakers conditionned by the drawn type(s)
             - 1 : equiprobable
             - f2 : proportional to type probabilities
@@ -292,15 +292,15 @@ class SamplerCluster(SamplerBuilder):
             except e:
                 W_spk_types[(speakers[tok], tokens_type[tok])] = 1.0
 
-        if spk_samp == '1':
+        if spk_sampling_mode == '1':
             def spk_samp_func(x): 0.0 if x == 0 else 1.0
-        if spk_samp == 'f2':
+        if spk_sampling_mode == 'f2':
             def spk_samp_func(x): x
-        if spk_samp == 'f':
+        if spk_sampling_mode == 'f':
             def spk_samp_func(x): np.sqrt(x)
-        if spk_samp == 'fcube':
+        if spk_sampling_mode == 'fcube':
             def spk_samp_func(x): np.cbrt(x)
-        if spk_samp == 'log':
+        if spk_sampling_mode == 'log':
             def spk_samp_func(x): np.log(1+x)
 
         # nb_types = len(std_descr['types'])
@@ -396,7 +396,7 @@ class SamplerCluster(SamplerBuilder):
         return pairs
 
     def type_speaker_sampling_p(self, std_descr=None,
-                                type_samp='f', speaker_samp='f'):
+                                type_sampling_mode='f', spk_sampling_mode='f'):
         """Sampling proba modes for p_i1,i2,j1,j2
             It is based on Bayes rule:
                 - log : proporitonal to log of speaker or type probabilities
@@ -413,19 +413,21 @@ class SamplerCluster(SamplerBuilder):
             ----------
             std_descr : dict
                 dictionnary with all description of the clusters
-            type_samp : String
+            type_sampling_mode : String
                 function applied to the observed type frequencies
-            spk_samp : String
+            spk_sampling_mode : String
                 function applied to the observed speaker frequencies
 
         """
-        assert type_samp in ['1', 'f', 'f2', 'log', 'fcube']
-        assert speaker_samp in ['1', 'f', 'f2', 'log', 'fcube']
+        assert type_sampling_mode in ['1', 'f', 'f2', 'log', 'fcube']
+        assert spk_sampling_mode in ['1', 'f', 'f2', 'log', 'fcube']
         # W_types = std_descr['types']
         # speakers = [e for e in std_descr['speakers']]
         # W_speakers = [std_descr['speakers'][e] for e in speakers]
-        p_types = self.type_sample_p(std_descr,  type_samp=type_samp)
-        p_spk_types = self.sample_spk_p(std_descr, spk_samp=speaker_samp)
+        p_types = self.type_sample_p(std_descr,
+                                     type_sampling_mode=type_sampling_mode)
+        p_spk_types = self.sample_spk_p(std_descr,
+                                        spk_sampling_mode=spk_sampling_mode)
 
         for config in p_types.keys():
             p_types[config] = normalize_distribution(p_types[config])
@@ -624,9 +626,10 @@ class SamplerClusterSiamese(SamplerCluster):
         same_pairs = ['Stype_Sspk', 'Stype_Dspk']
         diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
         pairs = self.generate_possibilities(descr)
-        proba = self.type_speaker_sampling_p(std_descr=descr,
-                                             type_samp=type_sampling_mode,
-                                             speaker_samp=spk_sampling_mode)
+        proba = self.type_speaker_sampling_p(
+                    std_descr=descr,
+                    type_sampling_mode=type_sampling_mode,
+                    spk_sampling_mode=spk_sampling_mode)
         cdf = {}
         for key in proba.keys():
             cdf[key] = cumulative_distribution(proba[key])
@@ -721,11 +724,12 @@ if __name__ == '__main__':
     seed = 0
     already_done = False
     max_clusters = 2000
-    type_samp = 'log'
-    spk_samp = 'log'
+    type_sampling_mode = 'log'
+    spk_sampling_mode = 'log'
 
     sam = SamplerClusterSiamese(input_file=input_file, batch_size=batch_size,
                                 already_done=already_done, seed=seed,
-                                type_samp=type_samp, spk_samp=spk_samp,
+                                type_sampling_mode=type_sampling_mode,
+                                spk_sampling_mode=spk_sampling_mode,
                                 max_clusters=max_clusters,
                                 directory_output=directory_output)
