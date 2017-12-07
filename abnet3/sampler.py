@@ -619,7 +619,7 @@ class SamplerClusterSiamese(SamplerCluster):
     def export_pairs(self, out_dir=None,
                      descr=None, type_sampling_mode='',
                      spk_sampling_mode='',
-                     seed=seed, size_batch=size_batch):
+                     seed=0, size_batch=size_batch):
         np.random.seed(seed)
         same_pairs = ['Stype_Sspk', 'Stype_Dspk']
         diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
