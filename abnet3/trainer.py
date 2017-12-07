@@ -22,6 +22,7 @@ import time
 import pickle
 import os
 import matplotlib
+import warnings
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -34,7 +35,7 @@ class TrainerBuilder:
     def __init__(self, sampler=None, network=None, loss=None,
                  feature_path=None,
                  num_epochs=200, patience=20, num_max_minibatches=1000,
-                 optimizer_type='SGD', lr=0.001, momentum=0.9, cuda=True,
+                 optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
                  seed=0):
         # super(TrainerBuilder, self).__init__()
         self.sampler = sampler
@@ -49,7 +50,8 @@ class TrainerBuilder:
         self.best_epoch = None
         self.seed = seed
         self.cuda = cuda
-        assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad')
+        assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
+                                  'RMSprop', 'LBFGS')
         if optimizer_type == 'sgd':
             self.optimizer = optim.SGD(self.network.parameters(),
                                        lr=self.lr, momentum=self.momentum)
@@ -62,6 +64,12 @@ class TrainerBuilder:
         if optimizer_type == 'adagrad':
             self.optimizer = optim.Adagrad(self.network.parameters(),
                                            lr=self.lr)
+        if optimizer_type == 'RMSprop':
+            self.optimizer = optim.RMSprop(self.network.parameters(),
+                                           lr=self.lr)
+        if optimizer_type == 'LBFGS':
+            self.optimizer = optim.LBFGS(self.network.parameters(),
+                                         lr=self.lr)
         if cuda:
             self.loss.cuda()
             self.network.cuda()
