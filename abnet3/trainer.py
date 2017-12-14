@@ -260,6 +260,7 @@ class TrainerSiamese(TrainerBuilder):
         normalized_dev_loss = dev_loss/num_batches_dev
         print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
         print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
+        self.best_epoch = 0
 
         for epoch in range(self.num_epochs):
             train_loss = 0.0
@@ -505,6 +506,8 @@ class TrainerSiameseMultitask(TrainerBuilder):
         normalized_dev_loss = dev_loss/num_batches_dev
         print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
         print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
+
+        self.best_epoch = 0
 
         for epoch in range(self.num_epochs):
             train_loss = 0.0
