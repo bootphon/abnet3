@@ -264,7 +264,7 @@ class SamplerCluster(SamplerBuilder):
         for tok in range(nb_tok):
             try:
                 W_types[tokens_type[tok]] += 1.0
-            else:
+            except Exception as e:
                 W_types[tokens_type[tok]] = 1.0
         p_types = {"Stype": {}, "Dtype": {}}
 
@@ -293,7 +293,7 @@ class SamplerCluster(SamplerBuilder):
         for tok in range(nb_tok):
             try:
                 W_spk_types[(speakers[tok], tokens_type[tok])] += 1.0
-            else:
+            except Exception as e:
                 W_spk_types[(speakers[tok], tokens_type[tok])] = 1.0
 
         if spk_sampling_mode == '1':
@@ -375,7 +375,7 @@ class SamplerCluster(SamplerBuilder):
                                          (speakers[tok1], speakers[tok2],
                                           min_idx, max_idx)
                                          ].append((tok1, tok2))
-                else:
+                except Exception as e:
                     if pair_type == 'Stype_Sspk':
                         pairs[pair_type][
                                          (speakers[tok1],
@@ -552,7 +552,7 @@ class SamplerClusterSiamese(SamplerCluster):
                     spk1, spk2, type_idx = key
                     try:
                         pot_tok = pairs[config][spk1, spk2, int(type_idx)]
-                    else:
+                    except Exception as e:
                         pot_tok = pairs[config][spk2, spk1, int(type_idx)]
                     num_tok = len(pot_tok)
                     sampled_tokens[config].append(
@@ -570,7 +570,7 @@ class SamplerClusterSiamese(SamplerCluster):
                     try:
                         pot_tok = pairs[config][spk1, spk2,
                                                 int(type_idx), int(type_jdx)]
-                    else:
+                    except Exception as e:
                         pot_tok = pairs[config][spk2, spk1,
                                                 int(type_idx), int(type_jdx)]
                     num_tok = len(pot_tok)
