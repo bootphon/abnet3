@@ -677,7 +677,7 @@ class SamplerClusterSiamese(SamplerCluster):
         spk_list = read_spk_list(self.spk_list_file)
 
         # 2) Split the clusters according to train/dev ratio
-        split_clusters = self.split_clusters_ratio(clusters, spk_list,
+        split_clusters = self.split_clusters_ratio(clusters,
                                                    get_spkid_from_fid)
         train_clusters, dev_clusters = split_clusters
 
