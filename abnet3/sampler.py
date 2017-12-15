@@ -142,8 +142,7 @@ class SamplerCluster(SamplerBuilder):
 
         return clusters
 
-    def split_clusters_ratio(self, clusters,
-                             get_spkid_from_fid=None):
+    def split_clusters_ratio(self, clusters):
         """Split clusters, two type of splits involved for the train and
             dev. Biggest clusters are going to be split with the ratio and
             the result parts goes to train and dev. The other smaller
@@ -153,8 +152,6 @@ class SamplerCluster(SamplerBuilder):
             ----------
             clusters : list
                 List of cluster parsed from parse_input_file
-            get_spkid_from_fid : dict
-                Mapping dictionnary between files and speaker id
             ratio_train_dev: float
                 Ratio number between 0 and 1 to randomly split train and
                 dev clusters
@@ -205,14 +202,17 @@ class SamplerCluster(SamplerBuilder):
         """
 
         if get_spkid_from_fid is None:
-            def get_spkid_from_fid(x): return x
+            class MyDict(dict):
+                def __missing__(self, key):
+                    return key
+            get_spkid_from_fid = MyDict()
         tokens = [f for c in clusters for f in c]
         # check that no token is present twice in the list
         nb_unique_tokens = \
             len(np.unique([a+"--"+str(b)+"--"+str(c) for a, b, c in tokens]))
         assert len(tokens) == nb_unique_tokens
         tokens_type = [i for i, c in enumerate(clusters) for f in c]
-        tokens_speaker = [get_spkid_from_fid(f[0]) for f in tokens]
+        tokens_speaker = [get_spkid_from_fid[f[0]] for f in tokens]
         types = [len(c) for c in clusters]
         speakers = {}
         for spk in np.unique(tokens_speaker):
@@ -220,7 +220,7 @@ class SamplerCluster(SamplerBuilder):
         speakers_types = {spk: 0 for spk in speakers}
         types_speakers = []
         for c in clusters:
-            cluster_speakers = np.unique([get_spkid_from_fid(f[0]) for f in c])
+            cluster_speakers = np.unique([get_spkid_from_fid[f[0]] for f in c])
             for spk in cluster_speakers:
                 speakers_types[spk] = speakers_types[spk]+1
             types_speakers.append(len(cluster_speakers))

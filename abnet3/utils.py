@@ -27,7 +27,7 @@ def read_spkid_file(spkid_file):
         fid, spkid = line.strip().split(" ")
         assert not(fid in spk)
         spk[fid] = spkid
-    return lambda x: spk[x]
+    return spk
 
 
 def read_spk_list(spk_file):
@@ -63,7 +63,7 @@ def normalize_distribution(p):
     """Normalize distribution p for a dictionnary k/v class
 
     """
-    assert type(p)==dict, 'Distribution p is not a dictionnary'
+    assert type(p) == dict, 'Distribution p is not a dictionnary'
     sum_norm = 0.0
     keys = p.keys()
     for key in keys:
@@ -97,6 +97,7 @@ def sample_searchidx(cdf, num_samples):
     idx = cdf.searchsorted(uniform_samples, side='right')
     return idx
 
+
 def print_token(tok):
     """Pretty print token for batches
 
@@ -109,7 +110,8 @@ def Parse_Dataset(path):
 
     """
     batches = []
-    batches += ([os.path.join(path, add) for add in os.listdir(path) if add.endswith(('.batch'))])
+    batches += ([os.path.join(path, add) for add in os.listdir(path)
+                if add.endswith(('.batch'))])
     return batches
 
 
@@ -119,31 +121,32 @@ class Features_Accessor(object):
         self.times = times
         self.features = features
 
-
     def get(self, f, on, off):
         t = np.where(np.logical_and(self.times[f.encode('UTF-8')] >= on,
                                     self.times[f.encode('UTF-8')] <= off))[0]
         return self.features[f.encode('UTF-8')][t, :]
 
+
 def get_dtw_alignment(feat1, feat2):
     distance_array = cosine_distance(feat1, feat2)
     _, _, paths = DTW(feat1, feat2, return_alignment=True,
-                             dist_array=distance_array)
+                      dist_array=distance_array)
     path1, path2 = paths[1:]
     assert len(path1) == len(path2)
     return path1, path2
 
+
 def read_pairs(pair_file):
     with open(pair_file, 'r') as fh:
         lines = fh.readlines()
-    pairs = {'same' : [], 'diff' : []}
+    pairs = {'same': [], 'diff': []}
     for line in lines:
         tokens = line.strip().split(" ")
         assert len(tokens) == 7
         f1, s1, e1, f2, s2, e2, pair_type = tokens
         s1, e1, s2, e2 = float(s1), float(e1), float(s2), float(e2)
         assert pair_type in pairs, \
-               'Unsupported pair type {0}'.format(pair_type)
+            'Unsupported pair type {0}'.format(pair_type)
         pairs[pair_type].append((f1, s1, e1, f2, s2, e2))
     return pairs
 
