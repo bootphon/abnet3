@@ -180,8 +180,12 @@ class SamplerCluster(SamplerBuilder):
                     num_train = int(self.ratio_train_dev*size_cluster)
                     indexes = range(size_cluster)
                     rand_idx = np.random.permutation(indexes)
-                    train_clusters.append(train_cluster[rand_idx[:num_train]])
-                    dev_clusters.append(train_cluster[rand_idx[num_train:]])
+                    train_split = [train_cluster[spec_idx] for spec_idx
+                                   in rand_idx[:num_train]]
+                    dev_split = [train_cluster[spec_idx] for spec_idx
+                                 in rand_idx[num_train:]]
+                    train_clusters.append(train_split)
+                    dev_clusters.append(dev_split)
                 else:
                     train_clusters.append(train_cluster)
             if dev_cluster:
