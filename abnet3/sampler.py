@@ -708,7 +708,7 @@ class SamplerClusterSiamese(SamplerCluster):
         self.export_pairs(out_dir=train_pairs_dir,
                           descr=train_descr,
                           type_sampling_mode=self.type_sampling_mode,
-                          spk_sampling_mode=spk_sampling_mode,
+                          spk_sampling_mode=self.spk_sampling_mode,
                           seed=seed, size_batch=size_batch)
         dev_pairs_dir = os.path.join(self.directory_output, 'dev_pairs')
         os.makedirs(dev_pairs_dir)
