@@ -15,7 +15,7 @@ from torch.autograd import Variable
 import numpy as np
 # from graphviz import Digraph
 
-activation_functions = {'relu': nn.ReLU(inplace=True),
+activation_functions = {'relu': nn.ReLU(),
                         'sigmoid': nn.Sigmoid(),
                         'tanh': nn.Tanh()}
 

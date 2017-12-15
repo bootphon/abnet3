@@ -13,7 +13,6 @@ import pip
 import pkg_resources
 
 
-
 def test_requirements():  # pylint: disable=no-self-use
     """Recursively confirm that requirements are available.
 

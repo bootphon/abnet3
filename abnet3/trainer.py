@@ -47,7 +47,7 @@ class TrainerBuilder:
         self.num_max_minibatches = num_max_minibatches
         self.lr = lr
         self.momentum = momentum
-        self.best_epoch = None
+        self.best_epoch = 0
         self.seed = seed
         self.cuda = cuda
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
@@ -239,7 +239,7 @@ class TrainerSiamese(TrainerBuilder):
 
             num_batches_train += 1
 
-        self.train_losses.append(train_loss)
+        self.train_losses.append(train_loss/num_batches_train)
         self.network.eval()
         num_batches_dev = 0
         for minibatch in self.get_batches(features, train_mode=False):
@@ -255,12 +255,11 @@ class TrainerSiamese(TrainerBuilder):
 
             num_batches_dev += 1
 
-        self.dev_losses.append(dev_loss)
+        self.dev_losses.append(dev_loss/num_batches_dev)
         normalized_train_loss = train_loss/num_batches_train
         normalized_dev_loss = dev_loss/num_batches_dev
         print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
         print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
-        self.best_epoch = 0
 
         for epoch in range(self.num_epochs):
             train_loss = 0.0
@@ -506,8 +505,6 @@ class TrainerSiameseMultitask(TrainerBuilder):
         normalized_dev_loss = dev_loss/num_batches_dev
         print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
         print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
-
-        self.best_epoch = 0
 
         for epoch in range(self.num_epochs):
             train_loss = 0.0
