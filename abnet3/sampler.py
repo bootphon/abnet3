@@ -579,7 +579,7 @@ class SamplerClusterSiamese(SamplerCluster):
         return sampled_tokens
 
     def write_tokens(self, descr=None, proba=None, cdf=None,
-                     pairs={}, size_batch=8, num_batches=0,
+                     pairs={}, batch_size=8, num_batches=0,
                      out_dir=None, seed=0):
         """Write tokens based on all different parameters and write the tokens
         in a batch.
@@ -617,15 +617,15 @@ class SamplerClusterSiamese(SamplerCluster):
 
         np.random.shuffle(lines)
         # prev_idx = 0
-        for idx in range(1, num_batches//size_batch):
+        for idx in range(1, num_batches//batch_size):
             with open(os.path.join(out_dir, 'pair_' +
                       str(idx)+'.batch', 'w')) as fh:
-                    fh.writelines(lines[(idx-1)*size_batch:(idx)*size_batch])
+                    fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
 
     def export_pairs(self, out_dir=None,
                      descr=None, type_sampling_mode='',
                      spk_sampling_mode='',
-                     seed=0, size_batch=8):
+                     seed=0, batch_size=8):
         np.random.seed(seed)
         same_pairs = ['Stype_Sspk', 'Stype_Dspk']
         diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
@@ -642,7 +642,7 @@ class SamplerClusterSiamese(SamplerCluster):
         num_batches = num*(num-1)/2
         idx_batch = 0
         self.write_tokens(descr=descr, proba=proba, cdf=cdf,
-                          pairs=pairs, size_batch=self.size_batch,
+                          pairs=pairs, batch_size=self.batch_size,
                           num_batches=num_batches, out_dir=out_dir, seed=seed)
 
     def sample(self):
@@ -669,7 +669,7 @@ class SamplerClusterSiamese(SamplerCluster):
             sampling mode for token types ('1', 'f','f2','fcube' or 'log')
         spk_sampling_mode : String
             sampling mode for token speakers ('1', 'f','f2','fcube' or 'log')
-        size_batch : Int
+        batch_size : Int
             number of pairs per batch,
         """
 
@@ -710,14 +710,14 @@ class SamplerClusterSiamese(SamplerCluster):
                           descr=train_descr,
                           type_sampling_mode=self.type_sampling_mode,
                           spk_sampling_mode=self.spk_sampling_mode,
-                          seed=self.seed, size_batch=self.size_batch)
+                          seed=self.seed, batch_size=self.batch_size)
         dev_pairs_dir = os.path.join(self.directory_output, 'dev_pairs')
         os.makedirs(dev_pairs_dir)
         self.export_pairs(out_dir=dev_pairs_dir,
                           descr=dev_descr,
                           type_sampling_mode=self.type_sampling_mode,
                           spk_sampling_mode=self.spk_sampling_mode,
-                          seed=self.seed+1, size_batch=self.size_batch)
+                          seed=self.seed+1, batch_size=self.batch_size)
 
 
 if __name__ == '__main__':
