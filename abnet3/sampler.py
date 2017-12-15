@@ -702,6 +702,7 @@ class SamplerClusterSiamese(SamplerCluster):
         # else:
         # generate and write pairs to disk
 
+        os.makedirs(self.directory_output)
         # 4) Make directory and export pairs to the disk
         train_pairs_dir = os.path.join(self.directory_output, 'train_pairs')
         os.makedirs(os.path.join(self.directory_output, 'train_pairs'))
@@ -709,7 +710,7 @@ class SamplerClusterSiamese(SamplerCluster):
                           descr=train_descr,
                           type_sampling_mode=self.type_sampling_mode,
                           spk_sampling_mode=self.spk_sampling_mode,
-                          seed=self.seed, size_batch=size_batch)
+                          seed=self.seed, size_batch=self.size_batch)
         dev_pairs_dir = os.path.join(self.directory_output, 'dev_pairs')
         os.makedirs(dev_pairs_dir)
         self.export_pairs(out_dir=dev_pairs_dir,
