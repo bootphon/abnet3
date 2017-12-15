@@ -23,6 +23,9 @@ or use a conda environment you already have with python 3 :
 
     conda install --file requirements.txt
 
+requirement.txt do not install pytorch. You need to install this package using conda. For now, the latest compatible version is pytorch 0.2:
+    conda install -c soumith pytorch=0.2
+
 Once all the necessary packages are installed, simply launch:
 
     python setup.py build && python setup.py install
