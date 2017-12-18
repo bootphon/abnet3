@@ -233,7 +233,7 @@ class SamplerCluster(SamplerBuilder):
                      'types_speakers': types_speakers}
         return std_descr
 
-    def type_sample_p(self, std_descr,  type_samp='log'):
+    def type_sample_p(self, std_descr,  type_sampling_mode='log'):
         """Sampling proba modes for the types:
             - 1 : equiprobable
             - f2 : proportional to type probabilities
@@ -250,15 +250,15 @@ class SamplerCluster(SamplerBuilder):
         transfo_error = 'Transformation not implemented'
         assert type_samp in ['1', 'f', 'f2', 'log', 'fcube'], transfo_error
 
-        if type_samp == '1':
+        if type_sampling_mode == '1':
             def type_samp_func(x): 1.0
-        if type_samp == 'f2':
+        if type_sampling_mode == 'f2':
             def type_samp_func(x): x
-        if type_samp == 'f':
+        if type_sampling_mode == 'f':
             def type_samp_func(x): np.sqrt(x)
-        if type_samp == 'fcube':
+        if type_sampling_mode == 'fcube':
             def type_samp_func(x): np.cbrt(x)
-        if type_samp == 'log':
+        if type_sampling_mode == 'log':
             def type_samp_func(x): np.log(1+x)
 
         for tok in range(nb_tok):
