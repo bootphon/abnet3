@@ -5,4 +5,5 @@ pytest
 numpydoc
 scipy >= 0.13.0
 matplotlib
+pyyaml
 torchvision

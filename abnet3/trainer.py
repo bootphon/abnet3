@@ -50,6 +50,7 @@ class TrainerBuilder:
         self.best_epoch = 0
         self.seed = seed
         self.cuda = cuda
+        self.statistics_training = {}
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
                                   'RMSprop', 'LBFGS')
         if optimizer_type == 'sgd':
@@ -87,6 +88,7 @@ class TrainerBuilder:
 
     def optimize_model(self):
         """Optimization model step
+
         """
         raise NotImplementedError('Unimplemented optimize_model for class:',
                                   self.__class__.__name__)
@@ -108,6 +110,11 @@ class TrainerBuilder:
         plt.plot(x, self.dev_losses, 'b+')
         fig.savefig(self.network.output_path+"_plot.pdf",
                     bbox_inches='tight')
+
+    # def plot_summary_statistics(self):
+    #     """Summary statistics of the training
+    #
+    #     """
 
 
 class TrainerSiamese(TrainerBuilder):
@@ -149,8 +156,12 @@ class TrainerSiamese(TrainerBuilder):
             feat2 = token_feats[f2, s2, e2]
             try:
                 path1, path2 = get_dtw_alignment(feat1, feat2)
-            except e:
+            except Exception as e:
                 continue
+            try:
+                self.statistics_training['SameType'] += 1
+            except Exception as e:
+                self.statistics_training['SameType'] = 1
 
             X1.append(feat1[path1, :])
             X2.append(feat2[path2, :])
@@ -166,6 +177,10 @@ class TrainerSiamese(TrainerBuilder):
             X1.append(feat1[:min(n1, n2), :])
             X2.append(feat2[:min(n1, n2), :])
             y.append(-1*np.ones(min(n1, n2)))
+            try:
+                self.statistics_training['DiffType'] += 1
+            except Exception as e:
+                self.statistics_training['DiffType'] = 1
 
         # concatenate all features
         X1, X2, y = np.vstack(X1), np.vstack(X2), np.concatenate(y)
@@ -260,6 +275,9 @@ class TrainerSiamese(TrainerBuilder):
         normalized_dev_loss = dev_loss/num_batches_dev
         print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
         print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
+
+        for key in self.statistics_training.keys():
+            self.statistics_training[key] = 0
 
         for epoch in range(self.num_epochs):
             train_loss = 0.0
@@ -376,8 +394,16 @@ class TrainerSiameseMultitask(TrainerBuilder):
             spk1, spk2 = fid2spk[f1], fid2spk[f2]
             if spk1 is spk2:
                 y_spk.append(np.ones(len(path1)))
+                try:
+                    self.statistics_training['SameTypeSameSpk'] += 1
+                except Exception as e:
+                    self.statistics_training['SameTypeSameSpk'] = 1
             else:
                 y_spk.append(-1*np.ones(len(path1)))
+                try:
+                    self.statistics_training['SameTypeDiffSpk'] += 1
+                except Exception as e:
+                    self.statistics_training['SameTypeDiffSpk'] = 1
             X1.append(feat1[path1, :])
             X2.append(feat2[path2, :])
             y_phn.append(np.ones(len(path1)))
@@ -395,8 +421,16 @@ class TrainerSiameseMultitask(TrainerBuilder):
             spk1, spk2 = fid2spk[f1], fid2spk[f2]
             if spk1 is spk2:
                 y_spk.append(np.ones(min(n1, n2)))
+                try:
+                    self.statistics_training['DiffTypeSameSpk'] += 1
+                except Exception as e:
+                    self.statistics_training['DiffTypeSameSpk'] = 1
             else:
                 y_spk.append(-1*np.ones(min(n1, n2)))
+                try:
+                    self.statistics_training['DiffTypeDiffSpk'] += 1
+                except Exception as e:
+                    self.statistics_training['DiffTypeDiffSpk'] = 1
 
         # concatenate all features
         X1, X2 = np.vstack(X1), np.vstack(X2)
@@ -505,6 +539,9 @@ class TrainerSiameseMultitask(TrainerBuilder):
         normalized_dev_loss = dev_loss/num_batches_dev
         print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
         print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
+
+        for key in self.statistics_training.keys():
+            self.statistics_training[key] = 0
 
         for epoch in range(self.num_epochs):
             train_loss = 0.0
