@@ -111,10 +111,21 @@ class TrainerBuilder:
         fig.savefig(self.network.output_path+"_plot.pdf",
                     bbox_inches='tight')
 
-    # def plot_summary_statistics(self):
-    #     """Summary statistics of the training
-    #
-    #     """
+    def plot_summary_statistics(self):
+        """Summary statistics of the training
+
+        """
+        print(" ***** Statistics for the training step ***** ")
+        for key in self.statistics_training.keys():
+            stats = self.statistics_training[key]
+            print(" Number of {} pairs seen: {} \t\t".format(key, stats))
+
+    def pretty_print_losses(self, train_loss, dev_loss):
+        """Print train and dev loss during training
+
+        """
+        print("  training loss:\t\t{:.6f}".format(train_loss))
+        print("  dev loss:\t\t\t{:.6f}".format(dev_loss))
 
 
 class TrainerSiamese(TrainerBuilder):
@@ -221,15 +232,80 @@ class TrainerSiamese(TrainerBuilder):
             X_batch1, X_batch2, y_batch = map(Variable, bacth_els)
             yield X_batch1, X_batch2, y_batch
 
+    def optimize_model(self, do_training=True):
+        """Optimization model step for the Siamese network.
+
+        """
+        self.network.train()
+        for minibatch in self.get_batches(features, train_mode=True):
+            # TODO refactor here for a step function based on specific loss
+            # enable generic train
+            X_batch1, X_batch2, y_batch = minibatch
+            if self.cuda:
+                X_batch1 = X_batch1.cuda()
+                X_batch2 = X_batch2.cuda()
+                y_batch = y_batch.cuda()
+
+            self.optimizer.zero_grad()
+            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
+            train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+            if do_training:
+                train_loss_value.backward()
+                self.optimizer.step()
+            else:
+                self.num_batches_train += 1
+            train_loss += train_loss_value.data[0]
+
+        self.network.eval()
+        for minibatch in self.get_batches(features, train_mode=False):
+            X_batch1, X_batch2, y_batch = minibatch
+            if self.cuda:
+                X_batch1 = X_batch1.cuda()
+                X_batch2 = X_batch2.cuda()
+                y_batch = y_batch.cuda()
+
+            if do_training:
+                pass
+            else:
+                self.num_batches_dev += 1
+
+            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
+            dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+            dev_loss += dev_loss_value.data[0]
+
+        self.train_losses.append(train_loss/self.num_batches_train)
+        self.dev_losses.append(dev_loss/self.num_batches_dev)
+        normalized_train_loss = train_loss/self.num_batches_train
+        normalized_dev_loss = dev_loss/self.num_batches_dev
+
+        self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
+
+        if self.best_dev is None or dev_loss < self.best_dev:
+            self.best_dev = dev_loss
+            self.patience_dev = 0
+            print('Saving best model so far, epoch {}'.format(epoch+1))
+            self.network.save_network()
+            self.save_whoami()
+            self.best_epoch = epoch
+        else:
+            self.patience_dev += 1
+            if self.patience_dev > self.patience:
+                print("No improvements after {} iterations, "
+                      "stopping now".format(self.patience))
+                print('Finished Training')
+                break
+
     def train(self):
         """Train method to train the model
 
         """
-        patience_dev = 0
-        best_dev = None
+        self.patience_dev = 0
+        self.best_dev = None
 
         self.train_losses = []
         self.dev_losses = []
+        self.num_batches_train = 0
+        self.num_batches_dev = 0
 
         features, align_features, feat_dim = read_feats(self.feature_path)
         train_loss = 0.0
@@ -238,7 +314,6 @@ class TrainerSiamese(TrainerBuilder):
         self.network.save_network()
 
         self.network.train()
-        num_batches_train = 0
         for minibatch in self.get_batches(features, train_mode=True):
             # TODO refactor here for a step function based on specific loss
             # enable generic train
@@ -256,7 +331,6 @@ class TrainerSiamese(TrainerBuilder):
 
         self.train_losses.append(train_loss/num_batches_train)
         self.network.eval()
-        num_batches_dev = 0
         for minibatch in self.get_batches(features, train_mode=False):
             X_batch1, X_batch2, y_batch = minibatch
             if self.cuda:
@@ -273,8 +347,8 @@ class TrainerSiamese(TrainerBuilder):
         self.dev_losses.append(dev_loss/num_batches_dev)
         normalized_train_loss = train_loss/num_batches_train
         normalized_dev_loss = dev_loss/num_batches_dev
-        print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
-        print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
+
+        self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
 
         for key in self.statistics_training.keys():
             self.statistics_training[key] = 0
@@ -322,18 +396,20 @@ class TrainerSiamese(TrainerBuilder):
 
             normalized_train_loss = train_loss/num_batches_train
             normalized_dev_loss = dev_loss/num_batches_dev
-            print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
-            print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
-            if best_dev is None or dev_loss < best_dev:
-                best_dev = dev_loss
-                patience_dev = 0
+
+            self.pretty_print_losses(normalized_train_loss,
+                                     normalized_dev_loss)
+
+            if self.best_dev is None or dev_loss < self.best_dev:
+                self.best_dev = dev_loss
+                self.patience_dev = 0
                 print('Saving best model so far, epoch {}'.format(epoch+1))
                 self.network.save_network()
                 self.save_whoami()
                 self.best_epoch = epoch
             else:
-                patience_dev += 1
-                if patience_dev > self.patience:
+                self.patience_dev += 1
+                if self.patience_dev > self.patience:
                     print("No improvements after {} iterations, "
                           "stopping now".format(self.patience))
                     print('Finished Training')
