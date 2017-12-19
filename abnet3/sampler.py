@@ -248,7 +248,8 @@ class SamplerCluster(SamplerBuilder):
         nb_types = len(std_descr['types'])
 
         transfo_error = 'Transformation not implemented'
-        assert type_samp in ['1', 'f', 'f2', 'log', 'fcube'], transfo_error
+        list_samplings = ['1', 'f', 'f2', 'log', 'fcube']
+        assert type_sampling_mode in list_samplings, transfo_error
 
         if type_sampling_mode == '1':
             def type_samp_func(x): 1.0
@@ -307,7 +308,6 @@ class SamplerCluster(SamplerBuilder):
         if spk_sampling_mode == 'log':
             def spk_samp_func(x): np.log(1+x)
 
-        # nb_types = len(std_descr['types'])
         for (spk, type_idx) in W_spk_types.keys():
             for (spk2, type_jdx) in W_spk_types.keys():
                 if spk == spk2:
