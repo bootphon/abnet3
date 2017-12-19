@@ -94,11 +94,51 @@ class TrainerBuilder:
                                   self.__class__.__name__)
 
     def train(self):
-        """Train function
+        """Train method to train the model
 
         """
-        raise NotImplementedError('Unimplemented train for class:',
-                                  self.__class__.__name__)
+        self.patience_dev = 0
+        self.best_dev = None
+
+        self.train_losses = []
+        self.dev_losses = []
+        self.num_batches_train = 0
+        self.num_batches_dev = 0
+
+        features, align_features, feat_dim = read_feats(self.feature_path)
+        train_loss = 0.0
+        dev_loss = 0.0
+        self.network.eval()
+        self.network.save_network()
+
+        _ = self.optimize_model(do_training=False)
+
+        for key in self.statistics_training.keys():
+            self.statistics_training[key] = 0
+
+        for epoch in range(self.num_epochs):
+            train_loss = 0.0
+            dev_loss = 0.0
+            start_time = time.time()
+
+            dev_loss = self.optimize_model(do_training=True)
+
+            if self.best_dev is None or dev_loss < self.best_dev:
+                self.best_dev = dev_loss
+                self.patience_dev = 0
+                print('Saving best model so far, epoch {}'.format(epoch+1))
+                self.network.save_network()
+                self.save_whoami()
+                self.best_epoch = epoch
+            else:
+                self.patience_dev += 1
+                if self.patience_dev > self.patience:
+                    print("No improvements after {} iterations, "
+                          "stopping now".format(self.patience))
+                    print('Finished Training')
+                    break
+
+        print('Saving best checkpoint network')
 
     def plot_train_erros(self):
         """Plot method to vizualize the train and dev errors
@@ -238,8 +278,6 @@ class TrainerSiamese(TrainerBuilder):
         """
         self.network.train()
         for minibatch in self.get_batches(features, train_mode=True):
-            # TODO refactor here for a step function based on specific loss
-            # enable generic train
             X_batch1, X_batch2, y_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
@@ -279,153 +317,7 @@ class TrainerSiamese(TrainerBuilder):
         normalized_dev_loss = dev_loss/self.num_batches_dev
 
         self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
-
-        if self.best_dev is None or dev_loss < self.best_dev:
-            self.best_dev = dev_loss
-            self.patience_dev = 0
-            print('Saving best model so far, epoch {}'.format(epoch+1))
-            self.network.save_network()
-            self.save_whoami()
-            self.best_epoch = epoch
-        else:
-            self.patience_dev += 1
-            if self.patience_dev > self.patience:
-                print("No improvements after {} iterations, "
-                      "stopping now".format(self.patience))
-                print('Finished Training')
-                break
-
-    def train(self):
-        """Train method to train the model
-
-        """
-        self.patience_dev = 0
-        self.best_dev = None
-
-        self.train_losses = []
-        self.dev_losses = []
-        self.num_batches_train = 0
-        self.num_batches_dev = 0
-
-        features, align_features, feat_dim = read_feats(self.feature_path)
-        train_loss = 0.0
-        dev_loss = 0.0
-        self.network.eval()
-        self.network.save_network()
-
-        self.network.train()
-        for minibatch in self.get_batches(features, train_mode=True):
-            # TODO refactor here for a step function based on specific loss
-            # enable generic train
-
-            X_batch1, X_batch2, y_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_batch = y_batch.cuda()
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
-            train_loss += train_loss_value.data[0]
-
-            num_batches_train += 1
-
-        self.train_losses.append(train_loss/num_batches_train)
-        self.network.eval()
-        for minibatch in self.get_batches(features, train_mode=False):
-            X_batch1, X_batch2, y_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_batch = y_batch.cuda()
-
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
-            dev_loss += dev_loss_value.data[0]
-
-            num_batches_dev += 1
-
-        self.dev_losses.append(dev_loss/num_batches_dev)
-        normalized_train_loss = train_loss/num_batches_train
-        normalized_dev_loss = dev_loss/num_batches_dev
-
-        self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
-
-        for key in self.statistics_training.keys():
-            self.statistics_training[key] = 0
-
-        for epoch in range(self.num_epochs):
-            train_loss = 0.0
-            dev_loss = 0.0
-            start_time = time.time()
-
-            self.network.train()
-            for minibatch in self.get_batches(features, train_mode=True):
-                # TODO refactor here for a step function based on specific loss
-                # enable generic train
-                X_batch1, X_batch2, y_batch = minibatch
-                if self.cuda:
-                    X_batch1 = X_batch1.cuda()
-                    X_batch2 = X_batch2.cuda()
-                    y_batch = y_batch.cuda()
-
-                self.optimizer.zero_grad()
-                emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-                train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
-                train_loss_value.backward()
-                self.optimizer.step()
-                train_loss += train_loss_value.data[0]
-
-            self.train_losses.append(train_loss/num_batches_train)
-
-            self.network.eval()
-            for minibatch in self.get_batches(features, train_mode=False):
-                X_batch1, X_batch2, y_batch = minibatch
-                if self.cuda:
-                    X_batch1 = X_batch1.cuda()
-                    X_batch2 = X_batch2.cuda()
-                    y_batch = y_batch.cuda()
-
-                emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-                dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
-                dev_loss += dev_loss_value.data[0]
-
-            self.dev_losses.append(dev_loss/num_batches_dev)
-
-            print("Epoch {} of {} took {:.3f}s".format(
-                    epoch + 1, self.num_epochs, time.time() - start_time))
-
-            normalized_train_loss = train_loss/num_batches_train
-            normalized_dev_loss = dev_loss/num_batches_dev
-
-            self.pretty_print_losses(normalized_train_loss,
-                                     normalized_dev_loss)
-
-            if self.best_dev is None or dev_loss < self.best_dev:
-                self.best_dev = dev_loss
-                self.patience_dev = 0
-                print('Saving best model so far, epoch {}'.format(epoch+1))
-                self.network.save_network()
-                self.save_whoami()
-                self.best_epoch = epoch
-            else:
-                self.patience_dev += 1
-                if self.patience_dev > self.patience:
-                    print("No improvements after {} iterations, "
-                          "stopping now".format(self.patience))
-                    print('Finished Training')
-                    break
-
-        print('Saving best checkpoint network')
-
-        self.network.load_network(
-                network_path=self.network.output_path+'.pth')
-        print('The best epoch is the {}-th'.format(self.best_epoch))
-        print('The best train is the {}'.format(
-                self.train_losses[self.best_epoch]))
-        print('The best dev is the {}'.format(
-                self.dev_losses[self.best_epoch]))
-        print('Still Training but no more patience.')
-        print('Finished Training')
+        return dev_loss
 
 
 class TrainerSiameseMultitask(TrainerBuilder):
@@ -552,28 +444,12 @@ class TrainerSiameseMultitask(TrainerBuilder):
                                                                bacth_els)
             yield X_batch1, X_batch2, y_spk_batch, y_phn_batch
 
-    def train(self):
-        """Train method to train the model
+    def optimize_model(self, do_training=True):
+        """Optimization model step for the Siamese network with multitask.
 
         """
-        patience_dev = 0
-        best_dev = None
-
-        self.train_losses = []
-        self.dev_losses = []
-
-        features, align_features, feat_dim = read_feats(self.feature_path)
-        train_loss = 0.0
-        dev_loss = 0.0
-        self.network.eval()
-        self.network.save_network()
-
         self.network.train()
-        num_batches_train = 0
         for minibatch in self.get_batches(features, train_mode=True):
-            # TODO refactor here for a step function based on specific loss
-            # enable generic train
-
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
@@ -581,25 +457,32 @@ class TrainerSiameseMultitask(TrainerBuilder):
                 y_spk_batch = y_spk_batch.cuda()
                 y_phn_batch = y_phn_batch.cuda()
 
+            self.optimizer.zero_grad()
             emb = self.network(X_batch1, X_batch2)
             emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
             train_loss_value = self.loss(emb_spk1, emb_phn1,
                                          emb_spk2, emb_phn2,
                                          y_spk_batch, y_phn_batch)
+            if do_training:
+                train_loss_value.backward()
+                self.optimizer.step()
+            else:
+                self.num_batches_train += 1
             train_loss += train_loss_value.data[0]
 
-            num_batches_train += 1
-
-        self.train_losses.append(train_loss)
         self.network.eval()
-        num_batches_dev = 0
         for minibatch in self.get_batches(features, train_mode=False):
-            X_batch1, X_batch2, y_phn_batch, y_spk_batch = minibatch
+            X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
                 X_batch2 = X_batch2.cuda()
                 y_spk_batch = y_spk_batch.cuda()
                 y_phn_batch = y_phn_batch.cuda()
+
+            if do_training:
+                pass
+            else:
+                self.num_batches_dev += 1
 
             emb = self.network(X_batch1, X_batch2)
             emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
@@ -608,96 +491,13 @@ class TrainerSiameseMultitask(TrainerBuilder):
                                        y_spk_batch, y_phn_batch)
             dev_loss += dev_loss_value.data[0]
 
-            num_batches_dev += 1
+        self.train_losses.append(train_loss/self.num_batches_train)
+        self.dev_losses.append(dev_loss/self.num_batches_dev)
+        normalized_train_loss = train_loss/self.num_batches_train
+        normalized_dev_loss = dev_loss/self.num_batches_dev
 
-        self.dev_losses.append(dev_loss)
-        normalized_train_loss = train_loss/num_batches_train
-        normalized_dev_loss = dev_loss/num_batches_dev
-        print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
-        print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
-
-        for key in self.statistics_training.keys():
-            self.statistics_training[key] = 0
-
-        for epoch in range(self.num_epochs):
-            train_loss = 0.0
-            dev_loss = 0.0
-            start_time = time.time()
-
-            self.network.train()
-            for minibatch in self.get_batches(features, train_mode=True):
-                # TODO refactor here for a step function based on specific loss
-                # enable generic train
-                X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
-                if self.cuda:
-                    X_batch1 = X_batch1.cuda()
-                    X_batch2 = X_batch2.cuda()
-                    y_spk_batch = y_spk_batch.cuda()
-                    y_phn_batch = y_phn_batch.cuda()
-
-                self.optimizer.zero_grad()
-                emb = self.network(X_batch1, X_batch2)
-                emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
-                train_loss_value = self.loss(emb_spk1, emb_phn1,
-                                             emb_spk2, emb_phn2,
-                                             y_spk_batch, y_phn_batch)
-                train_loss_value.backward()
-                self.optimizer.step()
-                train_loss += train_loss_value.data[0]
-
-            self.train_losses.append(train_loss/num_batches_train)
-
-            self.network.eval()
-            for minibatch in self.get_batches(features, train_mode=False):
-                X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
-                if self.cuda:
-                    X_batch1 = X_batch1.cuda()
-                    X_batch2 = X_batch2.cuda()
-                    y_spk_batch = y_spk_batch.cuda()
-                    y_phn_batch = y_phn_batch.cuda()
-
-                emb = self.network(X_batch1, X_batch2)
-                emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
-                dev_loss_value = self.loss(emb_spk1, emb_phn1,
-                                           emb_spk2, emb_phn2,
-                                           y_spk_batch, y_phn_batch)
-                dev_loss += dev_loss_value.data[0]
-
-            self.dev_losses.append(dev_loss/num_batches_dev)
-
-            print("Epoch {} of {} took {:.3f}s".format(
-                    epoch + 1, self.num_epochs, time.time() - start_time))
-
-            normalized_train_loss = train_loss/num_batches_train
-            normalized_dev_loss = dev_loss/num_batches_dev
-            print("  training loss:\t\t{:.6f}".format(normalized_train_loss))
-            print("  dev loss:\t\t\t{:.6f}".format(normalized_dev_loss))
-            if best_dev is None or dev_loss < best_dev:
-                best_dev = dev_loss
-                patience_dev = 0
-                print('Saving best model so far, epoch {}'.format(epoch+1))
-                self.network.save_network()
-                self.save_whoami()
-                self.best_epoch = epoch
-            else:
-                patience_dev += 1
-                if patience_dev > self.patience:
-                    print("No improvements after {} iterations, "
-                          "stopping now".format(self.patience))
-                    print('Finished Training')
-                    break
-
-        print('Saving best checkpoint network')
-
-        self.network.load_network(
-                network_path=self.network.output_path+'.pth')
-        print('The best epoch is the {}-th'.format(self.best_epoch))
-        print('The best train is the {}'.format(
-                self.train_losses[self.best_epoch]))
-        print('The best dev is the {}'.format(
-                self.dev_losses[self.best_epoch]))
-        print('Still Training but no more patience.')
-        print('Finished Training')
+        self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
+        return dev_loss
 
 
 if __name__ == '__main__':
