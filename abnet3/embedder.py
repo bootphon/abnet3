@@ -3,9 +3,6 @@
 """This script is composed of the different modules for embedding features
 based on neural network.
 
-It will generate text files in two folders 'train_pairs' and 'dev_pairs' in the
-correct format for the Neural Network.
-
 """
 
 from abnet3.model import *

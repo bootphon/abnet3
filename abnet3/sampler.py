@@ -642,6 +642,9 @@ class SamplerClusterSiamese(SamplerCluster):
         for key in proba.keys():
             cdf[key] = cumulative_distribution(proba[key])
 
+        # This computation is important for the total number of batches/pairs
+        # Number of possible pairs in the smallest count
+        # of different words for a speaker
         num = np.min(list(descr['speakers'].values()))
         num_batches = num*(num-1)/2
         idx_batch = 0
