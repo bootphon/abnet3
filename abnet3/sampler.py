@@ -541,7 +541,7 @@ class SamplerClusterSiamese(SamplerCluster):
         for config in p_spk_types.keys():
             # proba_config = np.array(p_spk_types[config].values())
             # sizes = len(p_spk_types[config].keys())
-            keys = np.array(p_spk_types[config].keys())
+            keys = np.array(list(p_spk_types[config].keys()))
             sample_idx = sample_searchidx(cdf[config], sampled_ratio[config])
             sample = keys[sample_idx]
             if config == 'Stype_Sspk':
@@ -597,33 +597,33 @@ class SamplerClusterSiamese(SamplerCluster):
             if config == 'Stype_Sspk':
                 pair_type = 'same'
                 for pair in sampled_batch[config]:
-                    tok1 = utils.print_token(descr['tokens'][pair[0]])
-                    tok2 = utils.print_token(descr['tokens'][pair[1]])
+                    tok1 = print_token(descr['tokens'][pair[0]])
+                    tok2 = print_token(descr['tokens'][pair[1]])
                     lines.append(tok1 + " " + tok2 + " " + pair_type + "\n")
             if config == 'Stype_Dspk':
                 pair_type = 'same'
                 for pair in sampled_batch[config]:
-                    tok1 = utils.print_token(descr['tokens'][pair[0]])
-                    tok2 = utils.print_token(descr['tokens'][pair[1]])
+                    tok1 = print_token(descr['tokens'][pair[0]])
+                    tok2 = print_token(descr['tokens'][pair[1]])
                     lines.append(tok1 + " " + tok2 + " " + pair_type + "\n")
             if config == 'Dtype_Sspk':
                 pair_type = 'diff'
                 for pair in sampled_batch[config]:
-                    tok1 = utils.print_token(descr['tokens'][pair[0]])
-                    tok2 = utils.print_token(descr['tokens'][pair[1]])
+                    tok1 = print_token(descr['tokens'][pair[0]])
+                    tok2 = print_token(descr['tokens'][pair[1]])
                     lines.append(tok1 + " " + tok2 + " " + pair_type + "\n")
             if config == 'Dtype_Dspk':
                 pair_type = 'diff'
                 for pair in sampled_batch[config]:
-                    tok1 = utils.print_token(descr['tokens'][pair[0]])
-                    tok2 = utils.print_token(descr['tokens'][pair[1]])
+                    tok1 = print_token(descr['tokens'][pair[0]])
+                    tok2 = print_token(descr['tokens'][pair[1]])
                     lines.append(tok1 + " " + tok2 + " " + pair_type + "\n")
 
         np.random.shuffle(lines)
         # prev_idx = 0
-        for idx in range(1, num_batches//batch_size):
+        for idx in range(1, int(num_batches//batch_size)):
             with open(os.path.join(out_dir, 'pair_' +
-                      str(idx)+'.batch', 'w')) as fh:
+                      str(idx)+'.batch'), 'w') as fh:
                     fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
 
     def export_pairs(self, out_dir=None,
