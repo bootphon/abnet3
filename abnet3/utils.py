@@ -81,10 +81,9 @@ def cumulative_distribution(distribution):
     """Cumulative sums for multinomial sampling
 
     """
-    assert type(distribution) == list, 'distribution variable needs to be list'
-    assert np.sum(distribution) == 1.0, 'distribution needs to be normalized'
-
-    cdf = np.cumsum(np.array(distribution))
+    assert type(distribution) == dict, 'distribution variable needs to be dict'
+    values = list(distribution.values())
+    cdf = np.cumsum(np.array(values))
     cdf /= cdf[-1]
     return cdf
 
@@ -93,7 +92,7 @@ def sample_searchidx(cdf, num_samples):
     """Sample indexes based on cdf distribution
 
     """
-    uniform_samples = np.random.random_sample(num_samples)
+    uniform_samples = np.random.random_sample(int(num_samples))
     idx = cdf.searchsorted(uniform_samples, side='right')
     return idx
 

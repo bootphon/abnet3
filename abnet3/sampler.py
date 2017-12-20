@@ -252,15 +252,15 @@ class SamplerCluster(SamplerBuilder):
         assert type_sampling_mode in list_samplings, transfo_error
 
         if type_sampling_mode == '1':
-            def type_samp_func(x): 1.0
+            def type_samp_func(x): return 1.0
         if type_sampling_mode == 'f2':
-            def type_samp_func(x): x
+            def type_samp_func(x): return x
         if type_sampling_mode == 'f':
-            def type_samp_func(x): np.sqrt(x)
+            def type_samp_func(x): return np.sqrt(x)
         if type_sampling_mode == 'fcube':
-            def type_samp_func(x): np.cbrt(x)
+            def type_samp_func(x): return np.cbrt(x)
         if type_sampling_mode == 'log':
-            def type_samp_func(x): np.log(1+x)
+            def type_samp_func(x): return np.log(1+x)
 
         for tok in range(nb_tok):
             try:
@@ -298,15 +298,19 @@ class SamplerCluster(SamplerBuilder):
                 W_spk_types[(speakers[tok], tokens_type[tok])] = 1.0
 
         if spk_sampling_mode == '1':
-            def spk_samp_func(x): 0.0 if x == 0 else 1.0
+            def spk_samp_func(x):
+                if x == 0:
+                    return 0.0
+                else:
+                    return 1.0
         if spk_sampling_mode == 'f2':
-            def spk_samp_func(x): x
+            def spk_samp_func(x): return x
         if spk_sampling_mode == 'f':
-            def spk_samp_func(x): np.sqrt(x)
+            def spk_samp_func(x): return np.sqrt(x)
         if spk_sampling_mode == 'fcube':
-            def spk_samp_func(x): np.cbrt(x)
+            def spk_samp_func(x): return np.cbrt(x)
         if spk_sampling_mode == 'log':
-            def spk_samp_func(x): np.log(1+x)
+            def spk_samp_func(x): return np.log(1+x)
 
         for (spk, type_idx) in W_spk_types.keys():
             for (spk2, type_jdx) in W_spk_types.keys():
@@ -488,7 +492,7 @@ class SamplerClusterSiamese(SamplerCluster):
                      p_spk_types,
                      cdf,
                      pairs,
-                     num_examples=5012):
+                     num_batches=5012):
 
         """Sampling proba modes for p_i1,i2,j1,j2
             It is based on Bayes rule:
@@ -513,7 +517,7 @@ class SamplerClusterSiamese(SamplerCluster):
                 dictionnary with the possible pairs
             seed : int
                 seed
-            num_examples : int
+            num_batches : int
                 number of pairs to compute
             ratio_same_diff_spk : float
                 float between 0 and 1 which is the ration of same and different
@@ -526,13 +530,13 @@ class SamplerClusterSiamese(SamplerCluster):
                           'Dtype_Sspk': [],
                           'Dtype_Dspk': []
                           }
-        num_same_spk = int((num_examples)*self.ratio_same_diff_spk)
-        num_diff_spk = num_examples - num_same_spk
+        num_same_spk = int((num_batches)*self.ratio_same_diff_spk)
+        num_diff_spk = num_batches - num_same_spk
         sampled_ratio = {
-                         'Stype_Sspk': num_same_spk/2,
-                         'Stype_Dspk': num_diff_spk/2,
-                         'Dtype_Sspk': num_same_spk/2,
-                         'Dtype_Dspk': num_diff_spk/2
+                         'Stype_Sspk': int(num_same_spk/2),
+                         'Stype_Dspk': int(num_diff_spk/2),
+                         'Dtype_Sspk': num_same_spk - int(num_same_spk/2),
+                         'Dtype_Dspk': num_diff_spk - int(num_diff_spk/2)
                          }
         for config in p_spk_types.keys():
             # proba_config = np.array(p_spk_types[config].values())
@@ -588,7 +592,7 @@ class SamplerClusterSiamese(SamplerCluster):
         lines = []
         np.random.seed(seed)
         sampled_batch = self.sample_batch(proba, cdf, pairs,
-                                          num_pairs_batch=num_batches)
+                                          num_batches=num_batches)
         for config in sampled_batch.keys():
             if config == 'Stype_Sspk':
                 pair_type = 'same'
@@ -638,7 +642,7 @@ class SamplerClusterSiamese(SamplerCluster):
         for key in proba.keys():
             cdf[key] = cumulative_distribution(proba[key])
 
-        num = np.min(descr['speakers'].values())
+        num = np.min(list(descr['speakers'].values()))
         num_batches = num*(num-1)/2
         idx_batch = 0
         self.write_tokens(descr=descr, proba=proba, cdf=cdf,
