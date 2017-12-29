@@ -111,7 +111,7 @@ class TrainerBuilder:
         self.network.eval()
         self.network.save_network()
 
-        _ = self.optimize_model(do_training=False)
+        _ = self.optimize_model(features, do_training=False)
 
         for key in self.statistics_training.keys():
             self.statistics_training[key] = 0
@@ -121,7 +121,7 @@ class TrainerBuilder:
             dev_loss = 0.0
             start_time = time.time()
 
-            dev_loss = self.optimize_model(do_training=True)
+            dev_loss = self.optimize_model(features, do_training=True)
 
             if self.best_dev is None or dev_loss < self.best_dev:
                 self.best_dev = dev_loss
@@ -272,7 +272,7 @@ class TrainerSiamese(TrainerBuilder):
             X_batch1, X_batch2, y_batch = map(Variable, bacth_els)
             yield X_batch1, X_batch2, y_batch
 
-    def optimize_model(self, do_training=True):
+    def optimize_model(self, features, do_training=True):
         """Optimization model step for the Siamese network.
 
         """
@@ -444,7 +444,7 @@ class TrainerSiameseMultitask(TrainerBuilder):
                                                                bacth_els)
             yield X_batch1, X_batch2, y_spk_batch, y_phn_batch
 
-    def optimize_model(self, do_training=True):
+    def optimize_model(self, features, do_training=True):
         """Optimization model step for the Siamese network with multitask.
 
         """
