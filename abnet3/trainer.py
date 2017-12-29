@@ -106,8 +106,6 @@ class TrainerBuilder:
         self.num_batches_dev = 0
 
         features, align_features, feat_dim = read_feats(self.feature_path)
-        train_loss = 0.0
-        dev_loss = 0.0
         self.network.eval()
         self.network.save_network()
 
@@ -117,8 +115,6 @@ class TrainerBuilder:
             self.statistics_training[key] = 0
 
         for epoch in range(self.num_epochs):
-            train_loss = 0.0
-            dev_loss = 0.0
             start_time = time.time()
 
             dev_loss = self.optimize_model(features, do_training=True)
@@ -276,6 +272,8 @@ class TrainerSiamese(TrainerBuilder):
         """Optimization model step for the Siamese network.
 
         """
+        train_loss = 0.0
+        dev_loss = 0.0
         self.network.train()
         for minibatch in self.get_batches(features, train_mode=True):
             X_batch1, X_batch2, y_batch = minibatch
