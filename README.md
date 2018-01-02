@@ -17,7 +17,7 @@ learnt for Visual Place Recognition to predict human judgments of safety and wea
 
 To install the ABnet3 package, you can use Anaconda, and either create a conda environment:
 
-    conda create --name abnet3 --file requirements.txt
+    conda create --name abnet3 python=3.6 --file requirements.txt
 
 or use a conda environment you already have with python 3 :
 

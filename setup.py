@@ -16,11 +16,12 @@ import sys
 import io
 import subprocess
 
+
 class RequiredPackagedInstall(install):
     """ Install needed Github repositories"""
 
     def run(self):
-        """ Get DTW_Cython, H5features & Spectral 
+        """ Get DTW_Cython, H5features & Spectral
         from github.com/bootphon, by launching pip via
         subprocess
         """
@@ -38,20 +39,18 @@ class RequiredPackagedInstall(install):
 
         # install cuda80 from channel soumith
         # TODO find if there's a prettier way than calling subprocess
-        _ = subprocess.call(['conda', 'install', 'cuda80', '-c', 'soumith'])
-        
+        # _ = subprocess.call(['conda', 'install', 'cuda80', '-c', 'soumith'])
+
         # run ABnet3 package installation
         install.run(self)
 
-
-#sys.path.append("./abnet3")
 
 with io.open("requirements.txt", encoding="utf-8") as req_fp:
     install_requires = req_fp.readlines()
 
 setup(
   name='abnet3',
-  version='0.0.1', 
+  version='0.0.1',
   packages=['abnet3'],
   description='ABnet neural network in Pytorch',
   author='Rachid Riad',
@@ -61,4 +60,3 @@ setup(
   }
 
 )
-
