@@ -446,6 +446,8 @@ class TrainerSiameseMultitask(TrainerBuilder):
         """Optimization model step for the Siamese network with multitask.
 
         """
+        train_loss = 0.0
+        dev_loss = 0.0
         self.network.train()
         for minibatch in self.get_batches(features, train_mode=True):
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
