@@ -24,7 +24,12 @@ or use a conda environment you already have with python 3 :
     conda install --file requirements.txt
 
 requirement.txt do not install pytorch. You need to install this package using conda. For now, the latest compatible version is pytorch 0.2:
+To install without gpu support
     conda install -c soumith pytorch=0.2
+
+To install with GPU support (replace cuda75 with your version of cuda)
+    conda install  pytorch=0.2 cuda75 -c pytorch
+
 
 Once all the necessary packages are installed, simply launch:
 
