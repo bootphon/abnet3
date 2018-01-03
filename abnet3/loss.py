@@ -118,17 +118,17 @@ class weighted_loss_multi(LossBuilder):
 
     """
 
-    def __init__(self, avg=True, loss_phn=coscos2, loss_spk=coscos2,
+    def __init__(self, avg=True, loss_phn=None, loss_spk=None,
                  weight=0.5, *args, **kwargs):
         super(weighted_loss_multi, self).__init__(*args, **kwargs)
         assert type(weight) is float
         assert (weight >= 0 and weight <= 1)
-        assert loss_phn in (coscos2, cosmargin), 'basis loss not implemented'
-        assert loss_spk in (coscos2, cosmargin), 'basis loss not implemented'
+        # assert loss_phn in (coscos2, cosmargin), 'basis loss not implemented'
+        # assert loss_spk in (coscos2, cosmargin), 'basis loss not implemented'
         self.weight = weight
         self.avg = avg
-        self.loss_phn = loss_phn(avg=self.avg)
-        self.loss_spk = loss_spk(avg=self.avg)
+        self.loss_phn = loss_phn
+        self.loss_spk = loss_spk
 
     def forward(self, emb_spk1, emb_phn1, emb_spk2, emb_phn2,
                 y_spk, y_phn):
