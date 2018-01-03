@@ -92,6 +92,7 @@ class SamplerCluster(SamplerBuilder):
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.25,
                  type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
+                 max_clusters=None,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -101,8 +102,9 @@ class SamplerCluster(SamplerBuilder):
         self.std_file = std_file
         self.spk_list_file = spk_list_file
         self.spkid_file = spkid_file
+        self.max_clusters = max_clusters
 
-    def parse_input_file(self, input_file=None, max_clusters=-1):
+    def parse_input_file(self, input_file=None, max_clusters=None):
         """Parse input file:
 
         Parameters
@@ -112,11 +114,14 @@ class SamplerCluster(SamplerBuilder):
         max_size_cluster : Int
             Number max of clusters, useful for debugging
         """
+        print("parsing input file")
         with codecs.open(input_file, "r", "utf-8") as fh:
             lines = fh.readlines()
         clusters = []
         i = 0
         while i < len(lines):
+            if max_clusters is not None and max_clusters > 0 and len(clusters) > max_clusters:
+                break 
             cluster = []
             tokens = lines[i].strip().split(" ")
             assert len(tokens) == 2, 'problem line {} '.format(i) + str(tokens)
@@ -684,7 +689,7 @@ class SamplerClusterSiamese(SamplerCluster):
         get_spkid_from_fid = read_spkid_file(self.spkid_file)
 
         # 1) parsing files to get clusters and speakers
-        clusters = self.parse_input_file(self.std_file)
+        clusters = self.parse_input_file(self.std_file, self.max_clusters)
         spk_list = read_spk_list(self.spk_list_file)
 
         # 2) Split the clusters according to train/dev ratio
