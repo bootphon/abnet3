@@ -13,6 +13,16 @@ non-learnt image representations as well as off-the-shelf CNN descriptors, and i
 art on challenging image retrieval benchmarks. The goal of this project is to transfer the CNN representation
 learnt for Visual Place Recognition to predict human judgments of safety and wealth of locations. -->
 
+Build Representation for speech frames based on side information. Composed of different modules :
+
+* `model.py`
+* `loss.py`
+* `sampler.py`
+* `trainer.py`
+* `embedder.py`
+* `utils.py`
+* `features.py` TO COME
+
 ### Installation of the package
 
 To install the ABnet3 package, you can use Anaconda, and either create a conda environment:
