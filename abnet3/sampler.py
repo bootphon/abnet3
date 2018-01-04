@@ -16,7 +16,7 @@ from abnet3.utils import read_spkid_file, read_spk_list
 import numpy as np
 import os
 import codecs
-
+import random
 
 class SamplerBuilder(object):
     """Sampler Model interface
@@ -92,7 +92,7 @@ class SamplerCluster(SamplerBuilder):
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.25,
                  type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
-                 max_clusters=None,
+                 max_num_clusters=None,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -102,16 +102,16 @@ class SamplerCluster(SamplerBuilder):
         self.std_file = std_file
         self.spk_list_file = spk_list_file
         self.spkid_file = spkid_file
-        self.max_clusters = max_clusters
+        self.max_num_clusters = max_num_clusters
 
-    def parse_input_file(self, input_file=None, max_clusters=None):
+    def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
 
         Parameters
         ----------
         input_file : String
             Path to clusters of words
-        max_size_cluster : Int
+        max_num_clusters : int
             Number max of clusters, useful for debugging
         """
         print("parsing input file")
@@ -120,8 +120,6 @@ class SamplerCluster(SamplerBuilder):
         clusters = []
         i = 0
         while i < len(lines):
-            if max_clusters is not None and max_clusters > 0 and len(clusters) > max_clusters:
-                break 
             cluster = []
             tokens = lines[i].strip().split(" ")
             assert len(tokens) == 2, 'problem line {} '.format(i) + str(tokens)
@@ -145,6 +143,9 @@ class SamplerCluster(SamplerBuilder):
                     clusters.append(cluster)
                     i = i+1
 
+        # select the clusters we will keep
+        if max_num_clusters is not None and 0 < max_num_clusters < len(clusters):
+            clusters = random.sample(clusters, max_num_clusters)
         return clusters
 
     def split_clusters_ratio(self, clusters):
