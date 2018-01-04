@@ -25,5 +25,4 @@ def test_parse_input_file():
 
     # test with max clusters
     clusters = sampler.parse_input_file(file_name, max_num_clusters=3)
-    print(clusters)
     assert len(clusters) == 3
