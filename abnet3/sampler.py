@@ -16,7 +16,7 @@ from abnet3.utils import read_spkid_file, read_spk_list
 import numpy as np
 import os
 import codecs
-
+import random
 
 class SamplerBuilder(object):
     """Sampler Model interface
@@ -92,6 +92,7 @@ class SamplerCluster(SamplerBuilder):
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.25,
                  type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
+                 max_num_clusters=None,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -101,17 +102,19 @@ class SamplerCluster(SamplerBuilder):
         self.std_file = std_file
         self.spk_list_file = spk_list_file
         self.spkid_file = spkid_file
+        self.max_num_clusters = max_num_clusters
 
-    def parse_input_file(self, input_file=None, max_clusters=-1):
+    def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
 
         Parameters
         ----------
         input_file : String
             Path to clusters of words
-        max_size_cluster : Int
+        max_num_clusters : int
             Number max of clusters, useful for debugging
         """
+        print("parsing input file")
         with codecs.open(input_file, "r", "utf-8") as fh:
             lines = fh.readlines()
         clusters = []
@@ -140,6 +143,9 @@ class SamplerCluster(SamplerBuilder):
                     clusters.append(cluster)
                     i = i+1
 
+        # select the clusters we will keep
+        if max_num_clusters is not None and 0 < max_num_clusters < len(clusters):
+            clusters = random.sample(clusters, max_num_clusters)
         return clusters
 
     def split_clusters_ratio(self, clusters):
@@ -684,7 +690,7 @@ class SamplerClusterSiamese(SamplerCluster):
         get_spkid_from_fid = read_spkid_file(self.spkid_file)
 
         # 1) parsing files to get clusters and speakers
-        clusters = self.parse_input_file(self.std_file)
+        clusters = self.parse_input_file(self.std_file, self.max_clusters)
         spk_list = read_spk_list(self.spk_list_file)
 
         # 2) Split the clusters according to train/dev ratio
