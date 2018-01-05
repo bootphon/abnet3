@@ -164,18 +164,13 @@ class SamplerCluster(SamplerBuilder):
         """
 
         train_clusters, dev_clusters = [], []
-        size_clusters = np.array([len(cluster) for cluster in clusters])
-        new_clusters = []
         num_clusters = len(clusters)
         num_train = int(self.ratio_train_dev*num_clusters)
         train_idx = np.random.choice(num_clusters, num_train, replace=False)
 
         for idx, cluster in enumerate(clusters):
-            train_cluster = [tok for tok in cluster
-                             if idx in train_idx]
-            dev_cluster = [tok for tok in cluster
-                           if idx not in train_idx]
-            if train_cluster:
+            if idx in train_idx:
+                train_cluster = cluster
                 # Tricky move here to split big clusters for train and dev
                 size_cluster = len(train_cluster)
                 if self.max_size_cluster > 1 and \
@@ -191,8 +186,9 @@ class SamplerCluster(SamplerBuilder):
                     dev_clusters.append(dev_split)
                 else:
                     train_clusters.append(train_cluster)
-            if dev_cluster:
-                dev_clusters.append(dev_cluster)
+            else:
+                dev_clusters.append(cluster)
+
         return train_clusters, dev_clusters
 
     def analyze_clusters(self, clusters, get_spkid_from_fid=None):
