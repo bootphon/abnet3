@@ -23,8 +23,6 @@ class SamplerBuilder(object):
 
         Parameters
         ----------
-        input_file : String
-            Path to clusters of words
         batch_size : Int
             Number of words per batch
         already_done : Bool
@@ -38,7 +36,6 @@ class SamplerBuilder(object):
     def __init__(self, batch_size=8, already_done=False, input_file=None,
                  directory_output=None, ratio_train_dev=0.7, seed=0):
         super(SamplerBuilder, self).__init__()
-        self.input_file = input_file
         self.batch_size = batch_size
         self.already_done = already_done
         self.directory_output = directory_output
@@ -164,35 +161,30 @@ class SamplerCluster(SamplerBuilder):
         """
 
         train_clusters, dev_clusters = [], []
-        size_clusters = np.array([len(cluster) for cluster in clusters])
-        new_clusters = []
         num_clusters = len(clusters)
         num_train = int(self.ratio_train_dev*num_clusters)
         train_idx = np.random.choice(num_clusters, num_train, replace=False)
 
         for idx, cluster in enumerate(clusters):
-            train_cluster = [tok for tok in cluster
-                             if idx in train_idx]
-            dev_cluster = [tok for tok in cluster
-                           if idx not in train_idx]
-            if train_cluster:
+            if idx in train_idx:
                 # Tricky move here to split big clusters for train and dev
-                size_cluster = len(train_cluster)
+                size_cluster = len(cluster)
                 if self.max_size_cluster > 1 and \
                    self.max_size_cluster < size_cluster:
                     num_train = int(self.ratio_train_dev*size_cluster)
                     indexes = range(size_cluster)
                     rand_idx = np.random.permutation(indexes)
-                    train_split = [train_cluster[spec_idx] for spec_idx
+                    train_split = [cluster[spec_idx] for spec_idx
                                    in rand_idx[:num_train]]
-                    dev_split = [train_cluster[spec_idx] for spec_idx
+                    dev_split = [cluster[spec_idx] for spec_idx
                                  in rand_idx[num_train:]]
                     train_clusters.append(train_split)
                     dev_clusters.append(dev_split)
                 else:
-                    train_clusters.append(train_cluster)
-            if dev_cluster:
-                dev_clusters.append(dev_cluster)
+                    train_clusters.append(cluster)
+            else:
+                dev_clusters.append(cluster)
+
         return train_clusters, dev_clusters
 
     def analyze_clusters(self, clusters, get_spkid_from_fid=None):
@@ -690,7 +682,7 @@ class SamplerClusterSiamese(SamplerCluster):
         get_spkid_from_fid = read_spkid_file(self.spkid_file)
 
         # 1) parsing files to get clusters and speakers
-        clusters = self.parse_input_file(self.std_file, self.max_clusters)
+        clusters = self.parse_input_file(self.std_file, self.max_num_clusters)
         spk_list = read_spk_list(self.spk_list_file)
 
         # 2) Split the clusters according to train/dev ratio
@@ -744,7 +736,7 @@ if __name__ == '__main__':
     type_sampling_mode = 'log'
     spk_sampling_mode = 'log'
 
-    sam = SamplerClusterSiamese(input_file=input_file, batch_size=batch_size,
+    sam = SamplerClusterSiamese(std_file=input_file, batch_size=batch_size,
                                 already_done=already_done, seed=seed,
                                 type_sampling_mode=type_sampling_mode,
                                 spk_sampling_mode=spk_sampling_mode,
