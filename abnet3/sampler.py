@@ -23,8 +23,6 @@ class SamplerBuilder(object):
 
         Parameters
         ----------
-        input_file : String
-            Path to clusters of words
         batch_size : Int
             Number of words per batch
         already_done : Bool
@@ -38,7 +36,6 @@ class SamplerBuilder(object):
     def __init__(self, batch_size=8, already_done=False, input_file=None,
                  directory_output=None, ratio_train_dev=0.7, seed=0):
         super(SamplerBuilder, self).__init__()
-        self.input_file = input_file
         self.batch_size = batch_size
         self.already_done = already_done
         self.directory_output = directory_output
@@ -744,7 +741,7 @@ if __name__ == '__main__':
     type_sampling_mode = 'log'
     spk_sampling_mode = 'log'
 
-    sam = SamplerClusterSiamese(input_file=input_file, batch_size=batch_size,
+    sam = SamplerClusterSiamese(std_file=input_file, batch_size=batch_size,
                                 already_done=already_done, seed=seed,
                                 type_sampling_mode=type_sampling_mode,
                                 spk_sampling_mode=spk_sampling_mode,
