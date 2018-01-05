@@ -161,35 +161,30 @@ class SamplerCluster(SamplerBuilder):
         """
 
         train_clusters, dev_clusters = [], []
-        size_clusters = np.array([len(cluster) for cluster in clusters])
-        new_clusters = []
         num_clusters = len(clusters)
         num_train = int(self.ratio_train_dev*num_clusters)
         train_idx = np.random.choice(num_clusters, num_train, replace=False)
 
         for idx, cluster in enumerate(clusters):
-            train_cluster = [tok for tok in cluster
-                             if idx in train_idx]
-            dev_cluster = [tok for tok in cluster
-                           if idx not in train_idx]
-            if train_cluster:
+            if idx in train_idx:
                 # Tricky move here to split big clusters for train and dev
-                size_cluster = len(train_cluster)
+                size_cluster = len(cluster)
                 if self.max_size_cluster > 1 and \
                    self.max_size_cluster < size_cluster:
                     num_train = int(self.ratio_train_dev*size_cluster)
                     indexes = range(size_cluster)
                     rand_idx = np.random.permutation(indexes)
-                    train_split = [train_cluster[spec_idx] for spec_idx
+                    train_split = [cluster[spec_idx] for spec_idx
                                    in rand_idx[:num_train]]
-                    dev_split = [train_cluster[spec_idx] for spec_idx
+                    dev_split = [cluster[spec_idx] for spec_idx
                                  in rand_idx[num_train:]]
                     train_clusters.append(train_split)
                     dev_clusters.append(dev_split)
                 else:
-                    train_clusters.append(train_cluster)
-            if dev_cluster:
-                dev_clusters.append(dev_cluster)
+                    train_clusters.append(cluster)
+            else:
+                dev_clusters.append(cluster)
+
         return train_clusters, dev_clusters
 
     def analyze_clusters(self, clusters, get_spkid_from_fid=None):
