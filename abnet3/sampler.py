@@ -683,7 +683,10 @@ class SamplerClusterSiamese(SamplerCluster):
 
         # 1) parsing files to get clusters and speakers
         clusters = self.parse_input_file(self.std_file, self.max_num_clusters)
-        spk_list = read_spk_list(self.spk_list_file)
+        print("We have %s clusters." % len(clusters))
+        if self.spk_list_file is not None:
+            print("Reading speaker list file %s" % self.spk_list_file)
+            spk_list = read_spk_list(self.spk_list_file)
 
         # 2) Split the clusters according to train/dev ratio
         split_clusters = self.split_clusters_ratio(clusters)
