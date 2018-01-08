@@ -5,7 +5,7 @@ import os
 import pytest
 from abnet3.sampler import SamplerClusterSiamese
 
-class TestSampler():
+class TestSampler:
 
     def test_parse_input_file(self):
         base_path = os.path.dirname(__file__)

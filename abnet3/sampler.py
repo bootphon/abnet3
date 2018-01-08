@@ -197,6 +197,16 @@ class SamplerCluster(SamplerBuilder):
         get_spkid_from_fid : dict
             Mapping dictionnary between files and speaker id
 
+
+        Returns : {
+            tokens : the list of tokens
+            token_types : cluster id for each token
+            token_speaker : speaker_id for each token
+            types: size of each cluster
+            speakers: number of tokens for each speaker
+            speaker_types: number of clusters each speaker appears in
+            type_speakers: number of speakers in each cluster
+        }
         """
 
         if get_spkid_from_fid is None:
@@ -724,13 +734,14 @@ class SamplerClusterSiamese(SamplerCluster):
                           spk_sampling_mode=self.spk_sampling_mode,
                           seed=self.seed, batch_size=self.batch_size)
         dev_pairs_dir = os.path.join(self.directory_output, 'dev_pairs')
+        print("Done writing training pairs")
         os.makedirs(dev_pairs_dir)
         self.export_pairs(out_dir=dev_pairs_dir,
                           descr=dev_descr,
                           type_sampling_mode=self.type_sampling_mode,
                           spk_sampling_mode=self.spk_sampling_mode,
                           seed=self.seed+1, batch_size=self.batch_size)
-
+        print("Done writing testing pairs")
 
 if __name__ == '__main__':
 
