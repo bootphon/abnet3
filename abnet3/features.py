@@ -166,12 +166,13 @@ def h5features_feats2stackedfeats(fb_h5f, stackedfb_h5f, nframes=7):
 def generate(files, output_path, method='mfcc', normalization=True, stack=True,
              nframes=7, vad=None):
     """
-    :param list files: List of wav files
+    :param list files: List of wav files.  You must
+        give the complete relative or absolute path of the wave file
     :param str output_path: path where the features will be saved
     :param str method: can be either 'mfcc' or 'fbank'
     :param bool stack: stack features with block of `nframes` features.
     :param bool normalization: mean / variance normalization
-    :param int nframes:
+    :param int nframes: number of frames to stack (if stack is True)
     :param bool vad: Voice activity detection (Not implemented)
     """
 
@@ -199,45 +200,3 @@ def generate(files, output_path, method='mfcc', normalization=True, stack=True,
         shutil.copy(h5_temp2, output_path)
 
     shutil.rmtree(tempdir)
-
-
-def generate_all(files, alignement_h5f, input_h5f,
-                 nframes=7, vad=None):
-    """Generate mfccs and stacked mean variance normalized filterbanks
-    for the input files.
-
-    Parameters:
-    ----------
-    files: list, list of files on which to compute the features. You must
-        give the complete relative or absolute path of the wave file
-    alignement_h5f: str. Name of the h5features file containing the alignment
-        features. Features which will be used to align "same" word for the
-        abnet, here mfccs.
-    input_h5f: str. Name of the h5features file containing the input features
-        for the abnet. Here stacked mean variance normalized filterbanks.
-    nframes: int, number of frames to stack.
-    """
-    def try_remove(fname):
-        try:
-            os.remove(fname)
-        except:
-            pass
-    try:
-        directory = os.path.dirname(os.path.abspath(input_h5f))
-
-        # create temporary files:
-        _, fb_h5f = tempfile.mkstemp(dir=directory)
-        _, fb_mvn_h5f = tempfile.mkstemp(dir=directory)
-        os.remove(fb_h5f)
-        os.remove(fb_mvn_h5f)
-
-        # generate mfccs:
-        h5features_compute(files, alignement_h5f, featfunc=do_mfccs)
-
-        # generate stacked mvn fbanks:
-        h5features_compute(files, fb_h5f, featfunc=do_fbank)
-        mean_variance_normalisation(fb_h5f, fb_mvn_h5f, vad=vad)
-        h5features_feats2stackedfeats(fb_mvn_h5f, input_h5f, nframes=nframes)
-    finally:
-        try_remove(fb_h5f)
-        try_remove(fb_mvn_h5f)
