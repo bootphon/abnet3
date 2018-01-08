@@ -71,14 +71,14 @@ def stack_fbanks(features, nframes=7):
     """
     assert nframes % 2 == 1, 'number of stacked frames must be odd'
     dim = features.shape[1]
-    pad = np.zeros((nframes/2, dim), dtype=features.dtype)
+    pad = np.zeros((nframes//2, dim), dtype=features.dtype)
     features = np.concatenate((pad, features, pad))
     aux = np.array([features[i:i-nframes+1]
                     for i in range(nframes-1)] + [features[nframes-1:]])
     return np.reshape(np.swapaxes(aux, 0, 1), (-1, dim * nframes))
 
 
-def(files, h5f, featfunc=do_fbank, timefunc=None):
+def h5features_compute(files, h5f, featfunc=do_fbank, timefunc=None):
     """Compute mfcc or filterbanks (or other) in h5features format.
 
     Parameters:
@@ -128,7 +128,9 @@ def mean_variance_normalisation(h5f, mvn_h5f, vad=None):
     h5f: str. h5features file name
     mvn_h5f: str, h5features output name
     """
-    dset = h5py.File(h5f).keys()[0]
+
+    dset = list(h5py.File(h5f).keys())[0]
+
     if vad is not None:
         raise NotImplementedError
     else:
@@ -150,7 +152,7 @@ def h5features_feats2stackedfeats(fb_h5f, stackedfb_h5f, nframes=7):
     fb_h5f: str. h5features file name
     stackedfb_h5f: str, h5features output name
     """
-    dset_name = h5py.File(fb_h5f).keys()[0]
+    dset_name = list(h5py.File(fb_h5f).keys())[0]
     files = h5py.File(fb_h5f)[dset_name]['items']
     def aux(f):
         return stack_fbanks(h5features.read(fb_h5f, from_item=f)[1][f],
@@ -159,6 +161,44 @@ def h5features_feats2stackedfeats(fb_h5f, stackedfb_h5f, nframes=7):
         return h5features.read(fb_h5f, from_item=f)[0][f]
     h5features_compute(files, stackedfb_h5f, featfunc=aux,
                       timefunc=time_f)
+
+
+def generate(files, output_path, method='mfcc', normalization=True, stack=True,
+             nframes=7, vad=None):
+    """
+    :param list files: List of wav files
+    :param str output_path: path where the features will be saved
+    :param str method: can be either 'mfcc' or 'fbank'
+    :param bool stack: stack features with block of `nframes` features.
+    :param bool normalization: mean / variance normalization
+    :param int nframes:
+    :param bool vad: Voice activity detection (Not implemented)
+    """
+
+    functions = {
+        'mfcc': do_mfccs,
+        'fbank': do_fbank
+    }
+
+    if method not in functions:
+        raise ValueError("Method %s not authorized." % method)
+    f = functions[method]
+
+    tempdir = tempfile.mkdtemp()
+    h5_temp1 = tempdir + '/temp1'
+    h5features_compute(files, h5_temp1, featfunc=f)
+
+    if normalization:
+        h5_temp2 = tempdir + '/temp2'
+        mean_variance_normalisation(h5_temp1, h5_temp2, vad=vad)
+    else:
+        h5_temp2 = h5_temp1
+    if stack:
+        h5features_feats2stackedfeats(h5_temp2, output_path, nframes=nframes)
+    else:
+        shutil.copy(h5_temp2, output_path)
+
+    shutil.rmtree(tempdir)
 
 
 def generate_all(files, alignement_h5f, input_h5f,
