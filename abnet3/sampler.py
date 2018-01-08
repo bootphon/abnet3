@@ -679,9 +679,12 @@ class SamplerClusterSiamese(SamplerCluster):
         """
 
         # 0) Read mapping for id to speaker
+        print("Reading id to speaker file %s" % self.spkid_file)
         get_spkid_from_fid = read_spkid_file(self.spkid_file)
 
         # 1) parsing files to get clusters and speakers
+        print("Reading cluster file %s with max_num_clusters = %s" %
+              (self.std_file, self.max_num_clusters))
         clusters = self.parse_input_file(self.std_file, self.max_num_clusters)
         print("We have %s clusters." % len(clusters))
         if self.spk_list_file is not None:
@@ -710,6 +713,7 @@ class SamplerClusterSiamese(SamplerCluster):
         # else:
         # generate and write pairs to disk
 
+        print("Saving pairs to disk")
         os.makedirs(self.directory_output)
         # 4) Make directory and export pairs to the disk
         train_pairs_dir = os.path.join(self.directory_output, 'train_pairs')
