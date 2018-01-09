@@ -86,7 +86,8 @@ class SamplerCluster(SamplerBuilder):
         function applied to the observed speaker frequencies
 
     """
-    def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.25,
+    def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.75,
+                 ratio_same_diff_type=0.5,
                  type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
                  max_num_clusters=None,
@@ -94,6 +95,7 @@ class SamplerCluster(SamplerBuilder):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
         self.ratio_same_diff_spk = ratio_same_diff_spk
+        self.ratio_same_diff_type = ratio_same_diff_type
         self.type_sampling_mode = type_sampling_mode
         self.spk_sampling_mode = spk_sampling_mode
         self.std_file = std_file
@@ -528,8 +530,11 @@ class SamplerClusterSiamese(SamplerCluster):
             num_batches : int
                 number of pairs to compute
             ratio_same_diff_spk : float
-                float between 0 and 1 which is the ration of same and different
-                speaker for the pairs fed to the ABnet3
+                float between 0 and 1, percentage of different speaker pairs
+                fed to the ABnet3
+            ratio_same_diff_type : float
+                float between 0 and 1, percentage of different phn pairs
+                fed to the ABnet3
         """
         np.random.seed(self.seed)
         sampled_tokens = {
@@ -538,17 +543,19 @@ class SamplerClusterSiamese(SamplerCluster):
                           'Dtype_Sspk': [],
                           'Dtype_Dspk': []
                           }
-        num_same_spk = int((num_batches)*self.ratio_same_diff_spk)
+        num_same_spk = int((num_batches)*(1 - self.ratio_same_diff_spk))
         num_diff_spk = num_batches - num_same_spk
+        num_Stype_Sspk = int(num_same_spk*(1-self.ratio_same_diff_type))
+        num_Dtype_Sspk = int(num_same_spk*(self.ratio_same_diff_type))
+        num_Stype_Dspk = int(num_diff_spk*(1-self.ratio_same_diff_type))
+        num_Dtype_Dspk = int(num_diff_spk*(self.ratio_same_diff_type))
         sampled_ratio = {
-                         'Stype_Sspk': int(num_same_spk/2),
-                         'Stype_Dspk': int(num_diff_spk/2),
-                         'Dtype_Sspk': num_same_spk - int(num_same_spk/2),
-                         'Dtype_Dspk': num_diff_spk - int(num_diff_spk/2)
+                         'Stype_Sspk': num_Stype_Sspk,
+                         'Stype_Dspk': num_Stype_Dspk,
+                         'Dtype_Sspk': num_Dtype_Sspk,
+                         'Dtype_Dspk': num_Dtype_Dspk
                          }
         for config in p_spk_types.keys():
-            # proba_config = np.array(p_spk_types[config].values())
-            # sizes = len(p_spk_types[config].keys())
             keys = np.array(list(p_spk_types[config].keys()))
             sample_idx = sample_searchidx(cdf[config], sampled_ratio[config])
             sample = keys[sample_idx]
