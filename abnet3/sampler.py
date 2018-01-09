@@ -18,6 +18,7 @@ import os
 import codecs
 import random
 
+
 class SamplerBuilder(object):
     """Sampler Model interface
 
@@ -143,7 +144,8 @@ class SamplerCluster(SamplerBuilder):
                     i = i+1
 
         # select the clusters we will keep
-        if max_num_clusters is not None and 0 < max_num_clusters < len(clusters):
+        if max_num_clusters is not None and \
+                0 < max_num_clusters < len(clusters):
             clusters = random.sample(clusters, max_num_clusters)
         return clusters
 
@@ -288,7 +290,8 @@ class SamplerCluster(SamplerBuilder):
         return p_types
 
     def sample_spk_p(self, std_descr, spk_sampling_mode='log'):
-        """Sampling proba modes for the speakers conditionned by the drawn type(s)
+        """Sampling proba modes for the speakers conditionned
+        by the drawn type(s)
             - 1 : equiprobable
             - f2 : proportional to type probabilities
             - f : proportional to square root of type probabilities
@@ -352,7 +355,8 @@ class SamplerCluster(SamplerBuilder):
         return p_spk_types
 
     def generate_possibilities(self, std_descr):
-        """Generate possibilities between (types,speakers) and tokens/realisations
+        """Generate possibilities between (types,speakers)
+        and tokens/realisations
 
         """
         pairs = {'Stype_Sspk': {},
@@ -749,6 +753,7 @@ class SamplerClusterSiamese(SamplerCluster):
                           spk_sampling_mode=self.spk_sampling_mode,
                           seed=self.seed+1, batch_size=self.batch_size)
         print("Done writing testing pairs")
+
 
 if __name__ == '__main__':
 
