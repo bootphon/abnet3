@@ -1,6 +1,6 @@
 # Config file to test
 test_experiments_yaml:
-  dataset:
+  dataset: 
     train:
       feature_path:
     test:
@@ -44,5 +44,4 @@ test_experiments_yaml:
     seed:
     cuda:
     optimizer_type:
-
   embedder:
