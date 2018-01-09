@@ -120,22 +120,37 @@ class SiameseNetwork(NetworkBuilder):
         self.batch_norm = batch_norm
         self.type_init = type_init
         # Pass forward network functions
-        self.input_emb = nn.Sequential(
-                nn.Linear(input_dim, hidden_dim),
-                nn.Dropout(p=p_dropout),
-                activation_functions[activation_layer])
+
+        activation = activation_functions[activation_layer]
+
+        # input layer
+        input_layer = [
+            nn.Linear(input_dim, hidden_dim),
+            nn.Dropout(p=p_dropout),
+        ]
+        if self.batch_norm:
+            input_layer.append(nn.BatchNorm1d(hidden_dim))
+        input_layer.append(activation)
+        self.input_emb = nn.Sequential(*input_layer)
+
+        # hidden layers
         self.hidden_layers = []
         for idx in range(self.num_hidden_layers):
             self.hidden_layers.append(nn.Linear(hidden_dim, hidden_dim))
             self.hidden_layers.append(nn.Dropout(p=p_dropout))
-            self.hidden_layers.append(activation_functions[activation_layer])
-
-        # * is used for pointing to the list
+            if self.batch_norm:
+                self.hidden_layers.append(nn.BatchNorm1d(hidden_dim))
+            self.hidden_layers.append(activation)
         self.hidden_layers = nn.Sequential(*self.hidden_layers)
-        self.output_layer = nn.Sequential(
-                nn.Linear(hidden_dim, output_dim),
-                nn.Dropout(p=p_dropout),
-                activation_functions[activation_layer])
+
+        # output layer
+        output_layer = [
+            nn.Linear(hidden_dim, output_dim),
+            nn.Dropout(p=p_dropout)]
+        if self.batch_norm:
+            output_layer.append(nn.BatchNorm1d(output_dim))
+        output_layer.append(activation)
+        self.output_layer = nn.Sequential(*output_layer)
         self.output_path = output_path
         self.apply(self.init_weight_method)
 
