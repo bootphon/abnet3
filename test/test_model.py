@@ -24,7 +24,12 @@ models = {
     'siamese_sig': SiameseNetwork(input_dim=10, num_hidden_layers=4,
                                   hidden_dim=10, type_init='orthogonal',
                                   output_dim=15, dropout=0.,
-                                  activation_layer='sigmoid')
+                                  activation_layer='sigmoid'),
+
+    'siamese_batch': SiameseNetwork(input_dim=10, num_hidden_layers=4,
+                                  hidden_dim=10, type_init='orthogonal',
+                                  output_dim=15, dropout=0.,
+                                  activation_layer='relu', batch_norm=True)
     }
 
 losses = {
