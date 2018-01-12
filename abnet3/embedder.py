@@ -70,8 +70,7 @@ class EmbedderSiamese(EmbedderBuilder):
         print("Done loading input feature file")
 
         embeddings = []
-        for i, feat in enumerate(feats):
-            print("Loading feature %s" % i)
+        for feat in feats:
             feat_torch = Variable(torch.from_numpy(feat), volatile=True)
             if self.cuda:
                 feat_torch = feat_torch.cuda()
