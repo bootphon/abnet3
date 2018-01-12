@@ -108,7 +108,7 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
 
         embeddings_spk, embeddings_phn = [], []
         for feat in feats:
-            feat_torch = Variable(torch.from_numpy(feat))
+            feat_torch = Variable(torch.from_numpy(feat), volatile=True)
             if self.cuda:
                 feat_torch = feat_torch.cuda()
             emb_spk, emb_phn, _, _ = self.network(feat_torch, feat_torch)
