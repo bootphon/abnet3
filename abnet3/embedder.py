@@ -29,8 +29,10 @@ class EmbedderBuilder:
         If Gpu and Cuda are available
 
     """
-    def __init__(self, network, network_path=None, feature_path=None,
+    def __init__(self, network=None, network_path=None, feature_path=None,
                  output_path=None, cuda=True):
+        if network is None:
+            raise ValueError("network is None.")
         self.network = network
         self.network_path = network_path
         self.feature_path = feature_path
@@ -47,8 +49,8 @@ class EmbedderSiamese(EmbedderBuilder):
 
     """
 
-    def __init__(self, network, avg=True, *args, **kwargs):
-        super(EmbedderSiamese, self).__init__(network, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(EmbedderSiamese, self).__init__(*args, **kwargs)
 
     def embed(self):
         """ Embed method to embed features based on a saved network
@@ -87,7 +89,7 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
 
     """
 
-    def __init__(self, avg=True, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(EmbedderSiameseMultitask, self).__init__(*args, **kwargs)
 
     def embed(self):
