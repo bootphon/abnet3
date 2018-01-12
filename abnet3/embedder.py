@@ -47,8 +47,8 @@ class EmbedderSiamese(EmbedderBuilder):
 
     """
 
-    def __init__(self, avg=True, *args, **kwargs):
-        super(EmbedderSiamese, self).__init__(*args, **kwargs)
+    def __init__(self, network, avg=True, *args, **kwargs):
+        super(EmbedderSiamese, self).__init__(network, *args, **kwargs)
 
     def embed(self):
         """ Embed method to embed features based on a saved network
@@ -57,6 +57,7 @@ class EmbedderSiamese(EmbedderBuilder):
         if self.network_path is not None:
             self.network.load_network(self.network_path)
         self.network.eval()
+        print("Done loading network weights")
 
         with h5features.Reader(self.feature_path, 'features') as fh:
             features = fh.read()
@@ -64,10 +65,12 @@ class EmbedderSiamese(EmbedderBuilder):
         items = features.items()
         times = features.labels()
         feats = features.features()
+        print("Done loading input feature file")
 
         embeddings = []
-        for feat in feats:
-            feat_torch = Variable(torch.from_numpy(feat))
+        for i, feat in enumerate(feats):
+            print("Loading feature %s" % i)
+            feat_torch = Variable(torch.from_numpy(feat), volatile=True)
             if self.cuda:
                 feat_torch = feat_torch.cuda()
             emb, _ = self.network(feat_torch, feat_torch)
