@@ -11,7 +11,7 @@ correct format for the Neural Network.
 
 from abnet3.utils import normalize_distribution, cumulative_distribution
 from abnet3.utils import print_token, sample_searchidx
-from abnet3.utils import read_spkid_file, read_spk_list
+from abnet3.utils import read_spkid_file, read_spk_list, progress
 
 import numpy as np
 import os
@@ -362,7 +362,10 @@ class SamplerCluster(SamplerBuilder):
         nb_tok = len(std_descr['tokens'])
         speakers = std_descr['tokens_speaker']
         types = std_descr['tokens_type']
+        print_progress = progress(nb_tok, title="Generate possibilities")
+
         for tok1 in range(nb_tok):
+            print_progress(tok1)
             for tok2 in range(tok1+1, nb_tok):
                 spk_type = 'S' if speakers[tok1] == speakers[tok2] else 'D'
                 type_type = 'S' if types[tok1] == types[tok2] else 'D'
