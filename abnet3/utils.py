@@ -136,6 +136,18 @@ def get_dtw_alignment(feat1, feat2):
 
 
 def read_pairs(pair_file):
+    """
+
+    :param pair_file: path to the batch file containing word pairs
+    :return: dictionnary of the form
+    {
+        'same': [pairs]
+        'diff': [pairs]
+    }
+
+    where a pair is a tuple (file1, start1, end1, file2, start2, end2)
+
+    """
     with open(pair_file, 'r') as fh:
         lines = fh.readlines()
     pairs = {'same': [], 'diff': []}
