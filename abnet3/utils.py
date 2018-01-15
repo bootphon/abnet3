@@ -178,3 +178,21 @@ def read_feats(features_file, align_features_file=None):
         feats = align_features.dict_features()
         align_features = Features_Accessor(times, feats)
     return features, align_features, feat_dim
+
+
+def progress(max_number, every=0.1, title=""):
+    """
+    print progress of a process.
+    This function returns another function,
+    that has to be called at every iteration, and will print progress.
+
+    """
+    next_progress = 0
+
+    def print_progress(current_progress):
+        nonlocal next_progress
+        current = current_progress / max_number
+        if current >= next_progress:
+            print("Progress: {:.1f}% of process {}".format(next_progress*100, title))
+            next_progress += every
+    return print_progress
