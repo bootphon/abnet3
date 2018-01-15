@@ -204,10 +204,10 @@ class SamplerCluster(SamplerBuilder):
             tokens : the list of tokens
             token_types : cluster id for each token
             token_speaker : speaker_id for each token
-            types: size of each cluster
-            speakers: number of tokens for each speaker
-            speaker_types: number of clusters each speaker appears in
-            type_speakers: number of speakers in each cluster
+            types: {type : number of tokens}
+            speakers: { speaker : number of tokens}
+            speaker_types: { speaker: number of clusters the speaker appears in}
+            type_speakers: {type: number of speakers in the type (cluster)}
         }
         """
 
