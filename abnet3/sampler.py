@@ -332,8 +332,8 @@ class SamplerCluster(SamplerBuilder):
                             p_spk_types['Stype_Sspk'][(spk, type_idx)] = \
                                 spk_samp_func(W_spk_types[(spk, type_idx)])
                     else:
-                        min_idx = np.min([type_idx, type_jdx])
-                        max_idx = np.max([type_idx, type_jdx])
+                        min_idx = min(type_idx, type_jdx)
+                        max_idx = max(type_idx, type_jdx)
                         p_spk_types['Dtype_Sspk'][(spk, min_idx, max_idx)] = \
                             spk_samp_func(W_spk_types[(spk, type_idx)]) * \
                             spk_samp_func(W_spk_types[(spk, type_jdx)])
@@ -343,8 +343,8 @@ class SamplerCluster(SamplerBuilder):
                             spk_samp_func(W_spk_types[(spk, type_idx)]) * \
                             spk_samp_func(W_spk_types[(spk2, type_idx)])
                     else:
-                        min_idx = np.min([type_idx, type_jdx])
-                        max_idx = np.max([type_idx, type_jdx])
+                        min_idx = min(type_idx, type_jdx)
+                        max_idx = max(type_idx, type_jdx)
                         p_spk_types['Dtype_Dspk'][(spk, spk2,
                                                    min_idx, max_idx)] = \
                             spk_samp_func(W_spk_types[(spk, type_idx)]) * \
@@ -377,14 +377,14 @@ class SamplerCluster(SamplerBuilder):
                                          (speakers[tok1], speakers[tok2],
                                           types[tok1])].append((tok1, tok2))
                     if pair_type == 'Dtype_Sspk':
-                        min_idx = np.min([types[tok1], types[tok2]])
-                        max_idx = np.max([types[tok1], types[tok2]])
+                        min_idx = min([types[tok1], types[tok2]])
+                        max_idx = max([types[tok1], types[tok2]])
                         pairs[pair_type][
                                          (speakers[tok1], min_idx,
                                           max_idx)].append((tok1, tok2))
                     if pair_type == 'Dtype_Dspk':
-                        min_idx = np.min(types[tok1], types[tok2])
-                        max_idx = np.max([types[tok1], types[tok2]])
+                        min_idx = min(types[tok1], types[tok2])
+                        max_idx = max([types[tok1], types[tok2]])
                         pairs[pair_type][
                                          (speakers[tok1], speakers[tok2],
                                           min_idx, max_idx)
@@ -398,15 +398,15 @@ class SamplerCluster(SamplerBuilder):
                         pairs[pair_type][(speakers[tok1], speakers[tok2],
                                           types[tok1])] = [(tok1, tok2)]
                     if pair_type == 'Dtype_Sspk':
-                        min_idx = np.min([types[tok1], types[tok2]])
-                        max_idx = np.max([types[tok1], types[tok2]])
+                        min_idx = min([types[tok1], types[tok2]])
+                        max_idx = max([types[tok1], types[tok2]])
                         pairs[pair_type][
                                          (speakers[tok1], min_idx,
                                           max_idx)
                                           ] = [(tok1, tok2)]
                     if pair_type == 'Dtype_Dspk':
-                        min_idx = np.min([types[tok1], types[tok2]])
-                        max_idx = np.max([types[tok1], types[tok2]])
+                        min_idx = min([types[tok1], types[tok2]])
+                        max_idx = max([types[tok1], types[tok2]])
                         pairs[pair_type][
                                          (speakers[tok1], speakers[tok2],
                                           min_idx, max_idx)
