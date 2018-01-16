@@ -36,7 +36,7 @@ class TrainerBuilder:
                  feature_path=None,
                  num_epochs=200, patience=20, num_max_minibatches=1000,
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
-                 seed=0):
+                 seed=0, batch_size=8, randomize_dataset=False):
         # super(TrainerBuilder, self).__init__()
         self.sampler = sampler
         self.network = network
@@ -51,6 +51,9 @@ class TrainerBuilder:
         self.seed = seed
         self.cuda = cuda
         self.statistics_training = {}
+        self.batch_size = batch_size
+        self.randomize_dataset = randomize_dataset
+
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
                                   'RMSprop', 'LBFGS')
         if optimizer_type == 'sgd':
@@ -173,16 +176,21 @@ class TrainerSiamese(TrainerBuilder):
         assert type(self.sampler) == abnet3.sampler.SamplerClusterSiamese
         assert type(self.network) == abnet3.model.SiameseNetwork
 
-    def prepare_batch_from_pair_words(self, features, pairs_path,
+    def prepare_batch_from_pair_words(self, features, pairs,
                                       train_mode=True, seed=0):
         """Prepare a batch in Pytorch format based on a batch file
+        :param pairs
+        of the form
+            {
+                'same': [pairs],
+                'diff': [pairs]
+            }
 
         """
 
         # TODO should not be here, should be somewhere in the dataloader
         # TODO : Encapsulate X preparation in another function
         # TODO : Replace Numpy operation by Pytorch operation
-        pairs = read_pairs(pairs_path)
         token_feats = {}
         for f1, s1, e1, f2, s2, e2 in pairs['same']:
             token_feats[f1, s1, e1] = True
@@ -239,6 +247,8 @@ class TrainerSiamese(TrainerBuilder):
         X2 = torch.from_numpy(X2[ind, :])
         return X1, X2, y
 
+
+
     def get_batches(self, features, train_mode=True):
         """Build iteratior next batch from folder for a specific epoch
 
@@ -262,10 +272,47 @@ class TrainerSiamese(TrainerBuilder):
                   " iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
+            pairs = read_pairs(batches[idx])
             bacth_els = self.prepare_batch_from_pair_words(
-                    features, batches[idx], train_mode=train_mode)
-
+                    features, pairs , train_mode=train_mode)
             X_batch1, X_batch2, y_batch = map(Variable, bacth_els)
+            yield X_batch1, X_batch2, y_batch
+
+
+    def new_get_batches(self, features, train_mode=True):
+        """
+        This function iterates over all the batches for one epoch.
+
+        It can randomize all the samples.
+
+        """
+        if train_mode:
+            batch_dir = os.path.join(self.sampler.directory_output,
+                                     'train_pairs')
+        else:
+            batch_dir = os.path.join(self.sampler.directory_output,
+                                     'dev_pairs')
+        # read dataset
+        dataset = os.path.join(batch_dir, 'dataset')
+        pairs = read_dataset(dataset)
+        num_pairs = len(pairs)
+
+        num_batches = num_pairs // self.batch_size
+
+        # randomized the dataset
+        if self.randomize_dataset:
+            perm = np.random.permutation(range(num_pairs))
+        else:
+            perm = np.arange(num_pairs) # identity
+
+        # group with batch
+        for i in range(num_batches):
+            indexes = perm[i*self.batch_size:(i+1)*self.batch_size]
+            batch = [pairs[x] for x in indexes]
+            grouped_batch = group_pairs(batch)
+            torch_batch = self.prepare_batch_from_pair_words(
+                features, grouped_batch, train_mode=train_mode, seed=self.seed)
+            X_batch1, X_batch2, y_batch = map(Variable, torch_batch)
             yield X_batch1, X_batch2, y_batch
 
     def optimize_model(self, features, do_training=True):
