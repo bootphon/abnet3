@@ -536,7 +536,7 @@ class SamplerClusterSiamese(SamplerCluster):
                      p_spk_types,
                      cdf,
                      pairs,
-                     num_batches=5012):
+                     num_samples=5012):
 
         """Sampling proba modes for p_i1,i2,j1,j2
             It is based on Bayes rule:
@@ -561,7 +561,7 @@ class SamplerClusterSiamese(SamplerCluster):
                 dictionnary with the possible pairs
             seed : int
                 seed
-            num_batches : int
+            num_samples : int
                 number of pairs to compute
             ratio_same_diff_spk : float
                 float between 0 and 1, percentage of different speaker pairs
@@ -577,8 +577,8 @@ class SamplerClusterSiamese(SamplerCluster):
                           'Dtype_Sspk': [],
                           'Dtype_Dspk': []
                           }
-        num_same_spk = int((num_batches)*(1 - self.ratio_same_diff_spk))
-        num_diff_spk = num_batches - num_same_spk
+        num_same_spk = int((num_samples) * (1 - self.ratio_same_diff_spk))
+        num_diff_spk = num_samples - num_same_spk
         num_Stype_Sspk = int(num_same_spk*(1-self.ratio_same_diff_type))
         num_Dtype_Sspk = int(num_same_spk*(self.ratio_same_diff_type))
         num_Stype_Dspk = int(num_diff_spk*(1-self.ratio_same_diff_type))
@@ -632,7 +632,7 @@ class SamplerClusterSiamese(SamplerCluster):
         return sampled_tokens
 
     def write_tokens(self, descr=None, proba=None, cdf=None,
-                     pairs={}, batch_size=8, num_batches=0,
+                     pairs={}, batch_size=8, num_samples=0,
                      out_dir=None, seed=0):
         """Write tokens based on all different parameters and write the tokens
         in a batch.
@@ -641,7 +641,7 @@ class SamplerClusterSiamese(SamplerCluster):
         lines = []
         np.random.seed(seed)
         sampled_batch = self.sample_batch(proba, cdf, pairs,
-                                          num_batches=num_batches)
+                                          num_samples=num_samples)
         for config in sampled_batch.keys():
             if config == 'Stype_Sspk':
                 pair_type = 'same'
@@ -670,7 +670,7 @@ class SamplerClusterSiamese(SamplerCluster):
 
         np.random.shuffle(lines)
         # prev_idx = 0
-        for idx in range(1, int(num_batches//batch_size)):
+        for idx in range(1, int(num_samples // batch_size)):
             with open(os.path.join(out_dir, 'pair_' +
                       str(idx)+'.batch'), 'w') as fh:
                     fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
@@ -695,11 +695,11 @@ class SamplerClusterSiamese(SamplerCluster):
         # Number of possible pairs in the smallest count
         # of different words for a speaker
         num = np.min(list(descr['speakers'].values()))
-        num_batches = num*(num-1)/2
+        num_samples = num*(num-1)/2
         idx_batch = 0
         self.write_tokens(descr=descr, proba=proba, cdf=cdf,
                           pairs=pairs, batch_size=self.batch_size,
-                          num_batches=num_batches, out_dir=out_dir, seed=seed)
+                          num_samples=num_samples, out_dir=out_dir, seed=seed)
 
     def sample(self):
         """
