@@ -244,7 +244,15 @@ class SamplerCluster(SamplerBuilder):
         return std_descr
 
     def type_sample_p(self, std_descr,  type_sampling_mode='log'):
-        """Sampling proba modes for the types:
+        """
+        This function creates the probability matrix for sampling
+        a specific cluster.
+
+        For same type, the proba is P(type)
+        For different type, the proba is P(type1, type2) = P(type1) * P(type2)
+
+
+        Sampling proba modes for the types:
             - 1 : equiprobable
             - f2 : proportional to type probabilities
             - f : proportional to square root of type probabilities
@@ -288,7 +296,17 @@ class SamplerCluster(SamplerBuilder):
         return p_types
 
     def sample_spk_p(self, std_descr, spk_sampling_mode='log'):
-        """Sampling proba modes for the speakers conditionned by the drawn type(s)
+        """
+        This function creates the probability matrix for sampling speakers.
+
+        We have 4 different matrices:
+        Same Type / Same Speaker : P(speaker | type)
+        Same Type / Different Speaker : P(speaker1, speaker2 | type)
+        Different Type / Same Speaker : P(speaker | type1, type2)
+        Different Type / Different Speaker : P(speaker1, speaker2 | type1, type2)
+
+
+        Sampling proba modes for the speakers conditionned by the drawn type(s)
             - 1 : equiprobable
             - f2 : proportional to type probabilities
             - f : proportional to square root of type probabilities
@@ -352,7 +370,8 @@ class SamplerCluster(SamplerBuilder):
         return p_spk_types
 
     def generate_possibilities(self, std_descr):
-        """Generate possibilities between (types,speakers) and tokens/realisations
+        """
+        Generate possibilities between (types,speakers) and tokens/realisations
 
         """
         pairs = {'Stype_Sspk': {},
@@ -418,7 +437,19 @@ class SamplerCluster(SamplerBuilder):
 
     def type_speaker_sampling_p(self, std_descr=None,
                                 type_sampling_mode='f', spk_sampling_mode='f'):
-        """Sampling proba modes for p_i1,i2,j1,j2
+        """
+        This function generates the final probability matrix
+        P(type, speaker)
+        We have 4 different matrices :
+        St, Ss : P(type, speaker)
+        St, Ds : P(type, sp1, sp2)
+        Dt, Ss : P(t1, t2, s)
+        Dt, Ds : P(t1, t2, s1, s2)
+
+        This is computed using bayes rules :
+        P(type, speaker) = P(type) * P(speaker | type)
+
+        Sampling proba modes for p_i1,i2,j1,j2
             It is based on Bayes rule:
                 - log : proporitonal to log of speaker or type probabilities
                 - f : proportional to square roots of speaker
