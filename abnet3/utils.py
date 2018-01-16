@@ -186,6 +186,14 @@ def progress(max_number, every=0.1, title=""):
     This function returns another function,
     that has to be called at every iteration, and will print progress.
 
+    # Usage:
+
+    print_progress = progress(100, title="my process")
+
+    for i in range(100):
+        do_stuff()
+        print_progress(i) # this will print progression every time
+                          # we reach 10% more (default)
     """
     next_progress = 0
 
