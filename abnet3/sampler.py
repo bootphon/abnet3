@@ -91,6 +91,7 @@ class SamplerCluster(SamplerBuilder):
                  type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
                  max_num_clusters=None,
+                 save_batch=True,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -102,6 +103,7 @@ class SamplerCluster(SamplerBuilder):
         self.spk_list_file = spk_list_file
         self.spkid_file = spkid_file
         self.max_num_clusters = max_num_clusters
+        self.save_batch = save_batch
 
     def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
@@ -670,10 +672,15 @@ class SamplerClusterSiamese(SamplerCluster):
 
         np.random.shuffle(lines)
         # prev_idx = 0
-        for idx in range(1, int(num_samples // batch_size)):
-            with open(os.path.join(out_dir, 'pair_' +
-                      str(idx)+'.batch'), 'w') as fh:
-                    fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
+
+        if self.save_batch:
+            for idx in range(1, int(num_samples // batch_size)):
+                with open(os.path.join(out_dir, 'pair_' +
+                          str(idx)+'.batch'), 'w') as fh:
+                        fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
+        else:
+            with open(os.path.join(out_dir, 'dataset'), 'w') as fh:
+                fh.writelines(lines)
 
     def export_pairs(self, out_dir=None,
                      descr=None, type_sampling_mode='',
