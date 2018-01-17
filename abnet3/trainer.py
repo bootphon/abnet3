@@ -251,6 +251,11 @@ class TrainerSiamese(TrainerBuilder):
 
     def get_batches(self, features, train_mode=True):
         """Build iteratior next batch from folder for a specific epoch
+        This function can be used when the batches were already created
+        by the sampler.
+
+        If you use the sampler that didn't create batches, use the
+        new_get_batches function
 
         """
 
@@ -278,13 +283,13 @@ class TrainerSiamese(TrainerBuilder):
             X_batch1, X_batch2, y_batch = map(Variable, bacth_els)
             yield X_batch1, X_batch2, y_batch
 
-
     def create_batches_from_dataset(self, train_mode=True):
         """
-        This function iterates over all the batches for one epoch.
+        This function will create batches for the whole dataset
+        that was sampled by the sampler.
+        Use it only if the sampler didn't create batches.
 
-        It can randomize all the samples.
-
+        It will randomize all your dataset before creating batches
         """
         if train_mode:
             batch_dir = os.path.join(self.sampler.directory_output,
