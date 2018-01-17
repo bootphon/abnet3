@@ -321,7 +321,7 @@ class TrainerSiamese(TrainerBuilder):
         return batches
 
     def new_get_batches(self, features, train_mode=True):
-        batches = self.get_batches(train_mode=train_mode)
+        batches = self.get_batches(features, train_mode=train_mode)
         for batch in batches:
             torch_batch = self.prepare_batch_from_pair_words(
                 features, batch, train_mode=train_mode, seed=self.seed)
