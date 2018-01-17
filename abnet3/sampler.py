@@ -340,7 +340,11 @@ class SamplerCluster(SamplerBuilder):
         if spk_sampling_mode == 'log':
             def spk_samp_func(x): return np.log(1+x)
 
+        print_progress = progress(len(W_spk_types.keys()), every=0.01, title="Generate speaker probas")
+        i = 0
         for (spk, type_idx) in W_spk_types.keys():
+            print_progress(i)
+            i += 1
             for (spk2, type_jdx) in W_spk_types.keys():
                 if spk == spk2:
                     if type_idx == type_jdx:
@@ -487,7 +491,11 @@ class SamplerCluster(SamplerBuilder):
         for config in p_spk_types.keys():
             p_spk_types[config] = normalize_distribution(p_spk_types[config])
 
+        print_progress = progress(len(p_spk_types.keys()), every=0.01, title="Generate type-speaker probas")
+        i = 0
         for config in p_spk_types.keys():
+            print_progress(i)
+            i += 1
             if config == 'Stype_Sspk':
                 for el in p_spk_types[config].keys():
                     p_spk_types[config][el] = p_types['Stype'][el[1]] * \
