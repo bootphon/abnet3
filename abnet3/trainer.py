@@ -279,7 +279,7 @@ class TrainerSiamese(TrainerBuilder):
             yield X_batch1, X_batch2, y_batch
 
 
-    def new_get_batches(self, features, train_mode=True):
+    def create_batches_from_dataset(self, train_mode=True):
         """
         This function iterates over all the batches for one epoch.
 
@@ -296,7 +296,7 @@ class TrainerSiamese(TrainerBuilder):
         dataset = os.path.join(batch_dir, 'dataset')
         pairs = read_dataset(dataset)
         num_pairs = len(pairs)
-
+        print("We have in total %s pairs" % num_pairs)
         num_batches = num_pairs // self.batch_size
 
         # randomized the dataset
@@ -305,13 +305,20 @@ class TrainerSiamese(TrainerBuilder):
         else:
             perm = np.arange(num_pairs) # identity
 
+        batches = []
         # group with batch
         for i in range(num_batches):
             indexes = perm[i*self.batch_size:(i+1)*self.batch_size]
             batch = [pairs[x] for x in indexes]
             grouped_batch = group_pairs(batch)
+            batches.append(grouped_batch)
+        return batches
+
+    def new_get_batches(self, features, train_mode=True):
+        batches = self.get_batches(train_mode=train_mode)
+        for batch in batches:
             torch_batch = self.prepare_batch_from_pair_words(
-                features, grouped_batch, train_mode=train_mode, seed=self.seed)
+                features, batch, train_mode=train_mode, seed=self.seed)
             X_batch1, X_batch2, y_batch = map(Variable, torch_batch)
             yield X_batch1, X_batch2, y_batch
 
