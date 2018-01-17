@@ -36,7 +36,7 @@ class TrainerBuilder:
                  feature_path=None,
                  num_epochs=200, patience=20, num_max_minibatches=1000,
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
-                 seed=0, batch_size=8, randomize_dataset=False):
+                 seed=0, batch_size=8, create_batches=False, randomize_dataset=True):
         # super(TrainerBuilder, self).__init__()
         self.sampler = sampler
         self.network = network
@@ -52,6 +52,7 @@ class TrainerBuilder:
         self.cuda = cuda
         self.statistics_training = {}
         self.batch_size = batch_size
+        self.create_batches = create_batches
         self.randomize_dataset = randomize_dataset
 
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
@@ -334,7 +335,13 @@ class TrainerSiamese(TrainerBuilder):
         train_loss = 0.0
         dev_loss = 0.0
         self.network.train()
-        for minibatch in self.get_batches(features, train_mode=True):
+
+        if self.create_batches:
+            batch_iterator = self.new_get_batches
+        else:
+            batch_iterator = self.get_batches
+
+        for minibatch in batch_iterator(features, train_mode=True):
             X_batch1, X_batch2, y_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
@@ -352,7 +359,7 @@ class TrainerSiamese(TrainerBuilder):
             train_loss += train_loss_value.data[0]
 
         self.network.eval()
-        for minibatch in self.get_batches(features, train_mode=False):
+        for minibatch in batch_iterator(features, train_mode=False):
             X_batch1, X_batch2, y_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
