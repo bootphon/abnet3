@@ -103,7 +103,7 @@ class SiameseNetwork(NetworkBuilder):
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None,
                  output_dim=None, p_dropout=0.1, batch_norm=False,
                  type_init='xavier_uni', activation_layer=None,
-                 output_path=None, *args, **kwargs):
+                 output_path=None):
         super(SiameseNetwork, self).__init__()
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
@@ -228,7 +228,7 @@ class SiameseMultitaskNetwork(NetworkBuilder):
                  hidden_dim=None,
                  output_dim=None, p_dropout=0.1, batch_norm=False,
                  type_init='xavier_uni', activation_layer=None,
-                 output_path=None, *args, **kwargs):
+                 output_path=None):
         super(SiameseMultitaskNetwork, self).__init__()
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
