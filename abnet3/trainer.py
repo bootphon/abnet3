@@ -178,7 +178,7 @@ class TrainerSiamese(TrainerBuilder):
         assert type(self.network) == abnet3.model.SiameseNetwork
 
     def prepare_batch_from_pair_words(self, features, pairs,
-                                      train_mode=True, seed=0):
+                                      train_mode=True, seed=0, gpu=True):
         """Prepare a batch in Pytorch format based on a batch file
         :param pairs
         of the form
@@ -240,6 +240,8 @@ class TrainerSiamese(TrainerBuilder):
 
         # concatenate all features
         X1, X2, y = np.vstack(X1), np.vstack(X2), np.concatenate(y)
+        if not gpu:
+            return X1, X2, y
         np.random.seed(seed)
         n_pairs = len(y)
         ind = np.random.permutation(n_pairs)
@@ -284,13 +286,14 @@ class TrainerSiamese(TrainerBuilder):
             X_batch1, X_batch2, y_batch = map(Variable, bacth_els)
             yield X_batch1, X_batch2, y_batch
 
-    def create_batches_from_dataset(self, train_mode=True):
+    def new_get_batches(self, features, train_mode=True):
         """
-        This function will create batches for the whole dataset
+        This function is an iterator that will create batches for the whole dataset
         that was sampled by the sampler.
         Use it only if the sampler didn't create batches.
 
-        It will randomize all your dataset before creating batches
+        It will randomize all your dataset before creating batches.
+
         """
         if train_mode:
             batch_dir = os.path.join(self.sampler.directory_output,
@@ -300,32 +303,36 @@ class TrainerSiamese(TrainerBuilder):
                                      'dev_pairs')
         # read dataset
         dataset = os.path.join(batch_dir, 'dataset')
-        pairs = read_dataset(dataset)
-        num_pairs = len(pairs)
-        num_batches = num_pairs // self.batch_size
+        pairs = read_pairs(dataset)
+
+        X1, X2, y = self.prepare_batch_from_pair_words(features, pairs, train_mode=train_mode, gpu=False)
+
+        num_pair_tokens = len(X1)
+        num_batches = num_pair_tokens // self.batch_size
+
+        if num_batches == 0: num_batches = 1
 
         # randomized the dataset
         if self.randomize_dataset:
-            perm = np.random.permutation(range(num_pairs))
+            perm = np.random.permutation(range(len(X1)))
         else:
-            perm = np.arange(num_pairs) # identity
+            perm = np.arange(num_pair_tokens)  # identity
+        X1 = X1[perm, :]
+        X2 = X2[perm, :]
+        y = y[perm]
 
-        batches = []
-        # group with batch
-        for i in range(num_batches):
-            indexes = perm[i*self.batch_size:(i+1)*self.batch_size]
-            batch = [pairs[x] for x in indexes]
-            grouped_batch = group_pairs(batch)
-            batches.append(grouped_batch)
-        return batches
+        # make batch
+        x1_batches = np.array_split(X1, num_batches, axis=0)
+        x2_batches = np.array_split(X2, num_batches, axis=0)
+        y_batches = np.array_split(y, num_batches, axis=0)
+        assert len(x1_batches) == len(x2_batches) == len(y_batches), "Number of batches does not correspond"
 
-    def new_get_batches(self, features, train_mode=True):
-        batches = self.create_batches_from_dataset(train_mode=train_mode)
-        for batch in batches:
-            torch_batch = self.prepare_batch_from_pair_words(
-                features, batch, train_mode=train_mode, seed=self.seed)
-            X_batch1, X_batch2, y_batch = map(Variable, torch_batch)
-            yield X_batch1, X_batch2, y_batch
+        # iterate
+        for i in range(len(x1_batches)):
+            X1_cuda = Variable(torch.from_numpy(x1_batches[i]))
+            X2_cuda = Variable(torch.from_numpy(x2_batches[i]))
+            y_cuda = Variable(torch.from_numpy(y_batches[i]))
+            yield X1_cuda, X2_cuda, y_cuda
 
     def optimize_model(self, features, do_training=True):
         """Optimization model step for the Siamese network.
