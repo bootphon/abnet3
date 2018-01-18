@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 import os
+from collections import defaultdict
 
 from abnet3.utils import get_dtw_alignment, \
     Parse_Dataset, read_pairs, read_feats, read_spkid_file
@@ -48,7 +49,7 @@ class DataLoaderFromBatches(DataLoader):
         """
         self.pairs_path = pairs_path
         self.features_path = features_path
-        self.statistics_training = {}
+        self.statistics_training = defaultdict(int) # dict with default value 0
         self.seed = seed
         self.num_max_minibatches = num_max_minibatches
         self.features = None
@@ -80,26 +81,26 @@ class DataLoaderFromBatches(DataLoader):
             features, align_features, feat_dim = read_feats(self.features_path)
             self.features = features
 
-    def load_batch_frames(self, pairs):
-
-        """Prepare a batch in numpy format
-        :param pairs
-        of the form
-            { 'same': [pairs], 'diff': [pairs] }
+    def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
+        """Prepare a batch in Pytorch format based on a batch file
+        :param pairs: list of pairs under the form {'same': [pairs], 'diff': [pairs] }
+        :param seed: randomness
+        :param fid2spk:
+            if None, will return X1, X2, y_phones
+            If it is the spkid mapping, will return X1, X2, y_phones, y_speaker
         """
 
+        # f are filenames, s are start times, e are end times
         token_feats = {}
         for f1, s1, e1, f2, s2, e2 in pairs['same']:
-            token_feats[f1, s1, e1] = True
-            token_feats[f2, s2, e2] = True
+            token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
+            token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
         for f1, s1, e1, f2, s2, e2 in pairs['diff']:
-            token_feats[f1, s1, e1] = True
-            token_feats[f2, s2, e2] = True
-        # 2. fill in features
-        for f, s, e in token_feats:
-            token_feats[f, s, e] = self.features.get(f, s, e)
-        # 3. align features for each pair
-        X1, X2, y = [], [], []
+            token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
+            token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
+
+        # 2. align features for each pair
+        X1, X2, y_phn, y_spk = [], [], [], []
         # get features for each same pair based on DTW alignment paths
         for f1, s1, e1, f2, s2, e2 in pairs['same']:
             if (s1 > e1) or (s2 > e2):
@@ -108,16 +109,23 @@ class DataLoaderFromBatches(DataLoader):
             feat2 = token_feats[f2, s2, e2]
             try:
                 path1, path2 = get_dtw_alignment(feat1, feat2)
-            except Exception as e:
+            except e:
                 continue
-            try:
-                self.statistics_training['SameType'] += 1
-            except Exception as e:
-                self.statistics_training['SameType'] = 1
+
+            self.statistics_training['SameType'] += 1
+
+            if fid2spk:
+                spk1, spk2 = fid2spk[f1], fid2spk[f2]
+                if spk1 is spk2:
+                    y_spk.append(np.ones(len(path1)))
+                    self.statistics_training['SameTypeSameSpk'] += 1
+                else:
+                    y_spk.append(-1 * np.ones(len(path1)))
+                    self.statistics_training['SameTypeDiffSpk'] += 1
 
             X1.append(feat1[path1, :])
             X2.append(feat2[path2, :])
-            y.append(np.ones(len(path1)))
+            y_phn.append(np.ones(len(path1)))
 
         for f1, s1, e1, f2, s2, e2 in pairs['diff']:
             if (s1 > e1) or (s2 > e2):
@@ -128,23 +136,37 @@ class DataLoaderFromBatches(DataLoader):
             n2 = feat2.shape[0]
             X1.append(feat1[:min(n1, n2), :])
             X2.append(feat2[:min(n1, n2), :])
-            y.append(-1 * np.ones(min(n1, n2)))
-            try:
-                self.statistics_training['DiffType'] += 1
-            except Exception as e:
-                self.statistics_training['DiffType'] = 1
+            y_phn.append(-1 * np.ones(min(n1, n2)))
+
+            self.statistics_training['DiffType'] += 1
+
+            if fid2spk:
+                spk1, spk2 = fid2spk[f1], fid2spk[f2]
+                if spk1 is spk2:
+                    y_spk.append(np.ones(min(n1, n2)))
+                    self.statistics_training['DiffTypeSameSpk'] += 1
+                else:
+                    y_spk.append(-1 * np.ones(min(n1, n2)))
+                    self.statistics_training['DiffTypeDiffSpk'] += 1
+
+        if fid2spk:
+            assert len(y_phn) == len(y_spk), 'not same number of labels...'
 
         # concatenate all features
-        X1, X2, y = np.vstack(X1), np.vstack(X2), np.concatenate(y)
+        X1, X2, y_phn = np.vstack(X1), np.vstack(X2),  np.concatenate(y_phn)
+        np.random.seed(seed)
+        n_pairs = len(y_phn)
 
-        # randomize the batch
-        n_pairs = len(y)
-        np.random.seed(self.seed)
         ind = np.random.permutation(n_pairs)
         X1 = X1[ind, :]
         X2 = X2[ind, :]
-        y = y[ind]
-        return X1, X2, y
+        y_phn = y_phn[ind]
+
+        if fid2spk:
+            y_spk = np.concatenate(y_spk)[ind]
+            return X1, X2, y_spk, y_phn
+
+        return X1, X2, y_phn
 
     def batch_iterator(self, train_mode=True):
         """Build iteratior next batch from folder for a specific epoch
@@ -153,6 +175,7 @@ class DataLoaderFromBatches(DataLoader):
 
         If you use the sampler that didn't create batches, use the
         new_get_batches function
+        Returns batches of the form (X1, X2, y)
 
         """
         if train_mode:
@@ -177,7 +200,7 @@ class DataLoaderFromBatches(DataLoader):
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
             pairs = read_pairs(batches[idx])
-            batch_els = self.load_batch_frames(pairs)
+            batch_els = self.load_frames_from_pairs(pairs)
             batch_els = map(torch.from_numpy, batch_els)
             X_batch1, X_batch2, y_batch = map(Variable, batch_els)
             yield X_batch1, X_batch2, y_batch
@@ -206,6 +229,8 @@ class FramesDataLoader(DataLoaderFromBatches):
         Use it only if the sampler didn't create batches.
 
         It will randomize all your dataset before creating batches.
+        Returns batches of the form (X1, X2, y)
+
 
         """
         if train_mode:
@@ -261,91 +286,9 @@ class MultiTaskDataLoader(FramesDataLoader):
         super().__init__(pairs_path, features_path)
         self.fid2spk_file = fid2spk_file
 
-    def prepare_batch_from_pair_words(self, features, pairs_path,
-                                      seed=0, fid2spk=None):
-        """Prepare a batch in Pytorch format based on a batch file
-
-        """
-        # f are filenames, s are start times, e are end times
-        pairs = read_pairs(pairs_path)
-        token_feats = {}
-        for f1, s1, e1, f2, s2, e2 in pairs['same']:
-            token_feats[f1, s1, e1] = True
-            token_feats[f2, s2, e2] = True
-        for f1, s1, e1, f2, s2, e2 in pairs['diff']:
-            token_feats[f1, s1, e1] = True
-            token_feats[f2, s2, e2] = True
-        # 2. fill in features
-        for f, s, e in token_feats:
-            token_feats[f, s, e] = features.get(f, s, e)
-        # 3. align features for each pair
-        X1, X2, y_phn, y_spk = [], [], [], []
-        # get features for each same pair based on DTW alignment paths
-        for f1, s1, e1, f2, s2, e2 in pairs['same']:
-            if (s1 > e1) or (s2 > e2):
-                continue
-            feat1 = token_feats[f1, s1, e1]
-            feat2 = token_feats[f2, s2, e2]
-            try:
-                path1, path2 = get_dtw_alignment(feat1, feat2)
-            except e:
-                continue
-            spk1, spk2 = fid2spk[f1], fid2spk[f2]
-            if spk1 is spk2:
-                y_spk.append(np.ones(len(path1)))
-                try:
-                    self.statistics_training['SameTypeSameSpk'] += 1
-                except Exception as e:
-                    self.statistics_training['SameTypeSameSpk'] = 1
-            else:
-                y_spk.append(-1 * np.ones(len(path1)))
-                try:
-                    self.statistics_training['SameTypeDiffSpk'] += 1
-                except Exception as e:
-                    self.statistics_training['SameTypeDiffSpk'] = 1
-            X1.append(feat1[path1, :])
-            X2.append(feat2[path2, :])
-            y_phn.append(np.ones(len(path1)))
-
-        for f1, s1, e1, f2, s2, e2 in pairs['diff']:
-            if (s1 > e1) or (s2 > e2):
-                continue
-            feat1 = token_feats[f1, s1, e1]
-            feat2 = token_feats[f2, s2, e2]
-            n1 = feat1.shape[0]
-            n2 = feat2.shape[0]
-            X1.append(feat1[:min(n1, n2), :])
-            X2.append(feat2[:min(n1, n2), :])
-            y_phn.append(-1 * np.ones(min(n1, n2)))
-            spk1, spk2 = fid2spk[f1], fid2spk[f2]
-            if spk1 is spk2:
-                y_spk.append(np.ones(min(n1, n2)))
-                try:
-                    self.statistics_training['DiffTypeSameSpk'] += 1
-                except Exception as e:
-                    self.statistics_training['DiffTypeSameSpk'] = 1
-            else:
-                y_spk.append(-1 * np.ones(min(n1, n2)))
-                try:
-                    self.statistics_training['DiffTypeDiffSpk'] += 1
-                except Exception as e:
-                    self.statistics_training['DiffTypeDiffSpk'] = 1
-
-        # concatenate all features
-        X1, X2 = np.vstack(X1), np.vstack(X2)
-        y_phn, y_spk = np.concatenate(y_phn), np.concatenate(y_spk)
-        np.random.seed(seed)
-        assert len(y_phn) == len(y_spk), 'not same number of labels...'
-        n_pairs = len(y_phn)
-        ind = np.random.permutation(n_pairs)
-        y_phn = torch.from_numpy(y_phn[ind])
-        y_spk = torch.from_numpy(y_spk[ind])
-        X1 = torch.from_numpy(X1[ind, :])
-        X2 = torch.from_numpy(X2[ind, :])
-        return X1, X2, y_spk, y_phn
-
     def batch_iterator(self, train_mode=True):
         """Build iteratior next batch from folder for a specific epoch
+        Returns batches of the form (X1, X2, y_spk, y_phn)
 
         """
 
@@ -371,10 +314,11 @@ class MultiTaskDataLoader(FramesDataLoader):
                   " iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
-            bacth_els = self.prepare_batch_from_pair_words(
-                self.features, batches[idx],
+            pairs = read_pairs(batches[idx])
+            batch_els = self.load_frames_from_pairs(
+                pairs,
                 fid2spk=fid2spk)
-
+            batch_els = map(torch.from_numpy, batch_els)
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = map(Variable,
-                                                               bacth_els)
+                                                               batch_els)
             yield X_batch1, X_batch2, y_spk_batch, y_phn_batch
