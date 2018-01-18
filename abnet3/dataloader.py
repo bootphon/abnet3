@@ -31,6 +31,12 @@ class DataLoader:
 
 
 class DataLoaderFromBatches(DataLoader):
+    """
+    Original method to load data.
+    It loads the batches of tokens created by the sampler,
+    create the frame pairs, and shuffles inside the batches.
+
+    """
 
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000, seed=None):
         """
@@ -140,10 +146,6 @@ class DataLoaderFromBatches(DataLoader):
         y = y[ind]
         return X1, X2, y
 
-    def batch_to_torch(self, batch):
-        X1, X2, y = map(torch.from_numpy, batch)
-        return X1, X2, y
-
     def batch_iterator(self, train_mode=True):
         """Build iteratior next batch from folder for a specific epoch
         This function can be used when the batches were already created
@@ -176,7 +178,7 @@ class DataLoaderFromBatches(DataLoader):
         for idx in selected_batches:
             pairs = read_pairs(batches[idx])
             batch_els = self.load_batch_frames(pairs)
-            batch_els = self.batch_to_torch(batch_els)
+            batch_els = map(torch.from_numpy, batch_els)
             X_batch1, X_batch2, y_batch = map(Variable, batch_els)
             yield X_batch1, X_batch2, y_batch
 
@@ -260,7 +262,7 @@ class MultiTaskDataLoader(FramesDataLoader):
         self.fid2spk_file = fid2spk_file
 
     def prepare_batch_from_pair_words(self, features, pairs_path,
-                                      train_mode=True, seed=0, fid2spk=None):
+                                      seed=0, fid2spk=None):
         """Prepare a batch in Pytorch format based on a batch file
 
         """
@@ -370,7 +372,7 @@ class MultiTaskDataLoader(FramesDataLoader):
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
             bacth_els = self.prepare_batch_from_pair_words(
-                self.features, batches[idx], train_mode=train_mode,
+                self.features, batches[idx],
                 fid2spk=fid2spk)
 
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = map(Variable,
