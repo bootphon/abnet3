@@ -366,14 +366,14 @@ class SiameseMultitaskNetwork(NetworkBuilder):
 
 if __name__ == '__main__':
     sia = SiameseNetwork(input_dim=3, num_hidden_layers=2, hidden_dim=10,
-                         output_dim=19, dropout=0.1,
+                         output_dim=19, p_dropout=0.1,
                          activation_layer='relu',
                          batch_norm=True)
     siaMulti = SiameseMultitaskNetwork(input_dim=3, num_hidden_layers_shared=2,
                                        num_hidden_layers_phn=1,
                                        num_hidden_layers_spk=1,
                                        hidden_dim=10,
-                                       output_dim=19, dropout=0.1,
+                                       output_dim=19, p_dropout=0.1,
                                        activation_layer='relu',
                                        batch_norm=True)
     sia.apply(sia.init_weight_method)
