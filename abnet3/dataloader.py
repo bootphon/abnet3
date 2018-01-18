@@ -342,7 +342,7 @@ class MultiTaskDataLoader(FramesDataLoader):
         X2 = torch.from_numpy(X2[ind, :])
         return X1, X2, y_spk, y_phn
 
-    def get_batches(self, train_mode=True):
+    def batch_iterator(self, train_mode=True):
         """Build iteratior next batch from folder for a specific epoch
 
         """
