@@ -202,5 +202,5 @@ def progress(max_number, every=0.1, title=""):
         current = current_progress / max_number
         if current >= next_progress:
             print("Progress: {:.1f}% of process {}".format(next_progress*100, title))
-            next_progress += every
+            next_progress = (current // every) * every + every
     return print_progress
