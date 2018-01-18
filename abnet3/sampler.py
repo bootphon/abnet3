@@ -93,7 +93,7 @@ class SamplerCluster(SamplerBuilder):
                  type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
                  max_num_clusters=None,
-                 create_batches=True,
+                 sample_batches=True,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -105,7 +105,7 @@ class SamplerCluster(SamplerBuilder):
         self.spk_list_file = spk_list_file
         self.spkid_file = spkid_file
         self.max_num_clusters = max_num_clusters
-        self.create_batches = create_batches
+        self.sample_batches = sample_batches
 
     def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
@@ -683,7 +683,7 @@ class SamplerClusterSiamese(SamplerCluster):
         np.random.shuffle(lines)
         # prev_idx = 0
 
-        if self.create_batches:
+        if self.sample_batches:
             for idx in range(1, int(num_samples // batch_size)):
                 with open(os.path.join(out_dir, 'pair_' +
                           str(idx)+'.batch'), 'w') as fh:
