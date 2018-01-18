@@ -84,6 +84,8 @@ class SamplerCluster(SamplerBuilder):
         function applied to the observed type frequencies
     spk_sampling_mode : String
         function applied to the observed speaker frequencies
+    create_batches: bool
+        If you want the sampler to save one file for each dataset, or multiple batches
 
     """
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.75,
@@ -91,6 +93,7 @@ class SamplerCluster(SamplerBuilder):
                  type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
                  max_num_clusters=None,
+                 create_batches=True,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -102,6 +105,7 @@ class SamplerCluster(SamplerBuilder):
         self.spk_list_file = spk_list_file
         self.spkid_file = spkid_file
         self.max_num_clusters = max_num_clusters
+        self.create_batches = create_batches
 
     def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
@@ -678,10 +682,15 @@ class SamplerClusterSiamese(SamplerCluster):
 
         np.random.shuffle(lines)
         # prev_idx = 0
-        for idx in range(1, int(num_samples // batch_size)):
-            with open(os.path.join(out_dir, 'pair_' +
-                      str(idx)+'.batch'), 'w') as fh:
-                    fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
+
+        if self.create_batches:
+            for idx in range(1, int(num_samples // batch_size)):
+                with open(os.path.join(out_dir, 'pair_' +
+                          str(idx)+'.batch'), 'w') as fh:
+                        fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
+        else:
+            with open(os.path.join(out_dir, 'dataset'), 'w') as fh:
+                fh.writelines(lines)
 
     def export_pairs(self, out_dir=None,
                      descr=None, type_sampling_mode='',
