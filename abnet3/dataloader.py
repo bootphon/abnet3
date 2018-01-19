@@ -28,7 +28,7 @@ class DataLoader:
         This function returns an iterator over all the batches of data
         :returns iterator
         """
-        raise NotImplemented()
+        raise NotImplemented("You must implement batch iterator in DataLoader class.")
 
 
 class DataLoaderFromBatches(DataLoader):
@@ -246,7 +246,7 @@ class FramesDataLoader(DataLoaderFromBatches):
         # read all features
         self.load_features()
 
-        X1, X2, y = self.load_batch_frames(pairs)
+        X1, X2, y = self.load_frames_from_pairs(pairs)
 
         num_pair_tokens = len(X1)
         num_batches = num_pair_tokens // self.batch_size
