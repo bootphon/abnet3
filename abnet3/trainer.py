@@ -80,7 +80,9 @@ class TrainerBuilder:
         return {'params': self.__dict__,
                 'network': self.network.whoami(),
                 'loss': self.loss.whoami(),
-                'class_name': self.__class__.__name__}
+                'class_name': self.__class__.__name__,
+                'dataloader': self.dataloader.whoami()
+                }
 
     def save_whoami(self):
         pickle.dump(self.whoami(),

@@ -30,6 +30,8 @@ class DataLoader:
         """
         raise NotImplemented("You must implement batch iterator in DataLoader class.")
 
+    def whoami(self):
+        raise NotImplemented("You must implement whoami in DataLoader class")
 
 class DataLoaderFromBatches(DataLoader):
     """
@@ -72,6 +74,12 @@ class DataLoaderFromBatches(DataLoader):
         self.num_max_minibatches = state
 
         self.load_features()
+
+    def whoami(self):
+        return {
+            'params': self.__getstate__(),
+            'class_name': self.__class__.__name__
+        }
 
     def load_features(self):
         """
