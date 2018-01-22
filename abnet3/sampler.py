@@ -94,7 +94,7 @@ class SamplerCluster(SamplerBuilder):
                  std_file=None, spk_list_file=None, spkid_file=None,
                  max_num_clusters=None,
                  sample_batches=True,
-                 num_samples=None,
+                 num_total_sampled_pairs=None,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -107,7 +107,7 @@ class SamplerCluster(SamplerBuilder):
         self.spkid_file = spkid_file
         self.max_num_clusters = max_num_clusters
         self.sample_batches = sample_batches
-        self.num_samples = num_samples
+        self.num_total_sampled_pairs = num_total_sampled_pairs
 
     def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
@@ -790,8 +790,8 @@ class SamplerClusterSiamese(SamplerCluster):
         train_pairs_dir = os.path.join(self.directory_output, 'train_pairs')
         os.makedirs(os.path.join(self.directory_output, 'train_pairs'))
 
-        num_samples_train = int(self.num_samples * self.ratio_train_dev)
-        num_samples_dev = self.num_samples - num_samples_train
+        num_samples_train = int(self.num_total_sampled_pairs * self.ratio_train_dev)
+        num_samples_dev = self.num_total_sampled_pairs - num_samples_train
 
         self.export_pairs(out_dir=train_pairs_dir,
                           descr=train_descr,
