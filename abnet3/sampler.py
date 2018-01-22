@@ -790,8 +790,11 @@ class SamplerClusterSiamese(SamplerCluster):
         train_pairs_dir = os.path.join(self.directory_output, 'train_pairs')
         os.makedirs(os.path.join(self.directory_output, 'train_pairs'))
 
-        num_samples_train = int(self.num_total_sampled_pairs * self.ratio_train_dev)
-        num_samples_dev = self.num_total_sampled_pairs - num_samples_train
+        if self.num_total_sampled_pairs is not None:
+            num_samples_train = int(self.num_total_sampled_pairs * self.ratio_train_dev)
+            num_samples_dev = self.num_total_sampled_pairs - num_samples_train
+        else:
+            num_samples_train, num_samples_dev = None, None
 
         self.export_pairs(out_dir=train_pairs_dir,
                           descr=train_descr,
