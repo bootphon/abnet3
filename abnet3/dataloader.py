@@ -262,16 +262,16 @@ class FramesDataLoader(DataLoaderFromBatches):
         if self.X1 is None:
             self.X1, self.X2, self.y = self.load_frames_from_pairs(pairs)
 
-        num_pair_tokens = len(self.X1)
-        num_batches = num_pair_tokens // self.batch_size
+        num_pair_frames = len(self.X1)
+        num_batches = num_pair_frames // self.batch_size
 
         if num_batches == 0: num_batches = 1
 
         # randomized the dataset
         if self.randomize_dataset:
-            perm = np.random.permutation(range(len(X1)))
+            perm = np.random.permutation(range(num_pair_frames))
         else:
-            perm = np.arange(num_pair_tokens)  # identity
+            perm = np.arange(num_pair_frames)  # identity
         X1 = self.X1[perm, :]
         X2 = self.X2[perm, :]
         y = self.y[perm]
