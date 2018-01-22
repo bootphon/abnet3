@@ -101,11 +101,15 @@ class DataLoaderFromBatches(DataLoader):
         # f are filenames, s are start times, e are end times
         token_feats = {}
         for f1, s1, e1, f2, s2, e2 in pairs['same']:
-            token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
-            token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
+            if (f1, s1, e1) not in token_feats:
+                token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
+            if (f2, s2, e2) not in token_feats:
+                token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
         for f1, s1, e1, f2, s2, e2 in pairs['diff']:
-            token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
-            token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
+            if (f1, s1, e1) not in token_feats:
+                token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
+            if (f2, s2, e2) not in token_feats:
+                token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
 
         # 2. align features for each pair
         X1, X2, y_phn, y_spk = [], [], [], []
@@ -229,6 +233,7 @@ class FramesDataLoader(DataLoaderFromBatches):
         super().__init__(pairs_path, features_path)
         self.randomize_dataset = randomize_dataset
         self.batch_size = batch_size
+        self.X1 = None
 
     def batch_iterator(self, train_mode=True):
         """
@@ -254,9 +259,10 @@ class FramesDataLoader(DataLoaderFromBatches):
         # read all features
         self.load_features()
 
-        X1, X2, y = self.load_frames_from_pairs(pairs)
+        if self.X1 is None:
+            self.X1, self.X2, self.y = self.load_frames_from_pairs(pairs)
 
-        num_pair_tokens = len(X1)
+        num_pair_tokens = len(self.X1)
         num_batches = num_pair_tokens // self.batch_size
 
         if num_batches == 0: num_batches = 1
@@ -266,9 +272,9 @@ class FramesDataLoader(DataLoaderFromBatches):
             perm = np.random.permutation(range(len(X1)))
         else:
             perm = np.arange(num_pair_tokens)  # identity
-        X1 = X1[perm, :]
-        X2 = X2[perm, :]
-        y = y[perm]
+        X1 = self.X1[perm, :]
+        X2 = self.X2[perm, :]
+        y = self.y[perm]
 
         # make all batches
         x1_batches = np.array_split(X1, num_batches, axis=0)
