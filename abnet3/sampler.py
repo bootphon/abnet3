@@ -174,24 +174,24 @@ class SamplerCluster(SamplerBuilder):
         train_idx = np.random.choice(num_clusters, num_train, replace=False)
 
         for idx, cluster in enumerate(clusters):
-            if idx in train_idx:
-                # Tricky move here to split big clusters for train and dev
-                size_cluster = len(cluster)
-                if self.max_size_cluster > 1 and \
-                   self.max_size_cluster < size_cluster:
-                    num_train = int(self.ratio_train_dev*size_cluster)
-                    indexes = range(size_cluster)
-                    rand_idx = np.random.permutation(indexes)
-                    train_split = [cluster[spec_idx] for spec_idx
-                                   in rand_idx[:num_train]]
-                    dev_split = [cluster[spec_idx] for spec_idx
-                                 in rand_idx[num_train:]]
-                    train_clusters.append(train_split)
-                    dev_clusters.append(dev_split)
-                else:
-                    train_clusters.append(cluster)
+            # Tricky move here to split big clusters for train and dev
+            size_cluster = len(cluster)
+            if self.max_size_cluster > 1 and \
+               self.max_size_cluster < size_cluster:
+                num_train = int(self.ratio_train_dev*size_cluster)
+                indexes = range(size_cluster)
+                rand_idx = np.random.permutation(indexes)
+                train_split = [cluster[spec_idx] for spec_idx
+                               in rand_idx[:num_train]]
+                dev_split = [cluster[spec_idx] for spec_idx
+                             in rand_idx[num_train:]]
+                train_clusters.append(train_split)
+                dev_clusters.append(dev_split)
             else:
-                dev_clusters.append(cluster)
+                if idx in train_idx:
+                    train_clusters.append(cluster)
+                else:
+                    dev_clusters.append(cluster)
 
         return train_clusters, dev_clusters
 
