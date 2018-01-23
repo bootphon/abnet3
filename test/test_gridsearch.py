@@ -21,3 +21,7 @@ class TestGridsearch:
                 'test': {
                     'feature_path': None}}}}
         assert grid.grid_params == dic_yaml
+
+
+if __name__ == '__main__':
+    pytest.main([__file__])

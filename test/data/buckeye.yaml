@@ -1,32 +1,37 @@
 # Config file to test
 test_experiments_yaml:
-  dataset: 
+  dataset:
+    num_stacked_frames: 7
     train:
+      wav_path:
+      already_done: True
       feature_path:
     test:
+      wav_path:
+      already_done: True
       feature_path:
   sampler:
-    already_done:
-    std_file:
-    batch_size:
+    already_done: False
+    std_file: /scratch2/rriad/projects/abnet3_zr/interspeech_paper/Abnet_neil_discovered.classes
+    batch_size: 8
     directory_output:
-    spkid_file:
-    spk_list_file:
-    max_size_cluster:
-    ratio_train_dev:
-    ratio_same_diff_spk:
-    type_sampling_mode:
-    spk_sampling_mode:
+    spkid_file: /scratch2/rriad/back_rriad/zerospeech2015/wav2spk.lst
+    spk_list_file: /scratch2/rriad/back_rriad/zerospeech2015/all_spk.lst
+    max_size_cluster: 20
+    ratio_train_dev: 0.7
+    ratio_same_diff_spk: 0.1
+    type_sampling_mode: ['log','f',1']
+    spk_sampling_mode: log
   model:
-    architecture:
-    input_dim:
-    num_hidden_layers:
-    hidden_dim:
-    output_dim:
-    p_dropout:
-    batch_norm:
+    architecture: SiameseNetwork
+    input_dim: 280
+    num_hidden_layers: 2
+    hidden_dim: 500
+    output_dim: 100
+    p_dropout: 0.0
+    batch_norm: False
     type_init:
-    activation_layer:
+    activation_layer: Sigmoid
     output_path:
     num_hidden_layers_shared:
     num_hidden_layers_spk:

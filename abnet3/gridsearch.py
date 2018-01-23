@@ -44,7 +44,15 @@ class GridSearch(object):
             except yaml.YAMLError as exc:
                 print(exc)
 
+    def build_list_experiments(self):
+        """Parse yaml input file for grid search
+
+        """
+
+
 
 if __name__ == '__main__':
-    grid = GridSearch(input_file='test/data/empty.yaml')
+    grid = GridSearch(input_file='test/data/buckeye.yaml')
     grid.parse_yaml_input_file()
+    import pdb
+    pdb.set_trace()

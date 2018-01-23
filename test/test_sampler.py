@@ -59,3 +59,7 @@ class TestSampler:
 
         # check that no cluster is bigger than 3
         assert max([len(cluster) for cluster in train_clusters]) <= 3
+
+
+if __name__ == '__main__':
+    pytest.main([__file__])

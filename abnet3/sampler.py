@@ -752,7 +752,7 @@ class SamplerClusterSiamese(SamplerCluster):
                           type_sampling_mode=self.type_sampling_mode,
                           spk_sampling_mode=self.spk_sampling_mode,
                           seed=self.seed+1, batch_size=self.batch_size)
-        print("Done writing testing pairs")
+        print("Done writing dev pairs")
 
 
 if __name__ == '__main__':
