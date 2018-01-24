@@ -94,6 +94,7 @@ class SamplerCluster(SamplerBuilder):
                  std_file=None, spk_list_file=None, spkid_file=None,
                  max_num_clusters=None,
                  sample_batches=True,
+                 num_total_sampled_pairs=None,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -106,6 +107,7 @@ class SamplerCluster(SamplerBuilder):
         self.spkid_file = spkid_file
         self.max_num_clusters = max_num_clusters
         self.sample_batches = sample_batches
+        self.num_total_sampled_pairs = num_total_sampled_pairs
 
     def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
@@ -172,24 +174,24 @@ class SamplerCluster(SamplerBuilder):
         train_idx = np.random.choice(num_clusters, num_train, replace=False)
 
         for idx, cluster in enumerate(clusters):
-            if idx in train_idx:
-                # Tricky move here to split big clusters for train and dev
-                size_cluster = len(cluster)
-                if self.max_size_cluster > 1 and \
-                   self.max_size_cluster < size_cluster:
-                    num_train = int(self.ratio_train_dev*size_cluster)
-                    indexes = range(size_cluster)
-                    rand_idx = np.random.permutation(indexes)
-                    train_split = [cluster[spec_idx] for spec_idx
-                                   in rand_idx[:num_train]]
-                    dev_split = [cluster[spec_idx] for spec_idx
-                                 in rand_idx[num_train:]]
-                    train_clusters.append(train_split)
-                    dev_clusters.append(dev_split)
-                else:
-                    train_clusters.append(cluster)
+            # Tricky move here to split big clusters for train and dev
+            size_cluster = len(cluster)
+            if self.max_size_cluster > 1 and \
+               self.max_size_cluster < size_cluster:
+                num_train = int(self.ratio_train_dev*size_cluster)
+                indexes = range(size_cluster)
+                rand_idx = np.random.permutation(indexes)
+                train_split = [cluster[spec_idx] for spec_idx
+                               in rand_idx[:num_train]]
+                dev_split = [cluster[spec_idx] for spec_idx
+                             in rand_idx[num_train:]]
+                train_clusters.append(train_split)
+                dev_clusters.append(dev_split)
             else:
-                dev_clusters.append(cluster)
+                if idx in train_idx:
+                    train_clusters.append(cluster)
+                else:
+                    dev_clusters.append(cluster)
 
         return train_clusters, dev_clusters
 
@@ -695,7 +697,7 @@ class SamplerClusterSiamese(SamplerCluster):
     def export_pairs(self, out_dir=None,
                      descr=None, type_sampling_mode='',
                      spk_sampling_mode='',
-                     seed=0, batch_size=8):
+                     seed=0, batch_size=8, num_samples=None):
         np.random.seed(seed)
         same_pairs = ['Stype_Sspk', 'Stype_Dspk']
         diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
@@ -712,7 +714,8 @@ class SamplerClusterSiamese(SamplerCluster):
         # Number of possible pairs in the smallest count
         # of different words for a speaker
         num = np.min(list(descr['speakers'].values()))
-        num_samples = num*(num-1)/2
+        if num_samples is None:
+            num_samples = num*(num-1)/2
         idx_batch = 0
         self.write_tokens(descr=descr, proba=proba, cdf=cdf,
                           pairs=pairs, batch_size=self.batch_size,
@@ -786,11 +789,19 @@ class SamplerClusterSiamese(SamplerCluster):
         # 4) Make directory and export pairs to the disk
         train_pairs_dir = os.path.join(self.directory_output, 'train_pairs')
         os.makedirs(os.path.join(self.directory_output, 'train_pairs'))
+
+        if self.num_total_sampled_pairs is not None:
+            num_samples_train = int(self.num_total_sampled_pairs * self.ratio_train_dev)
+            num_samples_dev = self.num_total_sampled_pairs - num_samples_train
+        else:
+            num_samples_train, num_samples_dev = None, None
+
         self.export_pairs(out_dir=train_pairs_dir,
                           descr=train_descr,
                           type_sampling_mode=self.type_sampling_mode,
                           spk_sampling_mode=self.spk_sampling_mode,
-                          seed=self.seed, batch_size=self.batch_size)
+                          seed=self.seed, batch_size=self.batch_size,
+                          num_samples=num_samples_train)
         dev_pairs_dir = os.path.join(self.directory_output, 'dev_pairs')
         print("Done writing training pairs")
         os.makedirs(dev_pairs_dir)
@@ -798,7 +809,8 @@ class SamplerClusterSiamese(SamplerCluster):
                           descr=dev_descr,
                           type_sampling_mode=self.type_sampling_mode,
                           spk_sampling_mode=self.spk_sampling_mode,
-                          seed=self.seed+1, batch_size=self.batch_size)
+                          seed=self.seed+1, batch_size=self.batch_size,
+                          num_samples=num_samples_dev)
         print("Done writing testing pairs")
 
 if __name__ == '__main__':
