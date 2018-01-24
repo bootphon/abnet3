@@ -17,8 +17,18 @@ import tempfile
 
 class FeaturesGenerator:
 
-    def __init__(self, n_filters=40):
+    def __init__(self, n_filters=40, method='fbanks', normalization=True, stack=True,
+                 nframes=7, deltas=False, deltasdeltas=False):
         self.n_filters = n_filters
+        self.method = method
+        self.normalization = normalization
+        self.stack = stack
+        self.nframes = nframes
+        self.deltas = deltas
+        self.deltasdeltas = deltasdeltas
+
+        if self.method not in ['mfcc', 'fbanks']:
+            raise ValueError("Method %s not recognized" % self.method)
 
     def do_fbank(self, fname):
         """Compute standard filterbanks from a wav file"""
@@ -31,8 +41,8 @@ class FeaturesGenerator:
             frate=100,              # frame rate
             wlen=0.025,             # window length
             nfft=1024,              # length of dft
-            do_deltas=False,        # speed
-            do_deltasdeltas=False   # acceleration
+            do_deltas=self.deltas,        # speed
+            do_deltasdeltas=self.deltasdeltas   # acceleration
         )
         fb = np.array(fbanks.transform(sound), dtype='float32')
         return fb
@@ -50,8 +60,8 @@ class FeaturesGenerator:
             ncep=13,                # nb of cepstral coefficients
             lowerf=100,
             upperf=6855.4976,
-            do_deltas=False,        # speed
-            do_deltasdeltas=False   # acceleration
+            do_deltas=self.deltas,        # speed
+            do_deltasdeltas=self.deltasdeltas   # acceleration
         )
         fb = np.array(fbanks.transform(sound), dtype='float32')
         return fb
@@ -80,7 +90,7 @@ class FeaturesGenerator:
                         for i in range(nframes-1)] + [features[nframes-1:]])
         return np.reshape(np.swapaxes(aux, 0, 1), (-1, dim * nframes))
 
-    def h5features_compute(self, files, h5f, featfunc=do_fbank, timefunc=None):
+    def h5features_compute(self, files, h5f, featfunc=None, timefunc=None):
         """Compute mfcc or filterbanks (or other) in h5features format.
 
         Parameters:
@@ -94,6 +104,8 @@ class FeaturesGenerator:
             features. By default, it assume a window length of 25 ms and a window
             step of 10 ms.
         """
+        if featfunc is None:
+            featfunc = self.do_fbank
         batch_size = 500
         features = []
         times = []
@@ -166,8 +178,7 @@ class FeaturesGenerator:
             files, stackedfb_h5f, featfunc=aux,
             timefunc=time_f)
 
-    def generate(self, files, output_path, method='mfcc', normalization=True, stack=True,
-                 nframes=7):
+    def generate(self, files, output_path):
         """
         :param list files: List of wav files.  You must
             give the complete relative or absolute path of the wave file
@@ -183,24 +194,24 @@ class FeaturesGenerator:
             'fbank': self.do_fbank
         }
 
-        if method not in functions:
-            raise ValueError("Method %s not authorized." % method)
-        f = functions[method]
+        if self.method not in functions:
+            raise ValueError("Method %s not authorized." % self.method)
+        f = functions[self.method]
 
         tempdir = tempfile.mkdtemp()
         h5_temp1 = tempdir + '/temp1'
-        print("Spectral transforming with %s" % method  )
+        print("Spectral transforming with %s" % self.method)
         self.h5features_compute(files, h5_temp1, featfunc=f)
 
-        if normalization:
+        if self.normalization:
             print("Normalizing")
             h5_temp2 = tempdir + '/temp2'
             self.mean_variance_normalisation(h5_temp1, h5_temp2)
         else:
             h5_temp2 = h5_temp1
-        if stack:
+        if self.stack:
             print("Stacking frames")
-            self.h5features_feats2stackedfeats(h5_temp2, output_path, nframes=nframes)
+            self.h5features_feats2stackedfeats(h5_temp2, output_path, nframes=self.nframes)
         else:
             shutil.copy(h5_temp2, output_path)
 
