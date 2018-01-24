@@ -231,8 +231,8 @@ class OriginalDataLoader(DataLoader):
             print("Number of batches not sufficient," +
                   " iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
-        for batch_pairs in selected_batches:
-            grouped_pairs = group_pairs(batch_pairs)
+        for batch_id in selected_batches:
+            grouped_pairs = group_pairs(batches[batch_id])
             batch_els = self.load_frames_from_pairs(grouped_pairs)
             batch_els = map(torch.from_numpy, batch_els)
             X_batch1, X_batch2, y_batch = map(Variable, batch_els)
