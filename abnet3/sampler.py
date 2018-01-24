@@ -694,6 +694,7 @@ class SamplerClusterSiamese(SamplerCluster):
         else:
             with open(os.path.join(out_dir, 'dataset'), 'w') as fh:
                 fh.writelines(lines)
+            print("done writing tokens to disk.")
 
     def export_pairs(self, out_dir=None,
                      descr=None, type_sampling_mode='',
