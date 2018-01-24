@@ -135,6 +135,45 @@ def get_dtw_alignment(feat1, feat2):
     return path1, path2
 
 
+def read_dataset(dataset_file):
+    """
+    :param dataset_file: path to the dataset file containing word pairs
+    :return: list of the form
+     [(file1, start1, end1, f2, s2, e2, pair_type), ...]
+    """
+    with open(dataset_file, 'r') as fh:
+        lines = fh.readlines()
+    pairs = []
+    for line in lines:
+        tokens = line.strip().split(" ")
+        assert len(tokens) == 7
+        f1, s1, e1, f2, s2, e2, pair_type = tokens
+        s1, e1, s2, e2 = float(s1), float(e1), float(s2), float(e2)
+        assert pair_type in ['same', 'diff'], \
+            'Unsupported pair type {0}'.format(pair_type)
+        pairs.append((f1, s1, e1, f2, s2, e2, pair_type))
+    return pairs
+
+
+def group_pairs(pairs):
+    """
+    Function that groups pairs by pair_type
+    :param list pairs: list of pairs [(file1, start1, end1, f2, s2, e2, pair_type), ...]
+    :return:
+    dictionnary of the form
+    {
+        'same': [pairs]
+        'diff': [pairs]
+    }
+    """
+    grouped_pairs = {'same': [], 'diff': []}
+    for f1, s1, e1, f2, s2, e2, pair_type in pairs:
+        assert pair_type in grouped_pairs, \
+            'Unsupported pair type {0}'.format(pair_type)
+        grouped_pairs[pair_type].append((f1, s1, e1, f2, s2, e2))
+    return grouped_pairs
+
+
 def read_pairs(pair_file):
     """
 
@@ -148,18 +187,7 @@ def read_pairs(pair_file):
     where a pair is a tuple (file1, start1, end1, file2, start2, end2)
 
     """
-    with open(pair_file, 'r') as fh:
-        lines = fh.readlines()
-    pairs = {'same': [], 'diff': []}
-    for line in lines:
-        tokens = line.strip().split(" ")
-        assert len(tokens) == 7
-        f1, s1, e1, f2, s2, e2, pair_type = tokens
-        s1, e1, s2, e2 = float(s1), float(e1), float(s2), float(e2)
-        assert pair_type in pairs, \
-            'Unsupported pair type {0}'.format(pair_type)
-        pairs[pair_type].append((f1, s1, e1, f2, s2, e2))
-    return pairs
+    return group_pairs(read_dataset(pair_file))
 
 
 def read_feats(features_file, align_features_file=None):
