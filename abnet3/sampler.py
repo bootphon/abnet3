@@ -654,6 +654,7 @@ class SamplerClusterSiamese(SamplerCluster):
         """
         lines = []
         np.random.seed(seed)
+        print("Sampling tokens")
         sampled_batch = self.sample_batch(proba, cdf, pairs,
                                           num_samples=num_samples)
         for config in sampled_batch.keys():
@@ -684,7 +685,7 @@ class SamplerClusterSiamese(SamplerCluster):
 
         np.random.shuffle(lines)
         # prev_idx = 0
-
+        print("Writing tokens to disk")
         if self.sample_batches:
             for idx in range(1, int(num_samples // batch_size)):
                 with open(os.path.join(out_dir, 'pair_' +
@@ -706,6 +707,8 @@ class SamplerClusterSiamese(SamplerCluster):
                     std_descr=descr,
                     type_sampling_mode=type_sampling_mode,
                     spk_sampling_mode=spk_sampling_mode)
+
+        print("Cumulative distribution")
         cdf = {}
         for key in proba.keys():
             cdf[key] = cumulative_distribution(proba[key])

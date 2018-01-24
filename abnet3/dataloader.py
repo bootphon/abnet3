@@ -33,6 +33,7 @@ class DataLoader:
     def whoami(self):
         raise NotImplemented("You must implement whoami in DataLoader class")
 
+
 class OriginalDataLoader(DataLoader):
     """
     Original method to load data.
