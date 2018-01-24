@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 
 from abnet3.utils import get_dtw_alignment, \
-    Parse_Dataset, read_pairs, read_feats, read_spkid_file
+    Parse_Dataset, read_pairs, read_feats, read_spkid_file, read_dataset, group_pairs
 
 """
 This file contains several dataloaders.
@@ -33,15 +33,15 @@ class DataLoader:
     def whoami(self):
         raise NotImplemented("You must implement whoami in DataLoader class")
 
-class DataLoaderFromBatches(DataLoader):
+class OriginalDataLoader(DataLoader):
     """
     Original method to load data.
-    It loads the batches of tokens created by the sampler,
+    It loads the pairs file, created by the sampler
     create the frame pairs, and shuffles inside the batches.
 
     """
 
-    def __init__(self, pairs_path, features_path, num_max_minibatches=1000, seed=None):
+    def __init__(self, pairs_path, features_path, num_max_minibatches=1000, seed=None, batch_size=8):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and train_pairs folders are
@@ -54,7 +54,10 @@ class DataLoaderFromBatches(DataLoader):
         self.statistics_training = defaultdict(int) # dict with default value 0
         self.seed = seed
         self.num_max_minibatches = num_max_minibatches
+        self.batch_size = batch_size
         self.features = None
+        self.train_pairs = None
+        self.dev_pairs = None
 
     def __getstate__(self):
         """used for pickle"""
@@ -63,17 +66,21 @@ class DataLoaderFromBatches(DataLoader):
                 self.features_path,
                 self.statistics_training,
                 self.seed,
-                self.num_max_minibatches)
+                self.num_max_minibatches,
+                self.batch_size)
 
     def __setstate__(self, state):
         """used for pickle"""
-        self.pairs_path, \
-        self.features_path, \
-        self.statistics_training, \
-        self.seed, \
-        self.num_max_minibatches = state
+        (
+            self.pairs_path,
+            self.features_path,
+            self.statistics_training,
+            self.seed,
+            self.num_max_minibatches,
+            self.batch_size
+        ) = state
 
-        self.load_features()
+        self.load_data()
 
     def whoami(self):
         return {
@@ -81,13 +88,23 @@ class DataLoaderFromBatches(DataLoader):
             'class_name': self.__class__.__name__
         }
 
-    def load_features(self):
+    def load_data(self):
         """
-        Load only once the features
+        Load only once the features, and the pairs
         """
         if self.features is None:
             features, align_features, feat_dim = read_feats(self.features_path)
             self.features = features
+
+        if self.train_pairs is None:
+            train_dir = os.path.join(self.pairs_path, 'train_pairs/dataset')
+
+            self.train_pairs = read_dataset(train_dir)
+
+        if self.dev_pairs is None:
+            dev_dir = os.path.join(self.pairs_path, 'dev_pairs/dataset')
+            self.dev_pairs = read_dataset(dev_dir)
+
 
     def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
         """Prepare a batch in Pytorch format based on a batch file
@@ -181,7 +198,7 @@ class DataLoaderFromBatches(DataLoader):
         return X1, X2, y_phn
 
     def batch_iterator(self, train_mode=True):
-        """Build iteratior next batch from folder for a specific epoch
+        """Build iterator next batch from folder for a specific epoch
         This function can be used when the batches were already created
         by the sampler.
 
@@ -190,16 +207,19 @@ class DataLoaderFromBatches(DataLoader):
         Returns batches of the form (X1, X2, y)
 
         """
-        if train_mode:
-            batch_dir = os.path.join(self.pairs_path,
-                                     'train_pairs')
-        else:
-            batch_dir = os.path.join(self.pairs_path,
-                                     'dev_pairs')
         # load features
-        self.load_features()
+        self.load_data()
 
-        batches = Parse_Dataset(batch_dir)
+        if train_mode:
+            pairs = self.train_pairs
+        else:
+            pairs = self.dev_pairs
+
+        num_pairs = len(pairs)
+
+        # TODO : shuffle the pairs before creating batches
+        # make batches
+        batches = [pairs[i:i+self.batch_size] for i in range(0, num_pairs, self.batch_size)]
         num_batches = len(batches)
 
         if self.num_max_minibatches < num_batches:
@@ -210,15 +230,15 @@ class DataLoaderFromBatches(DataLoader):
             print("Number of batches not sufficient," +
                   " iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
-        for idx in selected_batches:
-            pairs = read_pairs(batches[idx])
-            batch_els = self.load_frames_from_pairs(pairs)
+        for batch_pairs in selected_batches:
+            grouped_pairs = group_pairs(batch_pairs)
+            batch_els = self.load_frames_from_pairs(grouped_pairs)
             batch_els = map(torch.from_numpy, batch_els)
             X_batch1, X_batch2, y_batch = map(Variable, batch_els)
             yield X_batch1, X_batch2, y_batch
 
 
-class FramesDataLoader(DataLoaderFromBatches):
+class FramesDataLoader(OriginalDataLoader):
     """
     This data loader constructs batches with frames, and not words (tokens).
     It can shuffle the tokens accross the whole dataset
@@ -257,7 +277,7 @@ class FramesDataLoader(DataLoaderFromBatches):
         pairs = read_pairs(dataset)
 
         # read all features
-        self.load_features()
+        self.load_data()
 
         if self.X1 is None:
             self.X1, self.X2, self.y = self.load_frames_from_pairs(pairs)
@@ -316,7 +336,7 @@ class MultiTaskDataLoader(FramesDataLoader):
         num_batches = len(batches)
 
         # read all features
-        self.load_features()
+        self.load_data()
         fid2spk = read_spkid_file(self.fid2spk_file)
 
         if self.num_max_minibatches < num_batches:
