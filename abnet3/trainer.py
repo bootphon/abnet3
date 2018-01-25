@@ -24,6 +24,7 @@ import pickle
 import os
 import matplotlib
 import warnings
+import copy
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -76,13 +77,19 @@ class TrainerBuilder:
             self.loss.cuda()
             self.network.cuda()
 
+    def params(self):
+        params = copy.copy(self.__dict__)
+        del params['dataloader']
+
     def whoami(self):
-        return {'params': self.__dict__,
+        whoami = {'params': self.params(),
                 'network': self.network.whoami(),
                 'loss': self.loss.whoami(),
                 'class_name': self.__class__.__name__,
                 'dataloader': self.dataloader.whoami()
                 }
+        return whoami
+
 
     def save_whoami(self):
         pickle.dump(self.whoami(),
