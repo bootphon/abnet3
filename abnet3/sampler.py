@@ -692,8 +692,9 @@ class SamplerClusterSiamese(SamplerCluster):
                           str(idx)+'.batch'), 'w') as fh:
                         fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
         else:
+            text = "".join(lines)
             with open(os.path.join(out_dir, 'dataset'), 'w') as fh:
-                fh.writelines(lines)
+                fh.write(text)
             print("done writing tokens to disk.")
 
     def export_pairs(self, out_dir=None,
