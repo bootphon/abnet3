@@ -28,6 +28,7 @@ import copy
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from tensorboardX import SummaryWriter
 
 
 class TrainerBuilder:
@@ -53,6 +54,7 @@ class TrainerBuilder:
         if cuda:
             self.loss.cuda()
             self.network.cuda()
+        self.writer = SummaryWriter(log_dir='./runs/%s' %time.strftime('%m-%d-%Hh%M-%S'))
 
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
                                   'RMSprop', 'LBFGS')
@@ -124,6 +126,10 @@ class TrainerBuilder:
             start_time = time.time()
 
             dev_loss = self.optimize_model(do_training=True)
+
+            # tensorboard logging
+            self.writer.add_scalar('train_loss', self.train_losses[-1], epoch)
+            self.writer.add_scalar('dev_loss', self.dev_losses[-1], epoch)
 
             if self.best_dev is None or dev_loss < self.best_dev:
                 self.best_dev = dev_loss
