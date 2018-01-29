@@ -133,13 +133,14 @@ class FeaturesGenerator:
                              internal_files, times,
                              features)
 
-    def mean_variance_normalisation(self, h5f, mvn_h5f, vad=None):
+    def mean_variance_normalisation(self, h5f, mvn_h5f, params=None, vad=None):
         """Do mean variance normlization. Optionnaly use a vad.
 
         Parameters:
         ----------
         h5f: str. h5features file name
         mvn_h5f: str, h5features output name
+        params : dict {'mean': mean, 'variance': variance}
         """
 
         dset = list(h5py.File(h5f).keys())[0]
@@ -150,11 +151,16 @@ class FeaturesGenerator:
             data = h5py.File(h5f)[dset]['features'][:]
             features = data
         epsilon = np.finfo(data.dtype).eps
-        mean = np.mean(data)
-        std = np.std(data)
+        if params is not None:
+            mean = params['mean']
+            std = params['variance']
+        else:
+            mean = np.mean(data)
+            std = np.std(data)
         mvn_features = (features - mean) / (std + epsilon)
         shutil.copy(h5f, mvn_h5f)
         h5py.File(mvn_h5f)[dset]['features'][:] = mvn_features
+        return mean, std
 
     def h5features_feats2stackedfeats(self, fb_h5f, stackedfb_h5f, nframes=7):
         """Create stacked features version of h5features file
@@ -178,7 +184,34 @@ class FeaturesGenerator:
             files, stackedfb_h5f, featfunc=aux,
             timefunc=time_f)
 
-    def generate(self, files, output_path):
+    def save_mean_variance(self, mean, variance, output_file):
+        """
+        This function will save the mean and variance into a file.
+        It will take the form
+
+        mean variance (file: optional)
+
+        :param mean: float
+        :param variance: float
+        :param output_file: file where mean and variance will be saved
+        """
+
+        with open(output_file, 'w') as f:
+            f.write('%.7f %.7f' % (mean, variance))
+
+    def load_mean_variance(self, file_path):
+        """
+        :return: a dict {'mean': mean, 'variance': variance}
+        """
+
+        with open(file_path, 'r') as f:
+            lines = f.readline()
+            lines = [l.strip() for l in lines]
+            mean, variance = lines[0].split(" ")
+            mean, variance = float(mean), float(variance)
+        return {'mean': mean, 'variance': variance}
+
+    def generate(self, files, output_path, load_mean_variance_path=None, save_mean_variance_path=None):
         """
         :param list files: List of wav files.  You must
             give the complete relative or absolute path of the wave file
@@ -187,12 +220,24 @@ class FeaturesGenerator:
         :param bool stack: stack features with block of `nframes` features.
         :param bool normalization: mean / variance normalization
         :param int nframes: number of frames to stack (if stack is True)
+        :param str save_mean_variance_path:
+            should be None, or the path to a non existing file.
+            If it is not None, the generator will save the mean and variance for the whole
+            dataset at the given path
+        :param load_mean_variance_path:
+            Should be None, or the path to an existing file.
+            If it is not None, the mean and variance used to normalize the dataset will
+            be extracted from this file instead of being calculated.
+            This is useful for test data.
         """
 
         functions = {
             'mfcc': self.do_mfccs,
             'fbank': self.do_fbank
         }
+
+        if load_mean_variance_path is not None and save_mean_variance_path is not None:
+            raise ValueError("You can't both read and save mean and variance")
 
         if self.method not in functions:
             raise ValueError("Method %s not authorized." % self.method)
@@ -206,7 +251,13 @@ class FeaturesGenerator:
         if self.normalization:
             print("Normalizing")
             h5_temp2 = tempdir + '/temp2'
-            self.mean_variance_normalisation(h5_temp1, h5_temp2)
+            if load_mean_variance_path is not None:
+                params = self.load_mean_variance(file_path=load_mean_variance_path)
+            else:
+                params = None
+            mean, variance = self.mean_variance_normalisation(h5_temp1, h5_temp2, params=params)
+            if save_mean_variance_path is not None:
+                self.save_mean_variance(mean, variance, output_file=save_mean_variance_path)
         else:
             h5_temp2 = h5_temp1
         if self.stack:
