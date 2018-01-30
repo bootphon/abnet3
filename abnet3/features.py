@@ -205,7 +205,7 @@ class FeaturesGenerator:
         """
 
         with open(file_path, 'r') as f:
-            lines = f.readline()
+            lines = f.readlines()
             lines = [l.strip() for l in lines]
             mean, variance = lines[0].split(" ")
             mean, variance = float(mean), float(variance)
@@ -233,7 +233,7 @@ class FeaturesGenerator:
 
         functions = {
             'mfcc': self.do_mfccs,
-            'fbank': self.do_fbank
+            'fbanks': self.do_fbank
         }
 
         if load_mean_variance_path is not None and save_mean_variance_path is not None:
