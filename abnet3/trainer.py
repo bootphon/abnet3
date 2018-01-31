@@ -35,16 +35,13 @@ class TrainerBuilder:
 
     """
     def __init__(self, network=None, loss=None,
-                 feature_path=None,
-                 num_epochs=200, patience=20, num_max_minibatches=1000,
+                 num_epochs=200, patience=20,
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
                  seed=0, dataloader=None):
         self.network = network
         self.loss = loss
-        self.feature_path = feature_path
         self.num_epochs = num_epochs
         self.patience = patience
-        self.num_max_minibatches = num_max_minibatches
         self.lr = lr
         self.momentum = momentum
         self.best_epoch = 0
