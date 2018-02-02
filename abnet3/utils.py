@@ -116,9 +116,13 @@ def Parse_Dataset(path):
 
 class Features_Accessor(object):
 
-    def __init__(self, times, features):
+    def __init__(self, times, features, feat_type):
         self.times = times
-        self.features = features
+        if feat_type == np.float32:
+            self.features = features
+        else:
+            self.features = cast_features(features)
+
 
     def get(self, f, on, off):
         t = np.where(np.logical_and(self.times[f.encode('UTF-8')] >= on,
@@ -168,7 +172,8 @@ def read_feats(features_file, align_features_file=None):
     times = features.dict_labels()
     feats = features.dict_features()
     feat_dim = feats[list(feats.keys())[0]].shape[1]
-    features = Features_Accessor(times, feats)
+    feat_type = feats[list(feats.keys())[0]].dtype
+    features = Features_Accessor(times, feats, feat_type)
     if align_features_file is None:
         align_features = None
     else:
@@ -178,6 +183,16 @@ def read_feats(features_file, align_features_file=None):
         feats = align_features.dict_features()
         align_features = Features_Accessor(times, feats)
     return features, align_features, feat_dim
+
+def cast_features(features, target_type=np.float32):
+    """
+    cast features to float32, as this is the currently supported type.
+    """
+    for spk in features:
+        features[spk] = features[spk].astype(target_type)
+        last = spk
+    print('Casted features to correct type np.float32')
+    return features
 
 
 def progress(max_number, every=0.1, title=""):
