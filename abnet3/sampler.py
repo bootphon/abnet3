@@ -94,7 +94,7 @@ class SamplerCluster(SamplerBuilder):
                  type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
                  max_num_clusters=None,
-                 sample_batches=True,
+                 sample_batches=False,
                  num_total_sampled_pairs=None,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
