@@ -80,13 +80,12 @@ class TrainerBuilder:
 
     def whoami(self):
         whoami = {'params': self.params(),
-                'network': self.network.whoami(),
-                'loss': self.loss.whoami(),
-                'class_name': self.__class__.__name__,
-                'dataloader': self.dataloader.whoami()
-                }
+                  'network': self.network.whoami(),
+                  'loss': self.loss.whoami(),
+                  'class_name': self.__class__.__name__,
+                  'dataloader': self.dataloader.whoami()
+                  }
         return whoami
-
 
     def save_whoami(self):
         pickle.dump(self.whoami(),
@@ -177,7 +176,6 @@ class TrainerSiamese(TrainerBuilder):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseNetwork
 
-
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network.
 
@@ -236,7 +234,6 @@ class TrainerSiameseMultitask(TrainerBuilder):
     def __init__(self, *args, **kwargs):
         super(TrainerSiameseMultitask, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseMultitaskNetwork
-
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network with multitask.
