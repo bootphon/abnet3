@@ -598,6 +598,7 @@ class SamplerClusterSiamese(SamplerCluster):
         """
         lines = []
         np.random.seed(seed)
+        print("Sampling tokens")
 
         sampled_batch = self.sample_batch(proba, cdf, token_dict,
                                           num_samples=num_samples)
@@ -629,15 +630,17 @@ class SamplerClusterSiamese(SamplerCluster):
 
         np.random.shuffle(lines)
         # prev_idx = 0
-
+        print("Writing tokens to disk")
         if self.sample_batches:
             for idx in range(1, int(num_samples // batch_size)):
                 with open(os.path.join(out_dir, 'pair_' +
                           str(idx)+'.batch'), 'w') as fh:
                         fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
         else:
+            text = "".join(lines)
             with open(os.path.join(out_dir, 'dataset'), 'w') as fh:
-                fh.writelines(lines)
+                fh.write(text)
+            print("done write_tokens")
 
     def export_pairs(self, out_dir=None,
                      descr=None, type_sampling_mode='',
@@ -651,6 +654,8 @@ class SamplerClusterSiamese(SamplerCluster):
                     std_descr=descr,
                     type_sampling_mode=type_sampling_mode,
                     spk_sampling_mode=spk_sampling_mode)
+
+        print("Cumulative distribution")
         cdf = {}
         for key in proba.keys():
             cdf[key] = cumulative_distribution(proba[key])
@@ -665,6 +670,7 @@ class SamplerClusterSiamese(SamplerCluster):
         self.write_tokens(descr=descr, proba=proba, cdf=cdf,
                           token_dict=token_dict, batch_size=self.batch_size,
                           num_samples=num_samples, out_dir=out_dir, seed=seed)
+        print("done export_pairs")
 
     def sample(self):
         """
@@ -729,7 +735,6 @@ class SamplerClusterSiamese(SamplerCluster):
         # else:
         # generate and write pairs to disk
 
-        print("Saving pairs to disk")
         os.makedirs(self.directory_output)
         # 4) Make directory and export pairs to the disk
         train_pairs_dir = os.path.join(self.directory_output, 'train_pairs')
