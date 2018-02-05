@@ -103,7 +103,7 @@ class SiameseNetwork(NetworkBuilder):
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None,
                  output_dim=None, p_dropout=0.1, batch_norm=False,
                  type_init='xavier_uni', activation_layer=None,
-                 output_path=None, *args, **kwargs):
+                 output_path=None):
         super(SiameseNetwork, self).__init__()
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
@@ -120,22 +120,37 @@ class SiameseNetwork(NetworkBuilder):
         self.batch_norm = batch_norm
         self.type_init = type_init
         # Pass forward network functions
-        self.input_emb = nn.Sequential(
-                nn.Linear(input_dim, hidden_dim),
-                nn.Dropout(p=p_dropout),
-                activation_functions[activation_layer])
+
+        activation = activation_functions[activation_layer]
+
+        # input layer
+        input_layer = [
+            nn.Linear(input_dim, hidden_dim),
+            nn.Dropout(p=p_dropout),
+        ]
+        if self.batch_norm:
+            input_layer.append(nn.BatchNorm1d(hidden_dim))
+        input_layer.append(activation)
+        self.input_emb = nn.Sequential(*input_layer)
+
+        # hidden layers
         self.hidden_layers = []
         for idx in range(self.num_hidden_layers):
             self.hidden_layers.append(nn.Linear(hidden_dim, hidden_dim))
             self.hidden_layers.append(nn.Dropout(p=p_dropout))
-            self.hidden_layers.append(activation_functions[activation_layer])
-
-        # * is used for pointing to the list
+            if self.batch_norm:
+                self.hidden_layers.append(nn.BatchNorm1d(hidden_dim))
+            self.hidden_layers.append(activation)
         self.hidden_layers = nn.Sequential(*self.hidden_layers)
-        self.output_layer = nn.Sequential(
-                nn.Linear(hidden_dim, output_dim),
-                nn.Dropout(p=p_dropout),
-                activation_functions[activation_layer])
+
+        # output layer
+        output_layer = [
+            nn.Linear(hidden_dim, output_dim),
+            nn.Dropout(p=p_dropout)]
+        if self.batch_norm:
+            output_layer.append(nn.BatchNorm1d(output_dim))
+        output_layer.append(activation)
+        self.output_layer = nn.Sequential(*output_layer)
         self.output_path = output_path
         self.apply(self.init_weight_method)
 
@@ -213,7 +228,7 @@ class SiameseMultitaskNetwork(NetworkBuilder):
                  hidden_dim=None,
                  output_dim=None, p_dropout=0.1, batch_norm=False,
                  type_init='xavier_uni', activation_layer=None,
-                 output_path=None, *args, **kwargs):
+                 output_path=None):
         super(SiameseMultitaskNetwork, self).__init__()
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
@@ -233,11 +248,19 @@ class SiameseMultitaskNetwork(NetworkBuilder):
         self.activation_layer = activation_layer
         self.batch_norm = batch_norm
         self.type_init = type_init
+
         # Pass forward network functions
-        self.input_emb = nn.Sequential(
-                nn.Linear(input_dim, hidden_dim),
-                nn.Dropout(p=p_dropout),
-                activation_functions[activation_layer])
+        activation = activation_functions[activation_layer]
+
+        # input layer
+        input_layer = [
+            nn.Linear(input_dim, hidden_dim),
+            nn.Dropout(p=p_dropout),
+        ]
+        if self.batch_norm:
+            input_layer.append(nn.BatchNorm1d(hidden_dim))
+        input_layer.append(activation)
+        self.input_emb = nn.Sequential(*input_layer)
 
         self.hidden_layers_shared = []
         self.hidden_layers_spk = []
@@ -248,6 +271,8 @@ class SiameseMultitaskNetwork(NetworkBuilder):
                     nn.Linear(hidden_dim, hidden_dim))
             self.hidden_layers_shared.append(
                     nn.Dropout(p=p_dropout))
+            if self.batch_norm:
+                self.hidden_layers_shared.append(nn.BatchNorm1d(hidden_dim))
             self.hidden_layers_shared.append(
                     activation_functions[activation_layer])
 
@@ -256,6 +281,8 @@ class SiameseMultitaskNetwork(NetworkBuilder):
                     nn.Linear(hidden_dim, hidden_dim))
             self.hidden_layers_spk.append(
                     nn.Dropout(p=p_dropout))
+            if self.batch_norm:
+                self.hidden_layers_spk.append(nn.BatchNorm1d(hidden_dim))
             self.hidden_layers_spk.append(
                     activation_functions[activation_layer])
 
@@ -264,6 +291,8 @@ class SiameseMultitaskNetwork(NetworkBuilder):
                     nn.Linear(hidden_dim, hidden_dim))
             self.hidden_layers_phn.append(
                     nn.Dropout(p=p_dropout))
+            if self.batch_norm:
+                self.hidden_layers_phn.append(nn.BatchNorm1d(hidden_dim))
             self.hidden_layers_phn.append(
                     activation_functions[activation_layer])
 
@@ -272,15 +301,25 @@ class SiameseMultitaskNetwork(NetworkBuilder):
         self.hidden_layers_spk = nn.Sequential(*self.hidden_layers_spk)
         self.hidden_layers_phn = nn.Sequential(*self.hidden_layers_phn)
 
-        self.output_layer_spk = nn.Sequential(
-                nn.Linear(hidden_dim, output_dim),
-                nn.Dropout(p=p_dropout),
-                activation_functions[activation_layer])
+        # output layer speaker
+        output_layer_spk = [
+            nn.Linear(hidden_dim, output_dim),
+            nn.Dropout(p=p_dropout),
+        ]
+        if self.batch_norm:
+            output_layer_spk.append(nn.BatchNorm1d(output_dim))
+        output_layer_spk.append(activation)
+        self.output_layer_spk = nn.Sequential(*output_layer_spk)
 
-        self.output_layer_phn = nn.Sequential(
-                nn.Linear(hidden_dim, output_dim),
-                nn.Dropout(p=p_dropout),
-                activation_functions[activation_layer])
+        # output layer phoneme
+        output_layer_phn = [
+            nn.Linear(hidden_dim, output_dim),
+            nn.Dropout(p=p_dropout),
+        ]
+        if self.batch_norm:
+            output_layer_phn.append(nn.BatchNorm1d(output_dim))
+        output_layer_phn.append(activation)
+        self.output_layer_phn = nn.Sequential(*output_layer_phn)
 
         self.output_path = output_path
         self.apply(self.init_weight_method)
@@ -327,14 +366,14 @@ class SiameseMultitaskNetwork(NetworkBuilder):
 
 if __name__ == '__main__':
     sia = SiameseNetwork(input_dim=3, num_hidden_layers=2, hidden_dim=10,
-                         output_dim=19, dropout=0.1,
+                         output_dim=19, p_dropout=0.1,
                          activation_layer='relu',
                          batch_norm=True)
     siaMulti = SiameseMultitaskNetwork(input_dim=3, num_hidden_layers_shared=2,
                                        num_hidden_layers_phn=1,
                                        num_hidden_layers_spk=1,
                                        hidden_dim=10,
-                                       output_dim=19, dropout=0.1,
+                                       output_dim=19, p_dropout=0.1,
                                        activation_layer='relu',
                                        batch_norm=True)
     sia.apply(sia.init_weight_method)

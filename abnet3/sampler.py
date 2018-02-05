@@ -11,12 +11,13 @@ correct format for the Neural Network.
 
 from abnet3.utils import normalize_distribution, cumulative_distribution
 from abnet3.utils import print_token, sample_searchidx
-from abnet3.utils import read_spkid_file, read_spk_list
+from abnet3.utils import read_spkid_file, read_spk_list, progress
 
 import numpy as np
 import os
 import codecs
 import random
+from collections import defaultdict
 
 
 class SamplerBuilder(object):
@@ -85,6 +86,9 @@ class SamplerCluster(SamplerBuilder):
         function applied to the observed type frequencies
     spk_sampling_mode : String
         function applied to the observed speaker frequencies
+    create_batches: bool
+        If you want the sampler to save one file for each dataset,
+        or multiple batches
 
     """
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.75,
@@ -92,6 +96,8 @@ class SamplerCluster(SamplerBuilder):
                  type_sampling_mode='log', spk_sampling_mode='log',
                  std_file=None, spk_list_file=None, spkid_file=None,
                  max_num_clusters=None,
+                 sample_batches=True,
+                 num_total_sampled_pairs=None,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -103,6 +109,8 @@ class SamplerCluster(SamplerBuilder):
         self.spk_list_file = spk_list_file
         self.spkid_file = spkid_file
         self.max_num_clusters = max_num_clusters
+        self.sample_batches = sample_batches
+        self.num_total_sampled_pairs = num_total_sampled_pairs
 
     def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
@@ -170,24 +178,24 @@ class SamplerCluster(SamplerBuilder):
         train_idx = np.random.choice(num_clusters, num_train, replace=False)
 
         for idx, cluster in enumerate(clusters):
-            if idx in train_idx:
-                # Tricky move here to split big clusters for train and dev
-                size_cluster = len(cluster)
-                if self.max_size_cluster > 1 and \
-                   self.max_size_cluster < size_cluster:
-                    num_train = int(self.ratio_train_dev*size_cluster)
-                    indexes = range(size_cluster)
-                    rand_idx = np.random.permutation(indexes)
-                    train_split = [cluster[spec_idx] for spec_idx
-                                   in rand_idx[:num_train]]
-                    dev_split = [cluster[spec_idx] for spec_idx
-                                 in rand_idx[num_train:]]
-                    train_clusters.append(train_split)
-                    dev_clusters.append(dev_split)
-                else:
-                    train_clusters.append(cluster)
+            # Tricky move here to split big clusters for train and dev
+            size_cluster = len(cluster)
+            if self.max_size_cluster > 1 and \
+               self.max_size_cluster < size_cluster:
+                num_train = int(self.ratio_train_dev*size_cluster)
+                indexes = range(size_cluster)
+                rand_idx = np.random.permutation(indexes)
+                train_split = [cluster[spec_idx] for spec_idx
+                               in rand_idx[:num_train]]
+                dev_split = [cluster[spec_idx] for spec_idx
+                             in rand_idx[num_train:]]
+                train_clusters.append(train_split)
+                dev_clusters.append(dev_split)
             else:
-                dev_clusters.append(cluster)
+                if idx in train_idx:
+                    train_clusters.append(cluster)
+                else:
+                    dev_clusters.append(cluster)
 
         return train_clusters, dev_clusters
 
@@ -206,10 +214,10 @@ class SamplerCluster(SamplerBuilder):
             tokens : the list of tokens
             token_types : cluster id for each token
             token_speaker : speaker_id for each token
-            types: size of each cluster
-            speakers: number of tokens for each speaker
-            speaker_types: number of clusters each speaker appears in
-            type_speakers: number of speakers in each cluster
+            types: {type : number of tokens}
+            speakers: { speaker : number of tokens}
+            speaker_types: { speaker: number of clusters the spk appears in}
+            type_speakers: {type: number of speakers in the type (cluster)}
         }
         """
 
@@ -246,7 +254,15 @@ class SamplerCluster(SamplerBuilder):
         return std_descr
 
     def type_sample_p(self, std_descr,  type_sampling_mode='log'):
-        """Sampling proba modes for the types:
+        """
+        This function creates the probability matrix for sampling
+        a specific cluster.
+
+        For same type, the proba is P(type)
+        For different type, the proba is P(type1, type2) = P(type1) * P(type2)
+
+
+        Sampling proba modes for the types:
             - 1 : equiprobable
             - f2 : proportional to type probabilities
             - f : proportional to square root of type probabilities
@@ -325,7 +341,13 @@ class SamplerCluster(SamplerBuilder):
         if spk_sampling_mode == 'log':
             def spk_samp_func(x): return np.log(1+x)
 
+        print_progress = progress(len(W_spk_types.keys()),
+                                  every=0.01,
+                                  title="Generate speaker probas")
+        i = 0
         for (spk, type_idx) in W_spk_types.keys():
+            print_progress(i)
+            i += 1
             for (spk2, type_jdx) in W_spk_types.keys():
                 if spk == spk2:
                     if type_idx == type_jdx:
@@ -335,8 +357,8 @@ class SamplerCluster(SamplerBuilder):
                             p_spk_types['Stype_Sspk'][(spk, type_idx)] = \
                                 spk_samp_func(W_spk_types[(spk, type_idx)])
                     else:
-                        min_idx = np.min([type_idx, type_jdx])
-                        max_idx = np.max([type_idx, type_jdx])
+                        min_idx = min(type_idx, type_jdx)
+                        max_idx = max(type_idx, type_jdx)
                         p_spk_types['Dtype_Sspk'][(spk, min_idx, max_idx)] = \
                             spk_samp_func(W_spk_types[(spk, type_idx)]) * \
                             spk_samp_func(W_spk_types[(spk, type_jdx)])
@@ -346,80 +368,40 @@ class SamplerCluster(SamplerBuilder):
                             spk_samp_func(W_spk_types[(spk, type_idx)]) * \
                             spk_samp_func(W_spk_types[(spk2, type_idx)])
                     else:
-                        min_idx = np.min([type_idx, type_jdx])
-                        max_idx = np.max([type_idx, type_jdx])
+                        min_idx = min(type_idx, type_jdx)
+                        max_idx = max(type_idx, type_jdx)
                         p_spk_types['Dtype_Dspk'][(spk, spk2,
                                                    min_idx, max_idx)] = \
                             spk_samp_func(W_spk_types[(spk, type_idx)]) * \
                             spk_samp_func(W_spk_types[(spk2, type_jdx)])
         return p_spk_types
 
-    def generate_possibilities(self, std_descr):
-        """Generate possibilities between (types,speakers)
-        and tokens/realisations
-
-        """
-        pairs = {'Stype_Sspk': {},
-                 'Stype_Dspk': {},
-                 'Dtype_Sspk': {},
-                 'Dtype_Dspk': {}}
+    def generate_token_dict(self, std_descr):
+        tokens = defaultdict(list)
         nb_tok = len(std_descr['tokens'])
         speakers = std_descr['tokens_speaker']
         types = std_descr['tokens_type']
-        for tok1 in range(nb_tok):
-            for tok2 in range(tok1+1, nb_tok):
-                spk_type = 'S' if speakers[tok1] == speakers[tok2] else 'D'
-                type_type = 'S' if types[tok1] == types[tok2] else 'D'
-                pair_type = type_type + 'type_' + spk_type + 'spk'
-                try:
-                    if pair_type == 'Stype_Sspk':
-                        pairs[pair_type][
-                                        (speakers[tok1],
-                                         types[tok1])].append((tok1, tok2))
-                    if pair_type == 'Stype_Dspk':
-                        pairs[pair_type][
-                                         (speakers[tok1], speakers[tok2],
-                                          types[tok1])].append((tok1, tok2))
-                    if pair_type == 'Dtype_Sspk':
-                        min_idx = np.min([types[tok1], types[tok2]])
-                        max_idx = np.max([types[tok1], types[tok2]])
-                        pairs[pair_type][
-                                         (speakers[tok1], min_idx,
-                                          max_idx)].append((tok1, tok2))
-                    if pair_type == 'Dtype_Dspk':
-                        min_idx = np.min(types[tok1], types[tok2])
-                        max_idx = np.max([types[tok1], types[tok2]])
-                        pairs[pair_type][
-                                         (speakers[tok1], speakers[tok2],
-                                          min_idx, max_idx)
-                                         ].append((tok1, tok2))
-                except Exception as e:
-                    if pair_type == 'Stype_Sspk':
-                        pairs[pair_type][
-                                         (speakers[tok1],
-                                          types[tok1])] = [(tok1, tok2)]
-                    if pair_type == 'Stype_Dspk':
-                        pairs[pair_type][(speakers[tok1], speakers[tok2],
-                                          types[tok1])] = [(tok1, tok2)]
-                    if pair_type == 'Dtype_Sspk':
-                        min_idx = np.min([types[tok1], types[tok2]])
-                        max_idx = np.max([types[tok1], types[tok2]])
-                        pairs[pair_type][
-                                         (speakers[tok1], min_idx,
-                                          max_idx)
-                                          ] = [(tok1, tok2)]
-                    if pair_type == 'Dtype_Dspk':
-                        min_idx = np.min([types[tok1], types[tok2]])
-                        max_idx = np.max([types[tok1], types[tok2]])
-                        pairs[pair_type][
-                                         (speakers[tok1], speakers[tok2],
-                                          min_idx, max_idx)
-                                         ] = [(tok1, tok2)]
-        return pairs
+
+        for tok_id in range(nb_tok):
+            tokens[(types[tok_id], speakers[tok_id])].append(tok_id)
+
+        return tokens
 
     def type_speaker_sampling_p(self, std_descr=None,
                                 type_sampling_mode='f', spk_sampling_mode='f'):
-        """Sampling proba modes for p_i1,i2,j1,j2
+        """
+        This function generates the final probability matrix
+        P(type, speaker)
+        We have 4 different matrices :
+        St, Ss : P(type, speaker)
+        St, Ds : P(type, sp1, sp2)
+        Dt, Ss : P(t1, t2, s)
+        Dt, Ds : P(t1, t2, s1, s2)
+
+        This is computed using bayes rules :
+        P(type, speaker) = P(type) * P(speaker | type)
+
+        Sampling proba modes for p_i1,i2,j1,j2
             It is based on Bayes rule:
                 - log : proporitonal to log of speaker or type probabilities
                 - f : proportional to square roots of speaker
@@ -457,7 +439,13 @@ class SamplerCluster(SamplerBuilder):
         for config in p_spk_types.keys():
             p_spk_types[config] = normalize_distribution(p_spk_types[config])
 
+        print_progress = progress(len(p_spk_types.keys()),
+                                  every=0.01,
+                                  title="Generate type-speaker probas")
+        i = 0
         for config in p_spk_types.keys():
+            print_progress(i)
+            i += 1
             if config == 'Stype_Sspk':
                 for el in p_spk_types[config].keys():
                     p_spk_types[config][el] = p_types['Stype'][el[1]] * \
@@ -505,8 +493,8 @@ class SamplerClusterSiamese(SamplerCluster):
     def sample_batch(self,
                      p_spk_types,
                      cdf,
-                     pairs,
-                     num_batches=5012):
+                     token_dict,
+                     num_samples=5012):
 
         """Sampling proba modes for p_i1,i2,j1,j2
             It is based on Bayes rule:
@@ -531,7 +519,7 @@ class SamplerClusterSiamese(SamplerCluster):
                 dictionnary with the possible pairs
             seed : int
                 seed
-            num_batches : int
+            num_samples : int
                 number of pairs to compute
             ratio_same_diff_spk : float
                 float between 0 and 1, percentage of different speaker pairs
@@ -547,8 +535,8 @@ class SamplerClusterSiamese(SamplerCluster):
                           'Dtype_Sspk': [],
                           'Dtype_Dspk': []
                           }
-        num_same_spk = int((num_batches)*(1 - self.ratio_same_diff_spk))
-        num_diff_spk = num_batches - num_same_spk
+        num_same_spk = int((num_samples) * (1 - self.ratio_same_diff_spk))
+        num_diff_spk = num_samples - num_same_spk
         num_Stype_Sspk = int(num_same_spk*(1-self.ratio_same_diff_type))
         num_Dtype_Sspk = int(num_same_spk*(self.ratio_same_diff_type))
         num_Stype_Dspk = int(num_diff_spk*(1-self.ratio_same_diff_type))
@@ -566,43 +554,42 @@ class SamplerClusterSiamese(SamplerCluster):
             if config == 'Stype_Sspk':
                 for key in sample:
                     spk, type_idx = key
-                    pot_tok = pairs[config][spk, int(type_idx)]
-                    num_tok = len(pot_tok)
+                    tokens = token_dict[int(type_idx), spk]
+                    tok1, tok2 = np.random.choice(tokens, size=2,
+                                                  replace=False)
                     sampled_tokens[config].append(
-                        pot_tok[np.random.choice(num_tok)])
+                        (tok1, tok2))
             if config == 'Stype_Dspk':
                 for key in sample:
                     spk1, spk2, type_idx = key
-                    try:
-                        pot_tok = pairs[config][spk1, spk2, int(type_idx)]
-                    except Exception as e:
-                        pot_tok = pairs[config][spk2, spk1, int(type_idx)]
-                    num_tok = len(pot_tok)
-                    sampled_tokens[config].append(
-                        pot_tok[np.random.choice(num_tok)])
+                    type_idx = int(type_idx)
+                    tok1 = np.random.choice(token_dict[type_idx, spk1])
+                    tok2 = np.random.choice(token_dict[type_idx, spk2])
+                    sampled_tokens[config].append((tok1, tok2))
             if config == 'Dtype_Sspk':
                 for key in sample:
                     spk, type_idx, type_jdx = key
-                    pot_tok = pairs[config][spk, int(type_idx), int(type_jdx)]
-                    num_tok = len(pot_tok)
-                    sampled_tokens[config].append(
-                        pot_tok[np.random.choice(num_tok)])
+                    type_idx = int(type_idx)
+                    type_jdx = int(type_jdx)
+                    tok1 = np.random.choice(token_dict[type_idx, spk])
+                    tok2 = np.random.choice(token_dict[type_jdx, spk])
+                    sampled_tokens[config].append((tok1, tok2))
             if config == 'Dtype_Dspk':
                 for key in sample:
                     spk1, spk2, type_idx, type_jdx = key
+                    type_idx = int(type_idx)
+                    type_jdx = int(type_jdx)
                     try:
-                        pot_tok = pairs[config][spk1, spk2,
-                                                int(type_idx), int(type_jdx)]
-                    except Exception as e:
-                        pot_tok = pairs[config][spk2, spk1,
-                                                int(type_idx), int(type_jdx)]
-                    num_tok = len(pot_tok)
-                    sampled_tokens[config].append(
-                        pot_tok[np.random.choice(num_tok)])
+                        tok1 = np.random.choice(token_dict[type_idx, spk1])
+                        tok2 = np.random.choice(token_dict[type_jdx, spk2])
+                    except Exception:
+                        tok1 = np.random.choice(token_dict[type_idx, spk2])
+                        tok2 = np.random.choice(token_dict[type_jdx, spk1])
+                    sampled_tokens[config].append((tok1, tok2))
         return sampled_tokens
 
     def write_tokens(self, descr=None, proba=None, cdf=None,
-                     pairs={}, batch_size=8, num_batches=0,
+                     token_dict=None, batch_size=8, num_samples=0,
                      out_dir=None, seed=0):
         """Write tokens based on all different parameters and write the tokens
         in a batch.
@@ -610,8 +597,10 @@ class SamplerClusterSiamese(SamplerCluster):
         """
         lines = []
         np.random.seed(seed)
-        sampled_batch = self.sample_batch(proba, cdf, pairs,
-                                          num_batches=num_batches)
+        print("Sampling tokens")
+
+        sampled_batch = self.sample_batch(proba, cdf, token_dict,
+                                          num_samples=num_samples)
         for config in sampled_batch.keys():
             if config == 'Stype_Sspk':
                 pair_type = 'same'
@@ -640,23 +629,33 @@ class SamplerClusterSiamese(SamplerCluster):
 
         np.random.shuffle(lines)
         # prev_idx = 0
-        for idx in range(1, int(num_batches//batch_size)):
-            with open(os.path.join(out_dir, 'pair_' +
-                      str(idx)+'.batch'), 'w') as fh:
-                    fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
+        print("Writing tokens to disk")
+        if self.sample_batches:
+            for idx in range(1, int(num_samples // batch_size)):
+                with open(os.path.join(out_dir, 'pair_' +
+                          str(idx)+'.batch'), 'w') as fh:
+                        curr_lines = lines[(idx-1)*batch_size:(idx)*batch_size]
+                        fh.writelines(curr_lines)
+        else:
+            text = "".join(lines)
+            with open(os.path.join(out_dir, 'dataset'), 'w') as fh:
+                fh.write(text)
+            print("done write_tokens")
 
     def export_pairs(self, out_dir=None,
                      descr=None, type_sampling_mode='',
                      spk_sampling_mode='',
-                     seed=0, batch_size=8):
+                     seed=0, batch_size=8, num_samples=None):
         np.random.seed(seed)
         same_pairs = ['Stype_Sspk', 'Stype_Dspk']
         diff_pairs = ['Dtype_Sspk', 'Dtype_Dspk']
-        pairs = self.generate_possibilities(descr)
+        token_dict = self.generate_token_dict(descr)
         proba = self.type_speaker_sampling_p(
                     std_descr=descr,
                     type_sampling_mode=type_sampling_mode,
                     spk_sampling_mode=spk_sampling_mode)
+
+        print("Cumulative distribution")
         cdf = {}
         for key in proba.keys():
             cdf[key] = cumulative_distribution(proba[key])
@@ -665,11 +664,13 @@ class SamplerClusterSiamese(SamplerCluster):
         # Number of possible pairs in the smallest count
         # of different words for a speaker
         num = np.min(list(descr['speakers'].values()))
-        num_batches = num*(num-1)/2
+        if num_samples is None:
+            num_samples = num*(num-1)/2
         idx_batch = 0
         self.write_tokens(descr=descr, proba=proba, cdf=cdf,
-                          pairs=pairs, batch_size=self.batch_size,
-                          num_batches=num_batches, out_dir=out_dir, seed=seed)
+                          token_dict=token_dict, batch_size=self.batch_size,
+                          num_samples=num_samples, out_dir=out_dir, seed=seed)
+        print("done export_pairs")
 
     def sample(self):
         """
@@ -734,16 +735,24 @@ class SamplerClusterSiamese(SamplerCluster):
         # else:
         # generate and write pairs to disk
 
-        print("Saving pairs to disk")
         os.makedirs(self.directory_output)
         # 4) Make directory and export pairs to the disk
         train_pairs_dir = os.path.join(self.directory_output, 'train_pairs')
         os.makedirs(os.path.join(self.directory_output, 'train_pairs'))
+
+        if self.num_total_sampled_pairs is not None:
+            prop_train = self.num_total_sampled_pairs * self.ratio_train_dev
+            num_samples_train = int(prop_train)
+            num_samples_dev = self.num_total_sampled_pairs - num_samples_train
+        else:
+            num_samples_train, num_samples_dev = None, None
+
         self.export_pairs(out_dir=train_pairs_dir,
                           descr=train_descr,
                           type_sampling_mode=self.type_sampling_mode,
                           spk_sampling_mode=self.spk_sampling_mode,
-                          seed=self.seed, batch_size=self.batch_size)
+                          seed=self.seed, batch_size=self.batch_size,
+                          num_samples=num_samples_train)
         dev_pairs_dir = os.path.join(self.directory_output, 'dev_pairs')
         print("Done writing training pairs")
         os.makedirs(dev_pairs_dir)
@@ -751,7 +760,8 @@ class SamplerClusterSiamese(SamplerCluster):
                           descr=dev_descr,
                           type_sampling_mode=self.type_sampling_mode,
                           spk_sampling_mode=self.spk_sampling_mode,
-                          seed=self.seed+1, batch_size=self.batch_size)
+                          seed=self.seed+1, batch_size=self.batch_size,
+                          num_samples=num_samples_dev)
         print("Done writing dev pairs")
 
 

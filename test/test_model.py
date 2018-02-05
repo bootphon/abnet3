@@ -18,13 +18,18 @@ import copy
 models = {
     'siamese_relu': SiameseNetwork(input_dim=10, num_hidden_layers=2,
                                    hidden_dim=10,
-                                   output_dim=40, dropout=0.1,
+                                   output_dim=40, p_dropout=0.1,
                                    activation_layer='relu'),
 
     'siamese_sig': SiameseNetwork(input_dim=10, num_hidden_layers=4,
                                   hidden_dim=10, type_init='orthogonal',
-                                  output_dim=15, dropout=0.,
-                                  activation_layer='sigmoid')
+                                  output_dim=15, p_dropout=0.,
+                                  activation_layer='sigmoid'),
+
+    'siamese_batch': SiameseNetwork(input_dim=10, num_hidden_layers=4,
+                                    hidden_dim=10, type_init='orthogonal',
+                                    output_dim=15, p_dropout=0.,
+                                    activation_layer='relu', batch_norm=True)
     }
 
 losses = {
@@ -40,24 +45,28 @@ def test_update_all_weights(model_func, loss_func):
     """Test to check updates to all layers in the network with manual updates
 
     """
-    N_batch = 64
+    N_batch = 128
     x1 = Variable(torch.randn(N_batch, 10))
     x2 = Variable(torch.randn(N_batch, 10))
-    y = Variable(torch.from_numpy(np.random.choice([1], N_batch)))
-    loss = losses[loss_func]()
+    y = Variable(torch.from_numpy(np.random.choice([-1, 1], N_batch)))
+    loss = losses[loss_func](avg=False)
     net = models[model_func]
     learning_rate = 0.1
+    net.eval()
     param_before = copy.deepcopy(list(net.parameters()))
+    net.train()
     output1, output2 = net(x1, x2)
     net.zero_grad()
     res = loss(output1, output2, y)
     res.backward()
     for param in net.parameters():
-
         param.data -= learning_rate * param.grad.data
+    net.eval()
     param_after = net.parameters()
 
     for layer1, layer2 in zip(param_before, param_after):
+        if (layer1 == layer2).data.numpy().all():
+            pass
         assert (layer1 != layer2).data.numpy().any()
 
 
@@ -66,19 +75,22 @@ def test_update_all_weights_with_optim(model_func, loss_func):
     """Test to check updates to all layers in the network with optim package
 
     """
-    N_batch = 64
+    N_batch = 128
     x1 = Variable(torch.randn(N_batch, 10))
     x2 = Variable(torch.randn(N_batch, 10))
-    y = Variable(torch.from_numpy(np.random.choice([1], N_batch)))
-    loss = losses[loss_func]()
+    y = Variable(torch.from_numpy(np.random.choice([-1, 1], N_batch)))
+    loss = losses[loss_func](avg=False)
     net = models[model_func]
+    net.eval()
     param_before = copy.deepcopy(list(net.parameters()))
+    net.train()
     optimizer = optim.Adam(net.parameters(), lr=0.0005)
     output1, output2 = net(x1, x2)
     optimizer.zero_grad()
     res = loss(output1, output2, y)
     res.backward()
     optimizer.step()
+    net.eval()
     param_after = net.parameters()
     for layer1, layer2 in zip(param_before, param_after):
         assert (layer1 != layer2).data.numpy().any()

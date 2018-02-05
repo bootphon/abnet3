@@ -15,6 +15,7 @@ from abnet3.model import *
 from abnet3.loss import *
 from abnet3.sampler import *
 from abnet3.utils import *
+from abnet3.dataloader import DataLoader, FramesDataLoader, MultiTaskDataLoader
 import numpy as np
 import torch
 import torch.optim as optim
@@ -23,6 +24,7 @@ import pickle
 import os
 import matplotlib
 import warnings
+import copy
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -32,25 +34,22 @@ class TrainerBuilder:
     """Generic Trainer class for ABnet3
 
     """
-    def __init__(self, sampler=None, network=None, loss=None,
-                 feature_path=None,
-                 num_epochs=200, patience=20, num_max_minibatches=1000,
+    def __init__(self, network=None, loss=None,
+                 num_epochs=200, patience=20,
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
-                 seed=0):
-        # super(TrainerBuilder, self).__init__()
-        self.sampler = sampler
+                 seed=0, dataloader=None):
         self.network = network
         self.loss = loss
-        self.feature_path = feature_path
         self.num_epochs = num_epochs
         self.patience = patience
-        self.num_max_minibatches = num_max_minibatches
         self.lr = lr
         self.momentum = momentum
         self.best_epoch = 0
         self.seed = seed
         self.cuda = cuda
         self.statistics_training = {}
+        self.dataloader = dataloader
+
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
                                   'RMSprop', 'LBFGS')
         if optimizer_type == 'sgd':
@@ -75,18 +74,25 @@ class TrainerBuilder:
             self.loss.cuda()
             self.network.cuda()
 
+    def params(self):
+        params = copy.copy(self.__dict__)
+        del params['dataloader']
+
     def whoami(self):
-        return {'params': self.__dict__,
+        whoami = {'params': self.params(),
                 'network': self.network.whoami(),
                 'loss': self.loss.whoami(),
-                'sampler': self.sampler.whoami(),
-                'class_name': self.__class__.__name__}
+                'class_name': self.__class__.__name__,
+                'dataloader': self.dataloader.whoami()
+                }
+        return whoami
+
 
     def save_whoami(self):
         pickle.dump(self.whoami(),
                     open(self.network.output_path+'.params', "wb"))
 
-    def optimize_model(self):
+    def optimize_model(self, do_training=True):
         """Optimization model step
 
         """
@@ -105,11 +111,10 @@ class TrainerBuilder:
         self.num_batches_train = 0
         self.num_batches_dev = 0
 
-        features, align_features, feat_dim = read_feats(self.feature_path)
         self.network.eval()
         self.network.save_network()
 
-        _ = self.optimize_model(features, do_training=False)
+        _ = self.optimize_model(do_training=False)
 
         for key in self.statistics_training.keys():
             self.statistics_training[key] = 0
@@ -117,7 +122,7 @@ class TrainerBuilder:
         for epoch in range(self.num_epochs):
             start_time = time.time()
 
-            dev_loss = self.optimize_model(features, do_training=True)
+            dev_loss = self.optimize_model(do_training=True)
 
             if self.best_dev is None or dev_loss < self.best_dev:
                 self.best_dev = dev_loss
@@ -170,112 +175,18 @@ class TrainerSiamese(TrainerBuilder):
     """
     def __init__(self, *args, **kwargs):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
-        assert type(self.sampler) == abnet3.sampler.SamplerClusterSiamese
         assert type(self.network) == abnet3.model.SiameseNetwork
 
-    def prepare_batch_from_pair_words(self, features, pairs_path,
-                                      train_mode=True, seed=0):
-        """Prepare a batch in Pytorch format based on a batch file
 
-        """
-
-        # TODO should not be here, should be somewhere in the dataloader
-        # TODO : Encapsulate X preparation in another function
-        # TODO : Replace Numpy operation by Pytorch operation
-        pairs = read_pairs(pairs_path)
-        token_feats = {}
-        for f1, s1, e1, f2, s2, e2 in pairs['same']:
-            token_feats[f1, s1, e1] = True
-            token_feats[f2, s2, e2] = True
-        for f1, s1, e1, f2, s2, e2 in pairs['diff']:
-            token_feats[f1, s1, e1] = True
-            token_feats[f2, s2, e2] = True
-        # 2. fill in features
-        for f, s, e in token_feats:
-            token_feats[f, s, e] = features.get(f, s, e)
-        # 3. align features for each pair
-        X1, X2, y = [], [], []
-        # get features for each same pair based on DTW alignment paths
-        for f1, s1, e1, f2, s2, e2 in pairs['same']:
-            if (s1 > e1) or (s2 > e2):
-                continue
-            feat1 = token_feats[f1, s1, e1]
-            feat2 = token_feats[f2, s2, e2]
-            try:
-                path1, path2 = get_dtw_alignment(feat1, feat2)
-            except Exception as e:
-                continue
-            try:
-                self.statistics_training['SameType'] += 1
-            except Exception as e:
-                self.statistics_training['SameType'] = 1
-
-            X1.append(feat1[path1, :])
-            X2.append(feat2[path2, :])
-            y.append(np.ones(len(path1)))
-
-        for f1, s1, e1, f2, s2, e2 in pairs['diff']:
-            if (s1 > e1) or (s2 > e2):
-                continue
-            feat1 = token_feats[f1, s1, e1]
-            feat2 = token_feats[f2, s2, e2]
-            n1 = feat1.shape[0]
-            n2 = feat2.shape[0]
-            X1.append(feat1[:min(n1, n2), :])
-            X2.append(feat2[:min(n1, n2), :])
-            y.append(-1*np.ones(min(n1, n2)))
-            try:
-                self.statistics_training['DiffType'] += 1
-            except Exception as e:
-                self.statistics_training['DiffType'] = 1
-
-        # concatenate all features
-        X1, X2, y = np.vstack(X1), np.vstack(X2), np.concatenate(y)
-        np.random.seed(seed)
-        n_pairs = len(y)
-        ind = np.random.permutation(n_pairs)
-        y = torch.from_numpy(y[ind])
-        X1 = torch.from_numpy(X1[ind, :])
-        X2 = torch.from_numpy(X2[ind, :])
-        return X1, X2, y
-
-    def get_batches(self, features, train_mode=True):
-        """Build iteratior next batch from folder for a specific epoch
-
-        """
-
-        if train_mode:
-            batch_dir = os.path.join(self.sampler.directory_output,
-                                     'train_pairs')
-        else:
-            batch_dir = os.path.join(self.sampler.directory_output,
-                                     'dev_pairs')
-
-        batches = Parse_Dataset(batch_dir)
-        num_batches = len(batches)
-        if self.num_max_minibatches < num_batches:
-            selected_batches = np.random.choice(range(num_batches),
-                                                self.num_max_minibatches,
-                                                replace=False)
-        else:
-            print("Number of batches not sufficient," +
-                  " iterating over all the batches")
-            selected_batches = np.random.permutation(range(num_batches))
-        for idx in selected_batches:
-            bacth_els = self.prepare_batch_from_pair_words(
-                    features, batches[idx], train_mode=train_mode)
-
-            X_batch1, X_batch2, y_batch = map(Variable, bacth_els)
-            yield X_batch1, X_batch2, y_batch
-
-    def optimize_model(self, features, do_training=True):
+    def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network.
 
         """
         train_loss = 0.0
         dev_loss = 0.0
         self.network.train()
-        for minibatch in self.get_batches(features, train_mode=True):
+
+        for minibatch in self.dataloader.batch_iterator(train_mode=True):
             X_batch1, X_batch2, y_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
@@ -293,7 +204,7 @@ class TrainerSiamese(TrainerBuilder):
             train_loss += train_loss_value.data[0]
 
         self.network.eval()
-        for minibatch in self.get_batches(features, train_mode=False):
+        for minibatch in self.dataloader.batch_iterator(train_mode=False):
             X_batch1, X_batch2, y_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
@@ -322,134 +233,19 @@ class TrainerSiameseMultitask(TrainerBuilder):
     """Siamese Trainer class for ABnet3 for multi task phn and spk
 
     """
-    def __init__(self, fid2spk_file=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(TrainerSiameseMultitask, self).__init__(*args, **kwargs)
-        assert type(self.sampler) == abnet3.sampler.SamplerClusterSiamese
         assert type(self.network) == abnet3.model.SiameseMultitaskNetwork
-        self.fid2spk_file = fid2spk_file
 
-    def prepare_batch_from_pair_words(self, features, pairs_path,
-                                      train_mode=True, seed=0, fid2spk=None):
-        """Prepare a batch in Pytorch format based on a batch file
 
-        """
-        # f are filenames, s are start times, e are end times
-        pairs = read_pairs(pairs_path)
-        token_feats = {}
-        for f1, s1, e1, f2, s2, e2 in pairs['same']:
-            token_feats[f1, s1, e1] = True
-            token_feats[f2, s2, e2] = True
-        for f1, s1, e1, f2, s2, e2 in pairs['diff']:
-            token_feats[f1, s1, e1] = True
-            token_feats[f2, s2, e2] = True
-        # 2. fill in features
-        for f, s, e in token_feats:
-            token_feats[f, s, e] = features.get(f, s, e)
-        # 3. align features for each pair
-        X1, X2, y_phn, y_spk = [], [], [], []
-        # get features for each same pair based on DTW alignment paths
-        for f1, s1, e1, f2, s2, e2 in pairs['same']:
-            if (s1 > e1) or (s2 > e2):
-                continue
-            feat1 = token_feats[f1, s1, e1]
-            feat2 = token_feats[f2, s2, e2]
-            try:
-                path1, path2 = get_dtw_alignment(feat1, feat2)
-            except e:
-                continue
-            spk1, spk2 = fid2spk[f1], fid2spk[f2]
-            if spk1 is spk2:
-                y_spk.append(np.ones(len(path1)))
-                try:
-                    self.statistics_training['SameTypeSameSpk'] += 1
-                except Exception as e:
-                    self.statistics_training['SameTypeSameSpk'] = 1
-            else:
-                y_spk.append(-1*np.ones(len(path1)))
-                try:
-                    self.statistics_training['SameTypeDiffSpk'] += 1
-                except Exception as e:
-                    self.statistics_training['SameTypeDiffSpk'] = 1
-            X1.append(feat1[path1, :])
-            X2.append(feat2[path2, :])
-            y_phn.append(np.ones(len(path1)))
-
-        for f1, s1, e1, f2, s2, e2 in pairs['diff']:
-            if (s1 > e1) or (s2 > e2):
-                continue
-            feat1 = token_feats[f1, s1, e1]
-            feat2 = token_feats[f2, s2, e2]
-            n1 = feat1.shape[0]
-            n2 = feat2.shape[0]
-            X1.append(feat1[:min(n1, n2), :])
-            X2.append(feat2[:min(n1, n2), :])
-            y_phn.append(-1*np.ones(min(n1, n2)))
-            spk1, spk2 = fid2spk[f1], fid2spk[f2]
-            if spk1 is spk2:
-                y_spk.append(np.ones(min(n1, n2)))
-                try:
-                    self.statistics_training['DiffTypeSameSpk'] += 1
-                except Exception as e:
-                    self.statistics_training['DiffTypeSameSpk'] = 1
-            else:
-                y_spk.append(-1*np.ones(min(n1, n2)))
-                try:
-                    self.statistics_training['DiffTypeDiffSpk'] += 1
-                except Exception as e:
-                    self.statistics_training['DiffTypeDiffSpk'] = 1
-
-        # concatenate all features
-        X1, X2 = np.vstack(X1), np.vstack(X2)
-        y_phn, y_spk = np.concatenate(y_phn), np.concatenate(y_spk)
-        np.random.seed(seed)
-        assert len(y_phn) == len(y_spk), 'not same number of labels...'
-        n_pairs = len(y_phn)
-        ind = np.random.permutation(n_pairs)
-        y_phn = torch.from_numpy(y_phn[ind])
-        y_spk = torch.from_numpy(y_spk[ind])
-        X1 = torch.from_numpy(X1[ind, :])
-        X2 = torch.from_numpy(X2[ind, :])
-        return X1, X2, y_spk, y_phn
-
-    def get_batches(self, features, train_mode=True):
-        """Build iteratior next batch from folder for a specific epoch
-
-        """
-
-        if train_mode:
-            batch_dir = os.path.join(self.sampler.directory_output,
-                                     'train_pairs')
-        else:
-            batch_dir = os.path.join(self.sampler.directory_output,
-                                     'dev_pairs')
-
-        batches = Parse_Dataset(batch_dir)
-        num_batches = len(batches)
-        if self.num_max_minibatches < num_batches:
-            selected_batches = np.random.choice(range(num_batches),
-                                                self.num_max_minibatches,
-                                                replace=False)
-        else:
-            print("Number of batches not sufficient," +
-                  " iterating over all the batches")
-            selected_batches = np.random.permutation(range(num_batches))
-        for idx in selected_batches:
-            bacth_els = self.prepare_batch_from_pair_words(
-                    features, batches[idx], train_mode=train_mode,
-                    fid2spk=read_spkid_file(self.fid2spk_file))
-
-            X_batch1, X_batch2, y_spk_batch, y_phn_batch = map(Variable,
-                                                               bacth_els)
-            yield X_batch1, X_batch2, y_spk_batch, y_phn_batch
-
-    def optimize_model(self, features, do_training=True):
+    def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network with multitask.
 
         """
         train_loss = 0.0
         dev_loss = 0.0
         self.network.train()
-        for minibatch in self.get_batches(features, train_mode=True):
+        for minibatch in self.dataloader.batch_iterator(train_mode=True):
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
@@ -471,7 +267,7 @@ class TrainerSiameseMultitask(TrainerBuilder):
             train_loss += train_loss_value.data[0]
 
         self.network.eval()
-        for minibatch in self.get_batches(features, train_mode=False):
+        for minibatch in self.dataloader.batch_iterator(train_mode=False):
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
             if self.cuda:
                 X_batch1 = X_batch1.cuda()
@@ -502,6 +298,8 @@ class TrainerSiameseMultitask(TrainerBuilder):
 
 if __name__ == '__main__':
 
+    dataloader = MultiTaskDataLoader(pairs_path=None, features_path=None)
+
     sia = SiameseMultitaskNetwork(input_dim=280, num_hidden_layers_shared=2,
                                   hidden_dim=500,
                                   output_dim=100, p_dropout=0.,
@@ -510,11 +308,10 @@ if __name__ == '__main__':
                                   activation_layer='sigmoid',
                                   type_init='xavier_uni',
                                   batch_norm=False,
-                                  output_path='/Users/rachine/abnet3/exp',
-                                  cuda=False)
-    sam = SamplerClusterSiamese(already_done=True, directory_output=None)
+                                  output_path='/Users/rachine/abnet3/exp')
     coscos2_multi = weighted_loss_multi(loss=coscos2, weight=0.5)
     # sia.save_network()
-    tra = TrainerSiameseMultitask(sampler=sam, network=sia,
+    tra = TrainerSiameseMultitask(network=sia,
+                                  dataloader=dataloader,
                                   loss=coscos2_multi, optimizer_type='adam',
                                   cuda=False)

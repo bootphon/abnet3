@@ -135,19 +135,59 @@ def get_dtw_alignment(feat1, feat2):
     return path1, path2
 
 
-def read_pairs(pair_file):
-    with open(pair_file, 'r') as fh:
+def read_dataset(dataset_file):
+    """
+    :param dataset_file: path to the dataset file containing word pairs
+    :return: list of the form
+     [(file1, start1, end1, f2, s2, e2, pair_type), ...]
+    """
+    with open(dataset_file, 'r') as fh:
         lines = fh.readlines()
-    pairs = {'same': [], 'diff': []}
+    pairs = []
     for line in lines:
         tokens = line.strip().split(" ")
         assert len(tokens) == 7
         f1, s1, e1, f2, s2, e2, pair_type = tokens
         s1, e1, s2, e2 = float(s1), float(e1), float(s2), float(e2)
-        assert pair_type in pairs, \
+        assert pair_type in ['same', 'diff'], \
             'Unsupported pair type {0}'.format(pair_type)
-        pairs[pair_type].append((f1, s1, e1, f2, s2, e2))
+        pairs.append((f1, s1, e1, f2, s2, e2, pair_type))
     return pairs
+
+
+def group_pairs(pairs):
+    """
+    Function that groups pairs by pair_type
+    :param list pairs: list of pairs [(file1, start1, end1, f2, s2, e2, pair_type), ...]
+    :return:
+    dictionnary of the form
+    {
+        'same': [pairs]
+        'diff': [pairs]
+    }
+    """
+    grouped_pairs = {'same': [], 'diff': []}
+    for f1, s1, e1, f2, s2, e2, pair_type in pairs:
+        assert pair_type in grouped_pairs, \
+            'Unsupported pair type {0}'.format(pair_type)
+        grouped_pairs[pair_type].append((f1, s1, e1, f2, s2, e2))
+    return grouped_pairs
+
+
+def read_pairs(pair_file):
+    """
+
+    :param pair_file: path to the batch file containing word pairs
+    :return: dictionnary of the form
+    {
+        'same': [pairs]
+        'diff': [pairs]
+    }
+
+    where a pair is a tuple (file1, start1, end1, file2, start2, end2)
+
+    """
+    return group_pairs(read_dataset(pair_file))
 
 
 def read_feats(features_file, align_features_file=None):
@@ -166,3 +206,29 @@ def read_feats(features_file, align_features_file=None):
         feats = align_features.dict_features()
         align_features = Features_Accessor(times, feats)
     return features, align_features, feat_dim
+
+
+def progress(max_number, every=0.1, title=""):
+    """
+    print progress of a process.
+    This function returns another function,
+    that has to be called at every iteration, and will print progress.
+
+    # Usage:
+
+    print_progress = progress(100, title="my process")
+
+    for i in range(100):
+        do_stuff()
+        print_progress(i) # this will print progression every time
+                          # we reach 10% more (default)
+    """
+    next_progress = 0
+
+    def print_progress(current_progress):
+        nonlocal next_progress
+        current = current_progress / max_number
+        if current >= next_progress:
+            print("Progress: {:.1f}% of process {}".format(next_progress*100, title))
+            next_progress = (current // every) * every + every
+    return print_progress

@@ -29,8 +29,10 @@ class EmbedderBuilder:
         If Gpu and Cuda are available
 
     """
-    def __init__(self, network, network_path=None, feature_path=None,
+    def __init__(self, network=None, network_path=None, feature_path=None,
                  output_path=None, cuda=True):
+        if network is None:
+            raise ValueError("network is None.")
         self.network = network
         self.network_path = network_path
         self.feature_path = feature_path
@@ -47,7 +49,7 @@ class EmbedderSiamese(EmbedderBuilder):
 
     """
 
-    def __init__(self, avg=True, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(EmbedderSiamese, self).__init__(*args, **kwargs)
 
     def embed(self):
@@ -57,6 +59,7 @@ class EmbedderSiamese(EmbedderBuilder):
         if self.network_path is not None:
             self.network.load_network(self.network_path)
         self.network.eval()
+        print("Done loading network weights")
 
         with h5features.Reader(self.feature_path, 'features') as fh:
             features = fh.read()
@@ -64,10 +67,11 @@ class EmbedderSiamese(EmbedderBuilder):
         items = features.items()
         times = features.labels()
         feats = features.features()
+        print("Done loading input feature file")
 
         embeddings = []
         for feat in feats:
-            feat_torch = Variable(torch.from_numpy(feat))
+            feat_torch = Variable(torch.from_numpy(feat), volatile=True)
             if self.cuda:
                 feat_torch = feat_torch.cuda()
             emb, _ = self.network(feat_torch, feat_torch)
@@ -84,7 +88,7 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
 
     """
 
-    def __init__(self, avg=True, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(EmbedderSiameseMultitask, self).__init__(*args, **kwargs)
 
     def embed(self):
@@ -104,7 +108,7 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
 
         embeddings_spk, embeddings_phn = [], []
         for feat in feats:
-            feat_torch = Variable(torch.from_numpy(feat))
+            feat_torch = Variable(torch.from_numpy(feat), volatile=True)
             if self.cuda:
                 feat_torch = feat_torch.cuda()
             emb_spk, emb_phn, _, _ = self.network(feat_torch, feat_torch)
