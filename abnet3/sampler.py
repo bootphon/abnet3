@@ -735,7 +735,6 @@ class SamplerClusterSiamese(SamplerCluster):
         # else:
         # generate and write pairs to disk
 
-        print("Saving pairs to disk")
         os.makedirs(self.directory_output)
         # 4) Make directory and export pairs to the disk
         train_pairs_dir = os.path.join(self.directory_output, 'train_pairs')
