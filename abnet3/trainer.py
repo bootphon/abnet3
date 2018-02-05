@@ -50,6 +50,10 @@ class TrainerBuilder:
         self.statistics_training = {}
         self.dataloader = dataloader
 
+        if cuda:
+            self.loss.cuda()
+            self.network.cuda()
+
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
                                   'RMSprop', 'LBFGS')
         if optimizer_type == 'sgd':
@@ -70,9 +74,6 @@ class TrainerBuilder:
         if optimizer_type == 'LBFGS':
             self.optimizer = optim.LBFGS(self.network.parameters(),
                                          lr=self.lr)
-        if cuda:
-            self.loss.cuda()
-            self.network.cuda()
 
     def params(self):
         params = copy.copy(self.__dict__)
