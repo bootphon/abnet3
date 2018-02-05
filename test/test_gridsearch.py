@@ -15,7 +15,7 @@ class TestGridsearch:
 
         grid.parse_yaml_input_file()
         dic_yaml = {'test_experiments_yaml': {
-            'dataset': {
+            'features': {
                 'train': {
                     'feature_path': None},
                 'test': {

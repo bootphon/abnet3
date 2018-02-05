@@ -8,6 +8,8 @@ It will run a search optimization for the different parameters of the model
 """
 
 import yaml
+import faulthandler
+faulthandler.enable()
 
 
 class GridSearch(object):
@@ -40,19 +42,22 @@ class GridSearch(object):
         """
         with open(self.input_file, 'r') as stream:
             try:
-                self.grid_params = yaml.load(stream)
+                self.params = yaml.load(stream)
             except yaml.YAMLError as exc:
                 print(exc)
 
-    def build_list_experiments(self):
-        """Parse yaml input file for grid search
+    def build_grid_experiments(self):
+        """Extract the several list of experiments
 
         """
-
+        self.parse_yaml_input_file()
+        experience_name = self.params.keys()
+        import pdb
+        pdb.set_trace()
 
 
 if __name__ == '__main__':
     grid = GridSearch(input_file='test/data/buckeye.yaml')
-    grid.parse_yaml_input_file()
-    import pdb
-    pdb.set_trace()
+    grid.build_grid_experiments()
+    # import pdb
+    # pdb.set_trace()

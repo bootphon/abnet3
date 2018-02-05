@@ -1,6 +1,6 @@
 # Config file to test
 test_experiments_yaml:
-  dataset:
+  features:
     num_stacked_frames: 7
     train:
       wav_path:
@@ -20,7 +20,7 @@ test_experiments_yaml:
     max_size_cluster: 20
     ratio_train_dev: 0.7
     ratio_same_diff_spk: 0.1
-    type_sampling_mode: ['log','f',1']
+    type_sampling_mode: ['log','f','1']
     spk_sampling_mode: log
   model:
     architecture: SiameseNetwork
@@ -37,16 +37,16 @@ test_experiments_yaml:
     num_hidden_layers_spk:
     num_hidden_layers_phn:
   loss:
-    type:
-    avg:
+    type: coscos2
+    avg: False
     margin:
   trainer:
-    num_epochs:
-    patience:
-    num_max_minibatches:
-    lr:
+    num_epochs: 200
+    patience: 30
+    num_max_minibatches: 10000
+    lr: 0.1
     momentum:
-    seed:
-    cuda:
-    optimizer_type:
+    seed: 0
+    cuda: False
+    optimizer_type: adadelta
   embedder:

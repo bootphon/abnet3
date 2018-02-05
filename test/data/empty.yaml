@@ -1,5 +1,5 @@
 test_experiments_yaml:
-  dataset:
+  features:
     train:
       feature_path:
     test:
