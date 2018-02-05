@@ -116,9 +116,9 @@ def Parse_Dataset(path):
 
 class Features_Accessor(object):
 
-    def __init__(self, times, features, feat_type):
+    def __init__(self, times, features):
         self.times = times
-        if feat_type == np.float32:
+        if features[list(features.keys())[0]].dtype == np.float32:
             self.features = features
         else:
             self.features = cast_features(features)
@@ -172,8 +172,7 @@ def read_feats(features_file, align_features_file=None):
     times = features.dict_labels()
     feats = features.dict_features()
     feat_dim = feats[list(feats.keys())[0]].shape[1]
-    feat_type = feats[list(feats.keys())[0]].dtype
-    features = Features_Accessor(times, feats, feat_type)
+    features = Features_Accessor(times, feats)
     if align_features_file is None:
         align_features = None
     else:
@@ -188,9 +187,8 @@ def cast_features(features, target_type=np.float32):
     """
     cast features to float32, as this is the currently supported type.
     """
-    for spk in features:
-        features[spk] = features[spk].astype(target_type)
-        last = spk
+    for item in features:
+        features[item] = features[item].astype(target_type)
     print('Casted features to correct type np.float32')
     return features
 
