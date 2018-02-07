@@ -107,10 +107,9 @@ class OriginalDataLoader(DataLoader):
             self.dev_pairs = read_dataset(dev_dir)
 
 
-    def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
+    def load_frames_from_pairs(self, pairs, fid2spk=None):
         """Prepare a batch in Pytorch format based on a batch file
-        :param pairs: list of pairs under the form {'same': [pairs], 'diff': [pairs] }
-        :param seed: randomness
+        :param pairs: list of pairs under the form {'same': [pairs], 'diff': [pairs]}
         :param fid2spk:
             if None, will return X1, X2, y_phones
             If it is the spkid mapping, will return X1, X2, y_phones, y_speaker
@@ -184,6 +183,26 @@ class OriginalDataLoader(DataLoader):
 
         # concatenate all features
         X1, X2, y_phn = np.vstack(X1), np.vstack(X2),  np.concatenate(y_phn)
+
+        if fid2spk:
+            y_spk = np.concatenate(y_spk)
+            return X1, X2, y_spk, y_phn
+
+        return X1, X2, y_phn
+
+    def permutate_batch(self, X1, X2, y_phn, y_spk=None, seed=0):
+        """
+        Shuffle batch frames
+
+        :param X1, X2, y_phn: numpy arrays, they are the inputs of the network, these
+                              will be shuffled
+        :param seed: randomness
+        :param y_spk:   ground truth for same/different speaker, used in multitask
+                        mode.
+                        If None, will return X1, X2, y_phn
+                        If used, will return X1, X2, y_spk and y_phn
+        """
+
         np.random.seed(seed)
         n_pairs = len(y_phn)
 
@@ -192,11 +211,12 @@ class OriginalDataLoader(DataLoader):
         X2 = X2[ind, :]
         y_phn = y_phn[ind]
 
-        if fid2spk:
-            y_spk = np.concatenate(y_spk)[ind]
+        if y_spk:
+            y_spk = y_spk[ind]
             return X1, X2, y_spk, y_phn
 
         return X1, X2, y_phn
+
 
     def batch_iterator(self, train_mode=True):
         """Build iterator next batch from folder for a specific epoch
@@ -234,6 +254,13 @@ class OriginalDataLoader(DataLoader):
         for batch_id in selected_batches:
             grouped_pairs = group_pairs(batches[batch_id])
             batch_els = self.load_frames_from_pairs(grouped_pairs)
+            #The next line would fail if the load_frames_from_pairs call were
+            #to use fid2spk because of the return order (X1, X2, y_spk, y_phn),
+            #I think the return order should be changed (X1, X2, y_phn, y_spk),
+            #but this implies changes in the API. Either way, on this particular
+            #class the fid2spk option shouldn´t be used, and on the multitask I
+            #accounted for the order and handled it, so everything should work fine
+            batch_els = self.permutate_batch(batch_els)
             batch_els = map(torch.from_numpy, batch_els)
             X_batch1, X_batch2, y_batch = map(Variable, batch_els)
             yield X_batch1, X_batch2, y_batch
@@ -282,6 +309,7 @@ class FramesDataLoader(OriginalDataLoader):
 
         if self.X1 is None:
             self.X1, self.X2, self.y = self.load_frames_from_pairs(pairs)
+            self.X1, self.X2, self.y = self.permutate_batch(self.X1, self.X2, self.y)
 
         num_pair_frames = len(self.X1)
         num_batches = num_pair_frames // self.batch_size
@@ -350,9 +378,18 @@ class MultiTaskDataLoader(FramesDataLoader):
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
             pairs = read_pairs(batches[idx])
-            batch_els = self.load_frames_from_pairs(
+            #On the next line, the return items from load_frames_from_pairs have
+            #to be unpacked because the order is (X1, X2, y_spk, y_phn) and the
+            #permutation method expects them as (X1, X2, y_phn, y_spk). This is
+            #so because the y_spk is a kwarg, I propose to change the order of
+            #return of every function here, to be consistent with the order the
+            #parameters are received both on load_frames_from_pairs and permutate_batch
+            #as this would be more logical and clean, unless there´s a reason
+            #for the batches to be returned in that order
+            X1, X2, y_spk, y_phn = self.load_frames_from_pairs(
                 pairs,
                 fid2spk=fid2spk)
+            batch_els = self.permutate_batch(X1, X2, y_phn, y_spk = y_spk)
             batch_els = map(torch.from_numpy, batch_els)
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = map(Variable,
                                                                batch_els)
