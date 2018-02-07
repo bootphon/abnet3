@@ -127,13 +127,13 @@ class KLLoss(LossBuilder):
     def forward(self,  input1, input2, y, avg=True):
 
         hingeloss = nn.HingeEmbeddingLoss(margin=self.margin, size_average=self.avg)
-
         kldiv1 = torch.sum(input1 * torch.log(input1 / input2), 1)
         loss1 = hingeloss(kldiv1, y)
 
+        hingeloss2 = nn.HingeEmbeddingLoss(margin=self.margin, size_average=self.avg)
         kldiv2 = torch.sum(input2 * torch.log(input2 / input1), 1)
-        loss2 = hingeloss(kldiv2, y)
-
+        loss2 = hingeloss2(kldiv2, y)
+        
         return loss1 + loss2
 
 
