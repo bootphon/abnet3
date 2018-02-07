@@ -227,7 +227,8 @@ class FeaturesGenerator:
             mean, variance = float(mean), float(variance)
         return {'mean': mean, 'variance': variance}
 
-    def generate(self, files, output_path, load_mean_variance_path=None, save_mean_variance_path=None):
+    def generate(self, files, output_path, load_mean_variance_path=None, save_mean_variance_path=None,
+                 vad_folder=None):
         """
         :param list files: List of wav files.  You must
             give the complete relative or absolute path of the wave file
@@ -245,6 +246,8 @@ class FeaturesGenerator:
             If it is not None, the mean and variance used to normalize the dataset will
             be extracted from this file instead of being calculated.
             This is useful for test data.
+        :param vad_folder: folder where the vad files are stored. Each folder has to be named like the item
+        it corresponds to.
         """
 
         functions = {
