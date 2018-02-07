@@ -6,6 +6,7 @@ based on neural network.
 """
 
 from abnet3.model import *
+import numpy as np
 import torch
 from torch.autograd import Variable
 import h5features
@@ -71,6 +72,8 @@ class EmbedderSiamese(EmbedderBuilder):
 
         embeddings = []
         for feat in feats:
+            if feat.dtype != np.float32:
+                feat = feat.astype(np.float32)
             feat_torch = Variable(torch.from_numpy(feat), volatile=True)
             if self.cuda:
                 feat_torch = feat_torch.cuda()
@@ -108,6 +111,8 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
 
         embeddings_spk, embeddings_phn = [], []
         for feat in feats:
+            if feat.dtype != np.float32:
+                feat = feat.astype(np.float32)
             feat_torch = Variable(torch.from_numpy(feat), volatile=True)
             if self.cuda:
                 feat_torch = feat_torch.cuda()
