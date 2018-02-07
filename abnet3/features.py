@@ -17,7 +17,7 @@ import tempfile
 
 class FeaturesGenerator:
 
-    def __init__(self, n_filters=40, method='fbanks', normalization=True, stack=True,
+    def __init__(self, n_filters=40, method='fbanks', normalization=True, norm_per_file=False,  stack=True,
                  nframes=7, deltas=False, deltasdeltas=False):
         self.n_filters = n_filters
         self.method = method
@@ -26,6 +26,7 @@ class FeaturesGenerator:
         self.nframes = nframes
         self.deltas = deltas
         self.deltasdeltas = deltasdeltas
+        self.norm_per_file = norm_per_file
 
         if self.method not in ['mfcc', 'fbanks']:
             raise ValueError("Method %s not recognized" % self.method)
@@ -144,7 +145,6 @@ class FeaturesGenerator:
         """
 
         dset = list(h5py.File(h5f).keys())[0]
-
         if vad is not None:
             raise NotImplementedError
         else:
@@ -161,6 +161,22 @@ class FeaturesGenerator:
         shutil.copy(h5f, mvn_h5f)
         h5py.File(mvn_h5f)[dset]['features'][:] = mvn_features
         return mean, std
+
+    def mean_var_norm_per_file(self, h5f, mvn_h5f):
+        dset_name = list(h5py.File(h5f).keys())[0]
+        files = h5py.File(h5f)[dset_name]['items']
+        reader = h5features.Reader(h5f)
+        means_vars = []
+        for f in files:
+            data = reader.read(from_item=f)
+            items, features, times = data.items(), data.features()[0], data.labels()[0]
+            mean, std = np.mean(features), np.std(features)
+            features -= mean
+            features /= (std + np.finfo(features.dtype).eps)
+            h5features.write(mvn_h5f, '/features/', items, [times], [features])
+            means_vars.append((f, mean, std))
+        return means_vars
+
 
     def h5features_feats2stackedfeats(self, fb_h5f, stackedfb_h5f, nframes=7):
         """Create stacked features version of h5features file
@@ -238,6 +254,11 @@ class FeaturesGenerator:
 
         if load_mean_variance_path is not None and save_mean_variance_path is not None:
             raise ValueError("You can't both read and save mean and variance")
+        if not self.normalization and self.norm_per_file:
+            raise ValueError("You can't set normalization to False and normalization per file to True.")
+
+        if self.norm_per_file and load_mean_variance_path is not None or save_mean_variance_path is not None:
+            raise ValueError("You can't compute mean and variance per file and loading / saving it.")
 
         if self.method not in functions:
             raise ValueError("Method %s not authorized." % self.method)
@@ -251,13 +272,16 @@ class FeaturesGenerator:
         if self.normalization:
             print("Normalizing")
             h5_temp2 = tempdir + '/temp2'
-            if load_mean_variance_path is not None:
-                params = self.load_mean_variance(file_path=load_mean_variance_path)
+            if self.norm_per_file:
+                self.mean_var_norm_per_file(h5_temp1, h5_temp2)
             else:
-                params = None
-            mean, variance = self.mean_variance_normalisation(h5_temp1, h5_temp2, params=params)
-            if save_mean_variance_path is not None:
-                self.save_mean_variance(mean, variance, output_file=save_mean_variance_path)
+                if load_mean_variance_path is not None:
+                    params = self.load_mean_variance(file_path=load_mean_variance_path)
+                else:
+                    params = None
+                mean, variance = self.mean_variance_normalisation(h5_temp1, h5_temp2, params=params)
+                if save_mean_variance_path is not None:
+                    self.save_mean_variance(mean, variance, output_file=save_mean_variance_path)
         else:
             h5_temp2 = h5_temp1
         if self.stack:
