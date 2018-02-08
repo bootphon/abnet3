@@ -52,7 +52,7 @@ class OriginalDataLoader(DataLoader):
         """
         self.pairs_path = pairs_path
         self.features_path = features_path
-        self.statistics_training = defaultdict(int) # dict with default value 0
+        self.statistics_training = defaultdict(int)  # dict with default value 0
         self.seed = seed
         self.num_max_minibatches = num_max_minibatches
         self.batch_size = batch_size
@@ -61,7 +61,10 @@ class OriginalDataLoader(DataLoader):
         self.dev_pairs = None
 
     def __getstate__(self):
-        """used for pickle"""
+        """used for pickle
+        This function is used to remove the features in the state. They are very heavy (several GB)
+        so we must remove them from the state before pickling and saving the network.
+        """
 
         return (self.pairs_path,
                 self.features_path,
@@ -71,7 +74,10 @@ class OriginalDataLoader(DataLoader):
                 self.batch_size)
 
     def __setstate__(self, state):
-        """used for pickle"""
+        """
+        As for __getstate__, this function is used to reconstruct the object from a pickled object.
+        We have to reload the data since we didn't save the features and train / dev pairs.
+        """
         (
             self.pairs_path,
             self.features_path,
@@ -106,7 +112,6 @@ class OriginalDataLoader(DataLoader):
             dev_dir = os.path.join(self.pairs_path, 'dev_pairs/dataset')
             self.dev_pairs = read_dataset(dev_dir)
 
-
     def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
         """Prepare a batch in Pytorch format based on a batch file
         :param pairs: list of pairs under the form {'same': [pairs], 'diff': [pairs] }
@@ -139,7 +144,7 @@ class OriginalDataLoader(DataLoader):
             feat2 = token_feats[f2, s2, e2]
             try:
                 path1, path2 = get_dtw_alignment(feat1, feat2)
-            except e:
+            except Exception:
                 continue
 
             self.statistics_training['SameType'] += 1
@@ -183,7 +188,7 @@ class OriginalDataLoader(DataLoader):
             assert len(y_phn) == len(y_spk), 'not same number of labels...'
 
         # concatenate all features
-        X1, X2, y_phn = np.vstack(X1), np.vstack(X2),  np.concatenate(y_phn)
+        X1, X2, y_phn = np.vstack(X1), np.vstack(X2), np.concatenate(y_phn)
         np.random.seed(seed)
         n_pairs = len(y_phn)
 
@@ -220,7 +225,7 @@ class OriginalDataLoader(DataLoader):
 
         # TODO : shuffle the pairs before creating batches
         # make batches
-        batches = [pairs[i:i+self.batch_size] for i in range(0, num_pairs, self.batch_size)]
+        batches = [pairs[i:i + self.batch_size] for i in range(0, num_pairs, self.batch_size)]
         num_batches = len(batches)
 
         if self.num_max_minibatches < num_batches:
