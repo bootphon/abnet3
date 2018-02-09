@@ -29,7 +29,7 @@ class RequiredPackagedInstall(install):
 
         # github repositories we want to get
         DTW_cython = "git+https://github.com/Rachine/DTW_Cython.git"
-        spectral = "git+https://github.com/bootphon/spectral.git"
+        spectral = "git+https://github.com/cdancette/spectral.git"
         h5features = "git+https://github.com/bootphon/h5features.git"
 
         # install with pip
