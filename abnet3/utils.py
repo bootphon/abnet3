@@ -118,7 +118,11 @@ class Features_Accessor(object):
 
     def __init__(self, times, features):
         self.times = times
-        self.features = features
+        if features[list(features.keys())[0]].dtype == np.float32:
+            self.features = features
+        else:
+            self.features = cast_features(features)
+
 
     def get(self, f, on, off):
         t = np.where(np.logical_and(self.times[f.encode('UTF-8')] >= on,
@@ -206,6 +210,15 @@ def read_feats(features_file, align_features_file=None):
         feats = align_features.dict_features()
         align_features = Features_Accessor(times, feats)
     return features, align_features, feat_dim
+
+def cast_features(features, target_type=np.float32):
+    """
+    cast features to float32, as this is the currently supported type.
+    """
+    for item in features:
+        features[item] = features[item].astype(target_type)
+    print('Casted features to correct type np.float32')
+    return features
 
 
 def progress(max_number, every=0.1, title=""):
