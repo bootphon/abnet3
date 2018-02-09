@@ -208,6 +208,13 @@ def read_feats(features_file, align_features_file=None):
     return features, align_features, feat_dim
 
 
+def read_vad_file(path):
+    with open(path, 'r') as f:
+        lines = [line.strip().split() for line in f]
+        lines = [[int(x) for x in line] for line in lines]
+    return lines
+
+
 def progress(max_number, every=0.1, title=""):
     """
     print progress of a process.
