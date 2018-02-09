@@ -1,5 +1,5 @@
 # Config file to test
-test_experiments_yaml:
+default_params:
   features:
     num_stacked_frames: 7
     train:
@@ -10,6 +10,15 @@ test_experiments_yaml:
       wav_path:
       already_done: True
       feature_path:
+  dataloader:
+      pairs_path : pairs_path
+      features_path : features_path
+      seed : 0
+      num_max_minibatches : 10000
+      batch_size : 8
+      features : None
+      train_pairs : None
+      dev_pairs : None
   sampler:
     already_done: False
     std_file: /scratch2/rriad/projects/abnet3_zr/interspeech_paper/Abnet_neil_discovered.classes
@@ -20,8 +29,7 @@ test_experiments_yaml:
     max_size_cluster: 20
     ratio_train_dev: 0.7
     ratio_same_diff_spk: 0.1
-    type_sampling_mode: ['log','f','1']
-    spk_sampling_mode: log
+    spk_sampling_mode: 1
   model:
     architecture: SiameseNetwork
     input_dim: 280
@@ -43,10 +51,13 @@ test_experiments_yaml:
   trainer:
     num_epochs: 200
     patience: 30
-    num_max_minibatches: 10000
     lr: 0.1
     momentum:
     seed: 0
-    cuda: False
+    cuda: True
     optimizer_type: adadelta
   embedder:
+
+grid_params:
+    sampler:
+        type_sampling_mode: ['log','f','1']
