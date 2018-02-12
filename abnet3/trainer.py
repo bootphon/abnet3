@@ -127,9 +127,10 @@ class TrainerBuilder:
             if self.best_dev is None or dev_loss < self.best_dev:
                 self.best_dev = dev_loss
                 self.patience_dev = 0
-                print('Saving best model so far, epoch {}'.format(epoch+1))
+                print('Saving best model so far, epoch {}... '.format(epoch+1), end='')
                 self.network.save_network()
                 self.save_whoami()
+                print("Done.")
                 self.best_epoch = epoch
             else:
                 self.patience_dev += 1
