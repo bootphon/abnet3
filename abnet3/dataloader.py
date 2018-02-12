@@ -57,8 +57,7 @@ class OriginalDataLoader(DataLoader):
         self.num_max_minibatches = num_max_minibatches
         self.batch_size = batch_size
         self.features = None
-        self.train_pairs = None
-        self.dev_pairs = None
+        self.pairs = {'train': None, 'dev': None}
 
     def __getstate__(self):
         """used for pickle
@@ -103,25 +102,15 @@ class OriginalDataLoader(DataLoader):
             features, align_features, feat_dim = read_feats(self.features_path)
             self.features = features
 
-        if self.train_pairs is None:
+        if self.pairs['train'] is None:
             train_dir = os.path.join(self.pairs_path, 'train_pairs/dataset')
+            self.pairs['train'] = read_dataset(train_dir)
 
-            self.train_pairs = read_dataset(train_dir)
-
-        if self.dev_pairs is None:
+        if self.pairs['dev'] is None:
             dev_dir = os.path.join(self.pairs_path, 'dev_pairs/dataset')
-            self.dev_pairs = read_dataset(dev_dir)
+            self.pairs['dev'] = read_dataset(dev_dir)
 
-    def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
-        """Prepare a batch in Pytorch format based on a batch file
-        :param pairs: list of pairs under the form {'same': [pairs], 'diff': [pairs] }
-        :param seed: randomness
-        :param fid2spk:
-            if None, will return X1, X2, y_phones
-            If it is the spkid mapping, will return X1, X2, y_phones, y_speaker
-        """
-
-        # f are filenames, s are start times, e are end times
+    def get_token_feats(self, pairs):
         token_feats = {}
         for f1, s1, e1, f2, s2, e2 in pairs['same']:
             if (f1, s1, e1) not in token_feats:
@@ -133,6 +122,19 @@ class OriginalDataLoader(DataLoader):
                 token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
             if (f2, s2, e2) not in token_feats:
                 token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
+        return token_feats
+
+    def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
+        """Prepare a batch in Pytorch format based on a batch file
+        :param pairs: list of pairs under the form {'same': [pairs], 'diff': [pairs] }
+        :param seed: randomness
+        :param fid2spk:
+            if None, will return X1, X2, y_phones
+            If it is the spkid mapping, will return X1, X2, y_phones, y_speaker
+        """
+
+        # f are filenames, s are start times, e are end times
+        token_feats = self.get_token_feats(pairs)
 
         # 2. align features for each pair
         X1, X2, y_phn, y_spk = [], [], [], []
@@ -217,10 +219,10 @@ class OriginalDataLoader(DataLoader):
         self.load_data()
 
         if train_mode:
-            pairs = self.train_pairs
+            mode = 'train'
         else:
-            pairs = self.dev_pairs
-
+            mode = 'dev'
+        pairs = self.pairs[mode]
         num_pairs = len(pairs)
 
         # TODO : shuffle the pairs before creating batches
@@ -259,7 +261,79 @@ class FramesDataLoader(OriginalDataLoader):
         super().__init__(pairs_path, features_path)
         self.randomize_dataset = randomize_dataset
         self.batch_size = batch_size
-        self.X1 = None
+        self.token_features = {'train': None, 'dev': None}
+        self.frame_pairs = {'train': None, 'dev': None}
+
+    def load_data(self):
+        super(FramesDataLoader, self).load_data()
+
+        if self.token_features['train'] is None:
+            self.token_features['train'], self.frame_pairs['train'] = \
+                self.load_frames_from_pairs(self.pairs['train'])
+
+        if self.token_features['dev'] is None:
+            self.token_features['dev'], self.frame_pairs['dev'] = \
+                self.load_frames_from_pairs(self.pairs['dev'])
+
+
+    def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
+        """Prepare a batch in Pytorch format based on a batch file
+        :param pairs: list of pairs under the form (f1, s1, e1, f2, s2, e2, same)
+        :param seed: randomness
+        :param fid2spk:
+            if None, will return X1, X2, y_phones
+            If it is the spkid mapping, will return X1, X2, y_phones, y_speaker
+        """
+
+        frames = []
+
+        pairs = group_pairs(pairs)
+        token_feats = self.get_token_feats(pairs)
+
+        # get features for each same pair based on DTW alignment paths
+        for f1, s1, e1, f2, s2, e2 in pairs['same']:
+            if (s1 > e1) or (s2 > e2):
+                continue
+            feat1 = token_feats[f1, s1, e1]
+            feat2 = token_feats[f2, s2, e2]
+            try:
+                path1, path2 = get_dtw_alignment(feat1, feat2)
+            except Exception:
+                continue
+
+            for i1, i2 in zip(path1, path2):
+                frames.append((f1, s1, e1, i1, f2, s2, e2, i2, 1))
+            self.statistics_training['SameType'] += 1
+
+        for f1, s1, e1, f2, s2, e2 in pairs['diff']:
+            if (s1 > e1) or (s2 > e2):
+                continue
+            feat1 = token_feats[f1, s1, e1]
+            feat2 = token_feats[f2, s2, e2]
+
+            n1 = feat1.shape[0]
+            n2 = feat2.shape[0]
+
+            for i in range(min(n1, n2)):
+                frames.append((f1, s1, e1, i, f2, s2, e2, i, -1))
+
+            self.statistics_training['DiffType'] += 1
+
+        np.random.shuffle(frames)
+        return token_feats, frames
+
+    def load_batch(self, frames, token_feats):
+
+        X1, X2, Y = [], [], []
+
+        for (f1, s1, e1, i1, f2, s2, e2, i2, y) in frames:
+            feat1 = token_feats[f1, s1, e1][i1]
+            feat2 = token_feats[f2, s2, e2][i2]
+            X1.append(feat1)
+            X2.append(feat2)
+            Y.append(y)
+
+        return np.vstack(X1), np.vstack(X2), np.array(Y)
 
     def batch_iterator(self, train_mode=True):
         """
@@ -270,53 +344,36 @@ class FramesDataLoader(OriginalDataLoader):
         It will randomize all your dataset before creating batches.
         Returns batches of the form (X1, X2, y)
 
-
         """
-        if train_mode:
-            batch_dir = os.path.join(self.pairs_path,
-                                     'train_pairs')
-        else:
-            batch_dir = os.path.join(self.pairs_path,
-                                     'dev_pairs')
-        # read dataset
-        dataset = os.path.join(batch_dir, 'dataset')
-        pairs = read_pairs(dataset)
 
         # read all features
         self.load_data()
 
-        if self.X1 is None:
-            self.X1, self.X2, self.y = self.load_frames_from_pairs(pairs)
+        if train_mode:
+            mode = 'train'
+        else:
+            mode = 'dev'
+        frame_pairs = self.frame_pairs[mode]
+        num_pairs = len(frame_pairs)
+        num_batches = num_pairs // self.batch_size
 
-        num_pair_frames = len(self.X1)
-        num_batches = num_pair_frames // self.batch_size
-
-        if num_batches == 0: num_batches = 1
+        if num_batches == 0:
+            num_batches = 1
 
         # randomized the dataset
         if self.randomize_dataset:
-            perm = np.random.permutation(range(num_pair_frames))
-        else:
-            perm = np.arange(num_pair_frames)  # identity
-        X1 = self.X1[perm, :]
-        X2 = self.X2[perm, :]
-        y = self.y[perm]
+            np.random.shuffle(frame_pairs)
 
-        # make all batches
-        x1_batches = np.array_split(X1, num_batches, axis=0)
-        x2_batches = np.array_split(X2, num_batches, axis=0)
-        y_batches = np.array_split(y, num_batches, axis=0)
-        assert len(x1_batches) == len(x2_batches) == len(y_batches), "Number of batches does not correspond"
-
-        # iterate
-        for i in range(len(x1_batches)):
-            X1_torch = Variable(torch.from_numpy(x1_batches[i]))
-            X2_torch = Variable(torch.from_numpy(x2_batches[i]))
-            y_torch = Variable(torch.from_numpy(y_batches[i]))
+        for i in range(num_batches):
+            pairs_batch = frame_pairs[i*self.batch_size: i*self.batch_size + self.batch_size]
+            X1, X2, y = self.load_batch(pairs_batch, self.token_features[mode])
+            X1_torch = Variable(torch.from_numpy(X1))
+            X2_torch = Variable(torch.from_numpy(X2))
+            y_torch = Variable(torch.from_numpy(y))
             yield X1_torch, X2_torch, y_torch
 
 
-class MultiTaskDataLoader(FramesDataLoader):
+class MultiTaskDataLoader(OriginalDataLoader):
     """
     This dataloader is optimized for the multitask siamese network
     """
