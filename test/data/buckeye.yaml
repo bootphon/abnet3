@@ -60,4 +60,4 @@ default_params:
 
 grid_params:
     sampler:
-        type_sampling_mode: ['log','f','1']
+        type_sampling_mode: ['log','f','f2','1']

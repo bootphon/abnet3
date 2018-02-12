@@ -71,11 +71,17 @@ class GridSearch(object):
         default_params = self.params['default_params']
         grid_params = self.params['grid_params']
         grid_experiments = []
-        for key in grid_params.keys():
-            current_exp = copy.deepcopy(default_params)
-            current_exp[key]
-            import pdb
-            pdb.set_trace()
+        current_exp = copy.deepcopy(default_params)
+        for submodule, submodule_params in grid_params.items():
+            for param, values in submodule_params.items():
+                for value in values:
+                    try:
+                        current_exp[submodule][param] = value
+                    except Exception as e:
+                        current_exp[submodule] = {}
+                        current_exp[submodule][param] = value
+                    grid_experiments.append(current_exp)
+                    current_exp = copy.deepcopy(default_params)
 
     def run(self):
         """Run command to launch the grid search
