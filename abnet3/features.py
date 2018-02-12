@@ -16,9 +16,11 @@ import tempfile
 
 from abnet3.utils import read_vad_file
 
+
 class FeaturesGenerator:
 
-    def __init__(self, n_filters=40, method='fbanks', normalization=True, norm_per_file=False,  stack=True,
+    def __init__(self, n_filters=40, method='fbanks', normalization=True,
+                 norm_per_file=False,  stack=True,
                  nframes=7, deltas=False, deltasdeltas=False):
         self.n_filters = n_filters
         self.method = method
@@ -124,7 +126,7 @@ class FeaturesGenerator:
             i = i+1
             data = featfunc(f)
             features.append(data)
-            if timefunc == None:
+            if timefunc is None:
                 time = np.arange(data.shape[0], dtype=float) * 0.01 + 0.0025
             else:
                 time = timefunc(f)
@@ -135,7 +137,8 @@ class FeaturesGenerator:
                              internal_files, times,
                              features)
 
-    def mean_variance_normalisation(self, h5f, mvn_h5f, params=None, vad_folder=None):
+    def mean_variance_normalisation(self, h5f, mvn_h5f, params=None,
+                                    vad_folder=None):
         """Do mean variance normlization. Optionnaly use a vad.
 
         Parameters:
@@ -183,7 +186,8 @@ class FeaturesGenerator:
         This function will filter the feature
         :param features:
         :param vad_data:
-            Should be a list of list of two ints that represent the indexes of start / stop of voice.
+            Should be a list of list of two ints that represent the indexes
+            of start / stop of voice.
         :return:
         """
         filtered_features = []
@@ -191,7 +195,6 @@ class FeaturesGenerator:
             filtered_features.append(features[start:end])
 
         return np.concatenate(filtered_features)
-
 
     def mean_var_norm_per_file(self, h5f, mvn_h5f, vad_folder=None):
         dset_name = list(h5py.File(h5f).keys())[0]
@@ -219,7 +222,6 @@ class FeaturesGenerator:
             h5features.write(mvn_h5f, '/features/', items, [times], [features])
             means_vars.append((f, mean, std))
         return means_vars
-
 
     def h5features_feats2stackedfeats(self, fb_h5f, stackedfb_h5f, nframes=7):
         """Create stacked features version of h5features file
@@ -270,7 +272,8 @@ class FeaturesGenerator:
             mean, variance = float(mean), float(variance)
         return {'mean': mean, 'variance': variance}
 
-    def generate(self, files, output_path, load_mean_variance_path=None, save_mean_variance_path=None,
+    def generate(self, files, output_path, load_mean_variance_path=None,
+                 save_mean_variance_path=None,
                  vad_folder=None):
         """
         :param list files: List of wav files.  You must
@@ -282,14 +285,15 @@ class FeaturesGenerator:
         :param int nframes: number of frames to stack (if stack is True)
         :param str save_mean_variance_path:
             should be None, or the path to a non existing file.
-            If it is not None, the generator will save the mean and variance for the whole
-            dataset at the given path
+            If it is not None, the generator will save the mean and variance
+            for the whole dataset at the given path
         :param load_mean_variance_path:
             Should be None, or the path to an existing file.
-            If it is not None, the mean and variance used to normalize the dataset will
-            be extracted from this file instead of being calculated.
+            If it is not None, the mean and variance used to normalize the
+            dataset will be extracted from this file instead of being calculated.
             This is useful for test data.
-        :param vad_folder: folder where the vad files are stored. Each folder has to be named like the item
+        :param vad_folder: folder where the vad files are stored. Each folder
+            has to be named like the item
         it corresponds to.
         """
 
@@ -325,14 +329,18 @@ class FeaturesGenerator:
                     params = self.load_mean_variance(file_path=load_mean_variance_path)
                 else:
                     params = None
-                mean, variance = self.mean_variance_normalisation(h5_temp1, h5_temp2, params=params, vad_folder=vad_folder)
+                mean, variance = self.mean_variance_normalisation(
+                    h5_temp1, h5_temp2, params=params, vad_folder=vad_folder
+                )
                 if save_mean_variance_path is not None:
-                    self.save_mean_variance(mean, variance, output_file=save_mean_variance_path)
+                    self.save_mean_variance(mean, variance,
+                                            output_file=save_mean_variance_path)
         else:
             h5_temp2 = h5_temp1
         if self.stack:
             print("Stacking frames")
-            self.h5features_feats2stackedfeats(h5_temp2, output_path, nframes=self.nframes)
+            self.h5features_feats2stackedfeats(h5_temp2, output_path,
+                                               nframes=self.nframes)
         else:
             shutil.copy(h5_temp2, output_path)
 
