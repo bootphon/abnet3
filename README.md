@@ -21,7 +21,7 @@ Build Representation for speech frames based on side information. Composed of di
 * `trainer.py`
 * `embedder.py`
 * `utils.py`
-* `features.py` TO COME
+* `features.py`
 
 ### Installation of the package
 
