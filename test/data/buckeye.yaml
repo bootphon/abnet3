@@ -1,6 +1,7 @@
 # Config file to test
 default_params:
   features:
+    class: FeaturesGenerator
     num_stacked_frames: 7
     train:
       wav_path:
@@ -11,6 +12,7 @@ default_params:
       already_done: True
       feature_path:
   dataloader:
+      class: OriginalDataLoader
       pairs_path : pairs_path
       features_path : features_path
       seed : 0
@@ -20,6 +22,7 @@ default_params:
       train_pairs : None
       dev_pairs : None
   sampler:
+    class: SamplerClusterSiamese
     already_done: False
     std_file: /scratch2/rriad/projects/abnet3_zr/interspeech_paper/Abnet_neil_discovered.classes
     batch_size: 8
@@ -28,10 +31,14 @@ default_params:
     spk_list_file: /scratch2/rriad/back_rriad/zerospeech2015/all_spk.lst
     max_size_cluster: 20
     ratio_train_dev: 0.7
-    ratio_same_diff_spk: 0.1
+    ratio_same_diff_spk: 0.5
+    ratio_same_diff_type: 0.5
     spk_sampling_mode: 1
+    num_total_sampled_pairs: 500000
+    sample_batches: False
+    seed: 0
   model:
-    architecture: SiameseNetwork
+    class: SiameseNetwork
     input_dim: 280
     num_hidden_layers: 2
     hidden_dim: 500
@@ -45,10 +52,11 @@ default_params:
     num_hidden_layers_spk:
     num_hidden_layers_phn:
   loss:
-    type: coscos2
+    class: coscos2
     avg: False
     margin:
   trainer:
+    class: TrainerSiamese
     num_epochs: 200
     patience: 30
     lr: 0.1
@@ -57,6 +65,7 @@ default_params:
     cuda: True
     optimizer_type: adadelta
   embedder:
+    class: EmbedderSiamese
 
 grid_params:
     sampler:

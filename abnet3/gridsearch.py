@@ -15,6 +15,14 @@ import os
 from path import Path
 import time
 import copy
+
+from abnet3.sampler import *
+from abnet3.loss import *
+from abnet3.trainer import *
+from abnet3.model import *
+from abnet3.embedder import *
+from abnet3.dataloader import *
+
 faulthandler.enable()
 
 
@@ -55,10 +63,72 @@ class GridSearch(object):
             except yaml.YAMLError as exc:
                 print(exc)
 
-    def build_single_experiment(self):
-        """Build a single experiment from a dictionnary
+    def run_single_experiment(self, single_experiment=None, gpu_id=0):
+        """Build a single experiment from a dictionnary of parameters
 
         """
+        assert single_experiment['features'], 'features properties missing'
+        assert single_experiment['sampler'], 'sampler properties missing'
+        assert single_experiment['trainer'], 'trainer properties missing'
+        assert single_experiment['embedder'], 'embedder properties missing'
+        assert single_experiment['model'], 'model properties missing'
+        assert single_experiment['loss'], 'loss properties missing'
+
+        sampler_prop = single_experiment['sampler']
+        sampler = getattr(abnet3.sampler, sampler_prop['class'])(
+            std_file=sampler_prop['std_file'],
+            batch_size=sampler_prop['batch_size'],
+            seed=sampler_prop['seed'],
+            type_sampling_mode=sampler_prop['type_sampling_mode'],
+            spk_sampling_mode=sampler_prop['spk_sampling_mode'],
+            directory_output=sampler_prop['directory_output'],
+            spkid_file=sampler_prop['spkid_file'],
+            ratio_same_diff_spk=sampler_prop['ratio_same_diff_spk'],
+            ratio_train_dev=sampler_prop['ratio_train_dev'],
+            ratio_same_diff_type=sampler_prop['ratio_same_diff_type'],
+            max_size_cluster=sampler_prop['max_size_cluster'],
+            num_total_sampled_pairs=sampler_prop['num_total_sampled_pairs'],
+            sample_batches=sampler_prop['sample_batches'],
+        )
+        import pdb
+        pdb.set_trace()
+
+        model_prop = single_experiment['model']
+        model = SiameseNetwork(
+            input_dim=input_dim,
+            num_hidden_layers=num_hidden_layers,
+            hidden_dim=hidden_dim,
+            output_dim=output_dim,
+            p_dropout=p_dropout,
+            activation_layer=activation_layer,
+            batch_norm=batch_norm,
+            output_path=output_network,
+        )
+        dataloader = OriginalDataLoader(
+            pairs_path=directory_output,
+            features_path=features_file,
+            num_max_minibatches=num_max_minibatches,
+            batch_size=batch_size
+        )
+        trainer = TrainerSiamese(
+            network=network,
+            loss=loss,
+            dataloader=dataloader,
+            cuda=cuda,
+            feature_path=features_file,
+            num_epochs=num_epochs,
+            lr=learning_rate,
+            patience=patience,
+            num_max_minibatches=num_max_minibatches,
+            optimizer_type=optimizer_type,
+        )
+        em = EmbedderSiamese(
+               network,
+               cuda=cuda,
+               output_path=output_features,
+               feature_path=features_file,
+               network_path='network.pth',
+        )
 
     def build_grid_experiments(self):
         """Extract the list of experiments to build the
@@ -82,11 +152,14 @@ class GridSearch(object):
                         current_exp[submodule][param] = value
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
+        return grid_experiments
 
     def run(self):
         """Run command to launch the grid search
 
         """
+        grid_experiments = self.build_grid_experiments()
+        self.run_single_experiment(single_experiment=grid_experiments[0])
 
     def make_html(self):
         """Build HTML outputs
@@ -96,6 +169,6 @@ class GridSearch(object):
 
 if __name__ == '__main__':
     grid = GridSearch(input_file='test/data/buckeye.yaml')
-    grid.build_grid_experiments()
+    grid.run()
     # import pdb
     # pdb.set_trace()
