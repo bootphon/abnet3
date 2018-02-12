@@ -1,16 +1,12 @@
 # Config file to test
 default_params:
+  pathname_experience: /scratch2/rriad/projects/interspeech_paper_abnet3/exp/study_sampling_functions
   features:
     class: FeaturesGenerator
     num_stacked_frames: 7
-    train:
-      wav_path:
-      already_done: True
-      feature_path:
-    test:
-      wav_path:
-      already_done: True
-      feature_path:
+    wav_path:
+    already_done: True
+    feature_path:
   dataloader:
       class: OriginalDataLoader
       pairs_path : pairs_path
@@ -25,10 +21,9 @@ default_params:
     class: SamplerClusterSiamese
     already_done: False
     std_file: /scratch2/rriad/projects/abnet3_zr/interspeech_paper/Abnet_neil_discovered.classes
-    batch_size: 8
-    directory_output:
     spkid_file: /scratch2/rriad/back_rriad/zerospeech2015/wav2spk.lst
     spk_list_file: /scratch2/rriad/back_rriad/zerospeech2015/all_spk.lst
+    batch_size: 8
     max_size_cluster: 20
     ratio_train_dev: 0.7
     ratio_same_diff_spk: 0.5
@@ -45,9 +40,8 @@ default_params:
     output_dim: 100
     p_dropout: 0.0
     batch_norm: False
-    type_init:
-    activation_layer: Sigmoid
-    output_path:
+    type_init: xavier_uni
+    activation_layer: sigmoid
     num_hidden_layers_shared:
     num_hidden_layers_spk:
     num_hidden_layers_phn:
@@ -69,4 +63,4 @@ default_params:
 
 grid_params:
     sampler:
-        type_sampling_mode: ['log','f','f2','1']
+        type_sampling_mode: ['log','f3','word2vec','f','f2','1']

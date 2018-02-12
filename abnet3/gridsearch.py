@@ -74,61 +74,79 @@ class GridSearch(object):
         assert single_experiment['model'], 'model properties missing'
         assert single_experiment['loss'], 'loss properties missing'
 
+        features_prop = single_experiment['features']
+        features = getattr(abnet3.features, features_prop['features'])(
+            n_filters=n_filters
+            method=method
+            normalization=normalization
+            stack=stack
+            nframes=nframes
+            deltas=deltas
+            deltasdeltas=deltasdeltas
+        )
+
         sampler_prop = single_experiment['sampler']
         sampler = getattr(abnet3.sampler, sampler_prop['class'])(
             std_file=sampler_prop['std_file'],
+            spk_list_file=sampler_prop['spk_list_file'],
+            spkid_file=sampler_prop['spkid_file'],
             batch_size=sampler_prop['batch_size'],
             seed=sampler_prop['seed'],
             type_sampling_mode=sampler_prop['type_sampling_mode'],
             spk_sampling_mode=sampler_prop['spk_sampling_mode'],
-            directory_output=sampler_prop['directory_output'],
-            spkid_file=sampler_prop['spkid_file'],
             ratio_same_diff_spk=sampler_prop['ratio_same_diff_spk'],
             ratio_train_dev=sampler_prop['ratio_train_dev'],
             ratio_same_diff_type=sampler_prop['ratio_same_diff_type'],
             max_size_cluster=sampler_prop['max_size_cluster'],
             num_total_sampled_pairs=sampler_prop['num_total_sampled_pairs'],
             sample_batches=sampler_prop['sample_batches'],
+            directory_output=os.path.join(
+                 single_experiment['pathname_experience'], 'pairs')
         )
-        import pdb
-        pdb.set_trace()
 
         model_prop = single_experiment['model']
-        model = SiameseNetwork(
-            input_dim=input_dim,
-            num_hidden_layers=num_hidden_layers,
-            hidden_dim=hidden_dim,
-            output_dim=output_dim,
-            p_dropout=p_dropout,
-            activation_layer=activation_layer,
-            batch_norm=batch_norm,
-            output_path=output_network,
+        model = getattr(abnet3.model, model_prop['class'])(
+            input_dim=model_prop['input_dim'],
+            num_hidden_layers=model_prop['num_hidden_layers'],
+            hidden_dim=model_prop['hidden_dim'],
+            output_dim=model_prop['output_dim'],
+            p_dropout=model_prop['p_dropout'],
+            activation_layer=model_prop['activation_layer'],
+            batch_norm=model_prop['batch_norm'],
+            output_path=os.path.join(
+                 single_experiment['pathname_experience'], 'networks')
         )
-        dataloader = OriginalDataLoader(
-            pairs_path=directory_output,
+
+        import pdb
+        pdb.set_trace()
+        #
+
+        dataloader_prop = single_experiment['dataloader']
+        dataloader = getattr(abnet3.dataloader, dataloader_prop['class'])(
+            pairs_path=sampler.directory_output,
             features_path=features_file,
             num_max_minibatches=num_max_minibatches,
             batch_size=batch_size
         )
-        trainer = TrainerSiamese(
-            network=network,
-            loss=loss,
-            dataloader=dataloader,
-            cuda=cuda,
-            feature_path=features_file,
-            num_epochs=num_epochs,
-            lr=learning_rate,
-            patience=patience,
-            num_max_minibatches=num_max_minibatches,
-            optimizer_type=optimizer_type,
-        )
-        em = EmbedderSiamese(
-               network,
-               cuda=cuda,
-               output_path=output_features,
-               feature_path=features_file,
-               network_path='network.pth',
-        )
+        # trainer = TrainerSiamese(
+        #     network=network,
+        #     loss=loss,
+        #     dataloader=dataloader,
+        #     cuda=cuda,
+        #     feature_path=features_file,
+        #     num_epochs=num_epochs,
+        #     lr=learning_rate,
+        #     patience=patience,
+        #     num_max_minibatches=num_max_minibatches,
+        #     optimizer_type=optimizer_type,
+        # )
+        # em = EmbedderSiamese(
+        #        network,
+        #        cuda=cuda,
+        #        output_path=output_features,
+        #        feature_path=features_file,
+        #        network_path='network.pth',
+        # )
 
     def build_grid_experiments(self):
         """Extract the list of experiments to build the
@@ -150,6 +168,11 @@ class GridSearch(object):
                     except Exception as e:
                         current_exp[submodule] = {}
                         current_exp[submodule][param] = value
+                    current_exp['pathname_experience'] = os.path.join(
+                        current_exp['pathname_experience'],
+                        param,
+                        value
+                        )
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
         return grid_experiments
