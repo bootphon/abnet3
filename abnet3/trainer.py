@@ -29,7 +29,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from tensorboardX import SummaryWriter
-
+from pathlib import Path
 
 class TrainerBuilder:
     """Generic Trainer class for ABnet3
@@ -38,7 +38,7 @@ class TrainerBuilder:
     def __init__(self, network=None, loss=None,
                  num_epochs=200, patience=20,
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
-                 seed=0, dataloader=None):
+                 seed=0, dataloader=None, log_dir=None):
         self.network = network
         self.loss = loss
         self.num_epochs = num_epochs
@@ -54,7 +54,13 @@ class TrainerBuilder:
         if cuda:
             self.loss.cuda()
             self.network.cuda()
-        self.writer = SummaryWriter(log_dir='./runs/%s' %time.strftime('%m-%d-%Hh%M-%S'))
+
+        if log_dir is None:
+            log_dir = Path('./runs/%s' % time.strftime('%m-%d-%Hh%M-%S'))
+        else:
+            log_dir = Path(log_dir) / ('%s' % time.strftime('%m-%d-%Hh%M-%S'))
+        self.train_writer = SummaryWriter(log_dir=log_dir / 'train_loss')
+        self.dev_writer = SummaryWriter(log_dir=log_dir / 'dev_loss')
 
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
                                   'RMSprop', 'LBFGS')
@@ -117,7 +123,9 @@ class TrainerBuilder:
         self.network.eval()
         self.network.save_network()
 
-        _ = self.optimize_model(do_training=False)
+        dev_loss = self.optimize_model(do_training=False)
+        self.train_writer.add_scalar('loss', self.train_losses[-1], 0)
+        self.dev_writer.add_scalar('loss', self.dev_losses[-1], 0)
 
         for key in self.statistics_training.keys():
             self.statistics_training[key] = 0
@@ -128,8 +136,8 @@ class TrainerBuilder:
             dev_loss = self.optimize_model(do_training=True)
 
             # tensorboard logging
-            self.writer.add_scalar('train_loss', self.train_losses[-1], epoch)
-            self.writer.add_scalar('dev_loss', self.dev_losses[-1], epoch)
+            self.train_writer.add_scalar('loss', self.train_losses[-1], epoch + 1)
+            self.dev_writer.add_scalar('loss', self.dev_losses[-1], epoch + 1)
 
             if self.best_dev is None or dev_loss < self.best_dev:
                 self.best_dev = dev_loss
