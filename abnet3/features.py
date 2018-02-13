@@ -84,6 +84,12 @@ class FeaturesGenerator:
             raise ValueError("You can't compute mean and variance "
                              "per file and loading / saving it.")
 
+    def whoami(self):
+        return {
+            'params': self.__dict__,
+            'class_name': self.__class__.__name__,
+        }
+
     def do_fbank(self, fname):
         """Compute standard filterbanks from a wav file"""
         srate, sound = wavfile.read(fname)
