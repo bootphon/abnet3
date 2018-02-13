@@ -5,15 +5,18 @@ import os
 from collections import defaultdict
 
 from abnet3.utils import get_dtw_alignment, \
-    Parse_Dataset, read_pairs, read_feats, read_spkid_file, read_dataset, group_pairs
+    Parse_Dataset, read_pairs, read_feats, \
+    read_spkid_file, read_dataset, group_pairs
 
 """
 This file contains several dataloaders.
 
 DataLoaderFromBatches: Original method to load data.
-It loads the batches of tokens created by the sampler, create the frame pairs, and shuffles inside the batches.
+It loads the batches of tokens created by the sampler, create the frame pairs,
+and shuffles inside the batches.
 
-FramesDataLoader: Reads a dataset composed of one file, loads all the frames in memory, and shuffles across the
+FramesDataLoader: Reads a dataset composed of one file, loads all the frames in
+memory, and shuffles across the
 whole epoch. It then creates batches.
 
 MultitaskDataLoader : default loader for multitask network
@@ -28,7 +31,8 @@ class DataLoader:
         This function returns an iterator over all the batches of data
         :returns iterator
         """
-        raise NotImplemented("You must implement batch iterator in DataLoader class.")
+        raise NotImplemented("You must implement batch iterator" +
+                             " in DataLoader class.")
 
     def whoami(self):
         raise NotImplemented("You must implement whoami in DataLoader class")
@@ -42,17 +46,19 @@ class OriginalDataLoader(DataLoader):
 
     """
 
-    def __init__(self, pairs_path, features_path, num_max_minibatches=1000, seed=None, batch_size=8):
+    def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
+                 seed=None, batch_size=8):
         """
 
-        :param string pairs_path: path to dataset where the dev_pairs and train_pairs folders are
+        :param string pairs_path: path to dataset where the dev_pairs and
+                                  train_pairs folders are
         :param features_path: path to feature file
         :param int num_max_minibatches: number of batches in each epoch
         :param int seed: for randomness
         """
         self.pairs_path = pairs_path
         self.features_path = features_path
-        self.statistics_training = defaultdict(int)  # dict with default value 0
+        self.statistics_training = defaultdict(int)
         self.seed = seed
         self.num_max_minibatches = num_max_minibatches
         self.batch_size = batch_size
@@ -61,8 +67,10 @@ class OriginalDataLoader(DataLoader):
 
     def __getstate__(self):
         """used for pickle
-        This function is used to remove the features in the state. They are very heavy (several GB)
-        so we must remove them from the state before pickling and saving the network.
+        This function is used to remove the features in the state.
+        They are very heavy (several GB)
+        so we must remove them from the state before
+        pickling and saving the network.
         """
 
         return (self.pairs_path,
@@ -74,8 +82,10 @@ class OriginalDataLoader(DataLoader):
 
     def __setstate__(self, state):
         """
-        As for __getstate__, this function is used to reconstruct the object from a pickled object.
-        We have to reload the data since we didn't save the features and train / dev pairs.
+        As for __getstate__, this function is used to reconstruct the object
+        from a pickled object.
+        We have to reload the data since we didn't save the features
+        and train / dev pairs.
         """
         (
             self.pairs_path,
@@ -126,13 +136,13 @@ class OriginalDataLoader(DataLoader):
 
     def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
         """Prepare a batch in Pytorch format based on a batch file
-        :param pairs: list of pairs under the form {'same': [pairs], 'diff': [pairs] }
+        :param pairs: list of pairs under the form
+                      {'same': [pairs], 'diff': [pairs] }
         :param seed: randomness
         :param fid2spk:
             if None, will return X1, X2, y_phones
             If it is the spkid mapping, will return X1, X2, y_phones, y_speaker
         """
-
         # f are filenames, s are start times, e are end times
         token_feats = self.get_token_feats(pairs)
 
@@ -227,7 +237,8 @@ class OriginalDataLoader(DataLoader):
 
         # TODO : shuffle the pairs before creating batches
         # make batches
-        batches = [pairs[i:i + self.batch_size] for i in range(0, num_pairs, self.batch_size)]
+        sliced_indexes = range(0, num_pairs, self.batch_size)
+        batches = [pairs[idx:idx + self.batch_size] for idx in sliced_indexes]
         num_batches = len(batches)
 
         if self.num_max_minibatches < num_batches:
@@ -253,10 +264,12 @@ class FramesDataLoader(OriginalDataLoader):
 
     """
 
-    def __init__(self, pairs_path, features_path, batch_size=100, randomize_dataset=True):
+    def __init__(self, pairs_path, features_path,
+                 batch_size=100, randomize_dataset=True):
         """
         :parameter int batch_size: number of frames in a batch
-        :param bool randomize_dataset: wether to shuffle all the frames between each epoch
+        :param bool randomize_dataset: wether to shuffle all the frames
+                                       between each epoch
         """
         super().__init__(pairs_path, features_path)
         self.randomize_dataset = randomize_dataset
@@ -337,7 +350,8 @@ class FramesDataLoader(OriginalDataLoader):
 
     def batch_iterator(self, train_mode=True):
         """
-        This function is an iterator that will create batches for the whole dataset
+        This function is an iterator that will create batches
+        for the whole dataset
         that was sampled by the sampler.
         Use it only if the sampler didn't create batches.
 
@@ -365,7 +379,8 @@ class FramesDataLoader(OriginalDataLoader):
             np.random.shuffle(frame_pairs)
 
         for i in range(num_batches):
-            pairs_batch = frame_pairs[i*self.batch_size: i*self.batch_size + self.batch_size]
+            pairs_batch = frame_pairs[i*self.batch_size:
+                                      i*self.batch_size + self.batch_size]
             X1, X2, y = self.load_batch(pairs_batch, self.token_features[mode])
             X1_torch = Variable(torch.from_numpy(X1))
             X2_torch = Variable(torch.from_numpy(X2))
