@@ -108,10 +108,12 @@ class OriginalDataLoader(DataLoader):
         """
         Load only once the features, and the pairs
         """
+        print("Loading features")
         if self.features is None:
             features, align_features, feat_dim = read_feats(self.features_path)
             self.features = features
 
+        print("Loading word pairs")
         if self.pairs['train'] is None:
             train_dir = os.path.join(self.pairs_path, 'train_pairs/dataset')
             self.pairs['train'] = read_dataset(train_dir)
@@ -280,6 +282,7 @@ class FramesDataLoader(OriginalDataLoader):
     def load_data(self):
         super(FramesDataLoader, self).load_data()
 
+        print("Loading all frames..", end='')
         if self.token_features['train'] is None:
             self.token_features['train'], self.frame_pairs['train'] = \
                 self.load_frames_from_pairs(self.pairs['train'])
@@ -287,6 +290,7 @@ class FramesDataLoader(OriginalDataLoader):
         if self.token_features['dev'] is None:
             self.token_features['dev'], self.frame_pairs['dev'] = \
                 self.load_frames_from_pairs(self.pairs['dev'])
+        print("Done")
 
 
     def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
