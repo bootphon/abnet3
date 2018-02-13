@@ -28,7 +28,8 @@ class TestFeatures:
         features = [np.full((100, 40), 1.0), np.full((150, 40), 2.0)]
         items = ['file1', 'file2']
         times = [np.arange(features[0].shape[0], dtype=float) * 0.01 + 0.0025]
-        times.append(np.arange(features[1].shape[0], dtype=float) * 0.01 + 0.0025)
+        times.append(
+            np.arange(features[1].shape[0], dtype=float) * 0.01 + 0.0025)
 
         h5features.write(h5f, '/features/',
                          items, times,
@@ -36,7 +37,8 @@ class TestFeatures:
 
         features_generator = FeaturesGenerator()
         h5f_mean_var = tempdir / 'h5-normalized.features'
-        mean, variance = features_generator.mean_variance_normalisation(h5f, h5f_mean_var)
+        mean, variance = features_generator.mean_variance_normalisation(
+            h5f, h5f_mean_var)
 
         assert mean == pytest.approx((1.0 * 1 + 2.0 * 1.5) / 2.5)
         assert variance == pytest.approx(np.std(np.vstack(features)))
@@ -53,8 +55,8 @@ class TestFeatures:
         tempdir = Path(tempfile.mkdtemp())
         h5f = tempdir / 'h5.features'
 
-        feature1 = np.vstack([np.full((100, 40), 1.0), np.full((100, 40), -1.0)])
-        feature2 = np.vstack([np.full((100, 40), 1.0), np.full((100, 40), 2.0)])
+        feature1 = np.vstack([np.full((100, 40), 1.), np.full((100, 40), -1.)])
+        feature2 = np.vstack([np.full((100, 40), 1.), np.full((100, 40), 2.)])
         features = [feature1, feature2]
         items = ['file1', 'file2']
         times = [np.arange(feature1.shape[0], dtype=float) * 0.01 + 0.0025]
@@ -65,8 +67,10 @@ class TestFeatures:
                          features)
 
         h5f_mean_var = tempdir / 'h5-normalized.features'
-        features_generator = FeaturesGenerator(normalization=True, norm_per_file=True)
-        meansvars = features_generator.mean_var_norm_per_file(h5f, h5f_mean_var)
+        features_generator = FeaturesGenerator(normalization=True,
+                                               norm_per_file=True)
+        meansvars = features_generator.mean_var_norm_per_file(h5f,
+                                                              h5f_mean_var)
 
         assert meansvars == [
             ('file1', 0, np.std(feature1)),
@@ -106,17 +110,23 @@ class TestFeatures:
                          features)
 
         h5f_mean_var = tempdir / 'h5-normalized.features'
-        features_generator = FeaturesGenerator(normalization=True, norm_per_file=True)
-        mean, var = features_generator.mean_variance_normalisation(h5f, h5f_mean_var, vad_folder=vad_path)
+        features_generator = FeaturesGenerator(normalization=True,
+                                               norm_per_file=True)
+        mean, var = features_generator.mean_variance_normalisation(
+            h5f, h5f_mean_var, vad_folder=vad_path)
 
-        assert mean == pytest.approx(np.mean(np.vstack([feature1[:75], feature2])))
-        assert var == pytest.approx(np.std(np.vstack([feature1[:75], feature2])))
+        assert mean == pytest.approx\
+            (np.mean(np.vstack([feature1[:75], feature2])))
+        assert var == pytest.approx(
+            np.std(np.vstack([feature1[:75], feature2])))
 
         reader = h5features.Reader(h5f_mean_var)
         data = reader.read()
-        assert data.dict_features()['file1'] == pytest.approx((feature1 - mean) / var)
+        assert data.dict_features()['file1'] == pytest.approx(
+            (feature1 - mean) / var)
 
-        assert data.dict_features()['file2'] == pytest.approx((feature2 - mean) / var)
+        assert data.dict_features()['file2'] == pytest.approx(
+            (feature2 - mean) / var)
 
         shutil.rmtree(tempdir)
 
@@ -147,8 +157,10 @@ class TestFeatures:
                          features)
 
         h5f_mean_var = tempdir / 'h5-normalized.features'
-        features_generator = FeaturesGenerator(normalization=True, norm_per_file=True)
-        meansvars = features_generator.mean_var_norm_per_file(h5f, h5f_mean_var, vad_folder=vad_path)
+        features_generator = FeaturesGenerator(normalization=True,
+                                               norm_per_file=True)
+        meansvars = features_generator.mean_var_norm_per_file(
+            h5f, h5f_mean_var, vad_folder=vad_path)
 
         assert meansvars == [
             ('file1', np.mean(feature1[:75]), np.std(feature1[:75])),
@@ -158,14 +170,13 @@ class TestFeatures:
 
         reader = h5features.Reader(h5f_mean_var)
         data = reader.read()
-        assert data.dict_features()['file1'] == pytest.approx((feature1 - np.mean(feature1[:75]))  / np.std(feature1[:75]))
+        assert data.dict_features()['file1'] == pytest.approx(
+            (feature1 - np.mean(feature1[:75])) / np.std(feature1[:75]))
 
         assert np.mean(data.dict_features()['file2']) == pytest.approx(0)
         assert np.std(data.dict_features()['file2']) == pytest.approx(1)
 
         shutil.rmtree(tempdir)
-
-
 
     def test_filter_vad(self):
         features = np.arange(100)

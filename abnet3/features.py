@@ -19,9 +19,47 @@ from abnet3.utils import read_vad_file
 
 class FeaturesGenerator:
 
-    def __init__(self, n_filters=40, method='fbanks', normalization=True,
+    def __init__(self, files=None, output_path=None,
+                 load_mean_variance_path=None,
+                 save_mean_variance_path=None,
+                 vad_folder=None,
+                 n_filters=40, method='fbanks', normalization=True,
                  norm_per_file=False, stack=True,
                  nframes=7, deltas=False, deltasdeltas=False):
+        """
+
+        :param files: list of wav file paths
+        :param output_path: Location of the output h5features file
+        :param load_mean_variance_path: (optional)
+            Should be None, or the path to an existing file.
+            If this is a path, it will use the file at the provided location
+            to inject the mean and variance into the wav files.
+            It will not compute true mean and variance
+        :param save_mean_variance_path: (optional)
+            Should be None, or the path to an existing file.
+            If this is a path, it will
+            save the mean and variance of the dataset at the given path.
+            It can then be used with load_mean_variance_path for another
+            dataset.
+        :param vad_folder: (optional)
+            Path to a folder with VAD data. If given, the mean and variance
+            of the dataset will be computed only in non-silent regions
+        :param n_filters: number of filters in spectral
+        :param method: mfcc or fbanks
+        :param normalization: if True, normalize the dataset
+        :param norm_per_file: if True, normalize within each wav file.
+        :param stack: if True, will stack the data (stacks of nframes
+            consecutive frames)
+        :param nframes: number of frames in a stack (if stack is True)
+        :param deltas: first order derivative
+        :param deltasdeltas: second order derivative
+        """
+
+        self.files = files
+        self.output_path = output_path
+        self.load_mean_variance_path = load_mean_variance_path
+        self.save_mean_variance_path = save_mean_variance_path
+        self.vad_folder = vad_folder
         self.n_filters = n_filters
         self.method = method
         self.normalization = normalization
@@ -33,6 +71,18 @@ class FeaturesGenerator:
 
         if self.method not in ['mfcc', 'fbanks']:
             raise ValueError("Method %s not recognized" % self.method)
+
+        if load_mean_variance_path is not None \
+                and save_mean_variance_path is not None:
+            raise ValueError("You can't both read and save mean and variance")
+        if not self.normalization and self.norm_per_file:
+            raise ValueError("You can't set normalization to False "
+                             "and normalization per file to True.")
+
+        if self.norm_per_file and (load_mean_variance_path is not None or
+                                   save_mean_variance_path is not None):
+            raise ValueError("You can't compute mean and variance "
+                             "per file and loading / saving it.")
 
     def do_fbank(self, fname):
         """Compute standard filterbanks from a wav file"""
@@ -277,47 +327,12 @@ class FeaturesGenerator:
             mean, variance = float(mean), float(variance)
         return {'mean': mean, 'variance': variance}
 
-    def generate(self, files, output_path, load_mean_variance_path=None,
-                 save_mean_variance_path=None,
-                 vad_folder=None):
-        """
-        :param list files: List of wav files.  You must
-            give the complete relative or absolute path of the wave file
-        :param str output_path: path where the features will be saved
-        :param str method: can be either 'mfcc' or 'fbank'
-        :param bool stack: stack features with block of `nframes` features.
-        :param bool normalization: mean / variance normalization
-        :param int nframes: number of frames to stack (if stack is True)
-        :param str save_mean_variance_path:
-            should be None, or the path to a non existing file.
-            If it is not None, the generator will save the mean and variance
-            for the whole dataset at the given path
-        :param load_mean_variance_path:
-            Should be None, or the path to an existing file.
-            If it is not None, the mean and variance used to normalize the
-            dataset will be extracted from this file instead of being
-            calculated. This is useful for test data.
-        :param vad_folder: folder where the vad files are stored. Each folder
-            has to be named like the item
-        it corresponds to.
-        """
+    def generate(self):
 
         functions = {
             'mfcc': self.do_mfccs,
             'fbanks': self.do_fbank
         }
-
-        if load_mean_variance_path is not None \
-                and save_mean_variance_path is not None:
-            raise ValueError("You can't both read and save mean and variance")
-        if not self.normalization and self.norm_per_file:
-            raise ValueError("You can't set normalization to False "
-                             "and normalization per file to True.")
-
-        if self.norm_per_file and (load_mean_variance_path is not None or
-                                   save_mean_variance_path is not None):
-            raise ValueError("You can't compute mean and variance "
-                             "per file and loading / saving it.")
 
         if self.method not in functions:
             raise ValueError("Method %s not authorized." % self.method)
@@ -326,33 +341,34 @@ class FeaturesGenerator:
         tempdir = tempfile.mkdtemp()
         h5_temp1 = tempdir + '/temp1'
         print("Spectral transforming with %s" % self.method)
-        self.h5features_compute(files, h5_temp1, featfunc=f)
+        self.h5features_compute(self.files, h5_temp1, featfunc=f)
 
         if self.normalization:
             print("Normalizing")
             h5_temp2 = tempdir + '/temp2'
             if self.norm_per_file:
                 self.mean_var_norm_per_file(h5_temp1, h5_temp2,
-                                            vad_folder=vad_folder)
+                                            vad_folder=self.vad_folder)
             else:
-                if load_mean_variance_path is not None:
+                if self.load_mean_variance_path is not None:
                     params = self.load_mean_variance(
-                        file_path=load_mean_variance_path)
+                        file_path=self.load_mean_variance_path)
                 else:
                     params = None
                 mean, variance = self.mean_variance_normalisation(
-                    h5_temp1, h5_temp2, params=params, vad_folder=vad_folder
+                    h5_temp1, h5_temp2, params=params,
+                    vad_folder=self.vad_folder
                 )
-                if save_mean_variance_path is not None:
+                if self.save_mean_variance_path is not None:
                     self.save_mean_variance(
-                        mean, variance, output_file=save_mean_variance_path)
+                        mean, variance, output_file=self.save_mean_variance_path)
         else:
             h5_temp2 = h5_temp1
         if self.stack:
             print("Stacking frames")
-            self.h5features_feats2stackedfeats(h5_temp2, output_path,
+            self.h5features_feats2stackedfeats(h5_temp2, self.output_path,
                                                nframes=self.nframes)
         else:
-            shutil.copy(h5_temp2, output_path)
+            shutil.copy(h5_temp2, self.output_path)
 
         shutil.rmtree(tempdir)
