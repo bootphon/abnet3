@@ -59,8 +59,8 @@ class TrainerBuilder:
             log_dir = Path('./runs/%s' % time.strftime('%m-%d-%Hh%M-%S'))
         else:
             log_dir = Path(log_dir) / ('%s' % time.strftime('%m-%d-%Hh%M-%S'))
-        self.train_writer = SummaryWriter(log_dir=log_dir / 'train_loss')
-        self.dev_writer = SummaryWriter(log_dir=log_dir / 'dev_loss')
+        self.train_writer = SummaryWriter(log_dir=str(log_dir / 'train_loss'))
+        self.dev_writer = SummaryWriter(log_dir=str(log_dir / 'dev_loss'))
 
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
                                   'RMSprop', 'LBFGS')
