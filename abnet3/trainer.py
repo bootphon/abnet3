@@ -56,11 +56,9 @@ class TrainerBuilder:
             self.network.cuda()
 
         if log_dir is None:
-            log_dir = Path('./runs/%s' % time.strftime('%m-%d-%Hh%M-%S'))
+            self.log_dir = Path('./runs/%s' % time.strftime('%m-%d-%Hh%M-%S'))
         else:
-            log_dir = Path(log_dir) / ('%s' % time.strftime('%m-%d-%Hh%M-%S'))
-        self.train_writer = SummaryWriter(log_dir=str(log_dir / 'train_loss'))
-        self.dev_writer = SummaryWriter(log_dir=str(log_dir / 'dev_loss'))
+            self.log_dir = Path(log_dir) / ('%s' % time.strftime('%m-%d-%Hh%M-%S'))
 
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
                                   'RMSprop', 'LBFGS')
@@ -123,9 +121,12 @@ class TrainerBuilder:
         self.network.eval()
         self.network.save_network()
 
-        dev_loss = self.optimize_model(do_training=False)
-        self.train_writer.add_scalar('loss', self.train_losses[-1], 0)
-        self.dev_writer.add_scalar('loss', self.dev_losses[-1], 0)
+        train_writer = SummaryWriter(log_dir=str(self.log_dir / 'train_loss'))
+        dev_writer = SummaryWriter(log_dir=str(self.log_dir / 'dev_loss'))
+
+        _ = self.optimize_model(do_training=False)
+        train_writer.add_scalar('loss', self.train_losses[-1], 0)
+        dev_writer.add_scalar('loss', self.dev_losses[-1], 0)
 
         for key in self.statistics_training.keys():
             self.statistics_training[key] = 0
@@ -136,8 +137,8 @@ class TrainerBuilder:
             dev_loss = self.optimize_model(do_training=True)
 
             # tensorboard logging
-            self.train_writer.add_scalar('loss', self.train_losses[-1], epoch + 1)
-            self.dev_writer.add_scalar('loss', self.dev_losses[-1], epoch + 1)
+            train_writer.add_scalar('loss', self.train_losses[-1], epoch + 1)
+            dev_writer.add_scalar('loss', self.dev_losses[-1], epoch + 1)
 
             if self.best_dev is None or dev_loss < self.best_dev:
                 self.best_dev = dev_loss
