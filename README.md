@@ -53,6 +53,14 @@ you can launch:
 
     python setup.py develop
 
+### Tensorboard vizualisation
+
+The package will save train / dev loss during training. To vizualise them :
+
+- Install tensorboard (`conda install tensorboard`)
+
+- run `tensorboard --logdir path/to/logdir`.
+The default logdir is `./run` in the current directory.
 
 ### Documentation
 
