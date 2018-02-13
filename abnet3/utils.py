@@ -125,9 +125,9 @@ class Features_Accessor(object):
 
 
     def get(self, f, on, off):
-        t = np.where(np.logical_and(self.times[f.encode('UTF-8')] >= on,
-                                    self.times[f.encode('UTF-8')] <= off))[0]
-        return self.features[f.encode('UTF-8')][t, :]
+        t = np.where(np.logical_and(self.times[f] >= on,
+                                    self.times[f] <= off))[0]
+        return self.features[f][t, :]
 
 
 def get_dtw_alignment(feat1, feat2):
