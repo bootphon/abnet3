@@ -285,21 +285,31 @@ class FramesDataLoader(OriginalDataLoader):
         print("Loading all frames..", end='')
         if self.token_features['train'] is None:
             self.token_features['train'], self.frame_pairs['train'] = \
-                self.load_frames_from_pairs(self.pairs['train'])
+                self.load_all_frames(self.pairs['train'])
 
         if self.token_features['dev'] is None:
             self.token_features['dev'], self.frame_pairs['dev'] = \
-                self.load_frames_from_pairs(self.pairs['dev'])
+                self.load_all_frames(self.pairs['dev'])
         print("Done")
 
 
-    def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
-        """Prepare a batch in Pytorch format based on a batch file
-        :param pairs: list of pairs under the form (f1, s1, e1, f2, s2, e2, same)
-        :param seed: randomness
-        :param fid2spk:
-            if None, will return X1, X2, y_phones
-            If it is the spkid mapping, will return X1, X2, y_phones, y_speaker
+    def load_all_frames(self, pairs):
+        """
+        Loads all frames that appear in pair of tokens.
+        It will return
+            - a dictionnary token_feats that contains the list of frames for
+            a given token (f, s, e)
+            - a `frame` list, which contains the frame dataset :
+            It is a list of (f1, s1, e1, index1, f2, s2, e2, index2, same)
+            where
+                -f1, f2 are the files
+                - s1, s2, e1, e2 are the beginning and end of token
+                - i1, i2 is the position in the token_feats dictionnary
+                - same : value +1 or -1 depending if the two frames
+                are the same or not.
+
+        :param pairs:
+            list of pairs under the form (f1, s1, e1, f2, s2, e2, same)
         """
 
         frames = []
