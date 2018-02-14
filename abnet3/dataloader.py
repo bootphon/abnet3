@@ -278,6 +278,10 @@ class FramesDataLoader(OriginalDataLoader):
         self.batch_size = batch_size
         self.token_features = {'train': None, 'dev': None}
         self.frame_pairs = {'train': None, 'dev': None}
+        self.max_batches_per_epoch = max_batches_per_epoch
+
+        if self.max_batches_per_epoch is not None:
+            self.batch_position = 0  # batch position for train set
 
     def load_data(self):
         super(FramesDataLoader, self).load_data()
@@ -380,6 +384,7 @@ class FramesDataLoader(OriginalDataLoader):
             mode = 'train'
         else:
             mode = 'dev'
+
         frame_pairs = self.frame_pairs[mode]
         num_pairs = len(frame_pairs)
         num_batches = num_pairs // self.batch_size
@@ -387,11 +392,25 @@ class FramesDataLoader(OriginalDataLoader):
         if num_batches == 0:
             num_batches = 1
 
-        # randomized the dataset
-        if self.randomize_dataset:
-            np.random.shuffle(frame_pairs)
+        if mode == 'dev' or self.max_batches_per_epoch is None:  # normal behaviour
+            batch_ids = range(num_batches)
+            if self.randomize_dataset:
+                np.random.shuffle(frame_pairs)
+        else:
+            # we want to read only a subset of the dataset
+            if self.batch_position >= num_batches:  # reset the count
+                print("Arrived at the end of the dataset. Starting over.")
+                if self.randomize_dataset:
+                    np.random.shuffle(frame_pairs)
+                self.batch_position = 0
+            batch_ids = range(
+                self.batch_position,
+                min(self.batch_position + self.max_batches_per_epoch,
+                    num_batches)
+            )
+            self.batch_position += self.max_batches_per_epoch
 
-        for i in range(num_batches):
+        for i in batch_ids:
             pairs_batch = frame_pairs[i*self.batch_size:
                                       i*self.batch_size + self.batch_size]
             X1, X2, y = self.load_batch(pairs_batch, self.token_features[mode])
