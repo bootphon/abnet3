@@ -290,7 +290,7 @@ class FramesDataLoader(OriginalDataLoader):
             print("Loading all frames..", end='')
             self.token_features['train'], self.frame_pairs['train'] = \
                 self.load_all_frames(self.pairs['train'])
-            print("Done")
+            print("Done. %s frame pairs in total." % len(self.frame_pairs['train']))
 
         if self.token_features['dev'] is None:
             self.token_features['dev'], self.frame_pairs['dev'] = \
@@ -392,6 +392,7 @@ class FramesDataLoader(OriginalDataLoader):
         if num_batches == 0:
             num_batches = 1
 
+        # choose which batches to run in this epoch
         if mode == 'dev' or self.max_batches_per_epoch is None:  # normal behaviour
             batch_ids = range(num_batches)
             if self.randomize_dataset:
