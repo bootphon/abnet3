@@ -254,8 +254,10 @@ class OriginalDataLoader(DataLoader):
         for batch_id in selected_batches:
             grouped_pairs = group_pairs(batches[batch_id])
             batch_els = self.load_frames_from_pairs(grouped_pairs)
-            batch_els = map(torch.from_numpy, batch_els)
-            X_batch1, X_batch2, y_batch = map(Variable, batch_els)
+            X1, X2, Y = map(torch.from_numpy, batch_els)
+            X_batch1 = Variable(X1, volatile=not train_mode)
+            X_batch2 = Variable(X2, volatile=not train_mode)
+            y_batch = Variable(Y, volatile=not train_mode)
             yield X_batch1, X_batch2, y_batch
 
 
@@ -287,7 +289,7 @@ class FramesDataLoader(OriginalDataLoader):
         super(FramesDataLoader, self).load_data()
 
         if self.token_features['train'] is None:
-            print("Loading all frames..", end='')
+            print("Loading all frames..", end='', flush=True)
             self.token_features['train'], self.frame_pairs['train'] = \
                 self.load_all_frames(self.pairs['train'])
             print("Done. %s frame pairs in total." % len(self.frame_pairs['train']))
@@ -415,9 +417,9 @@ class FramesDataLoader(OriginalDataLoader):
             pairs_batch = frame_pairs[i*self.batch_size:
                                       i*self.batch_size + self.batch_size]
             X1, X2, y = self.load_batch(pairs_batch, self.token_features[mode])
-            X1_torch = Variable(torch.from_numpy(X1))
-            X2_torch = Variable(torch.from_numpy(X2))
-            y_torch = Variable(torch.from_numpy(y))
+            X1_torch = Variable(torch.from_numpy(X1), volatile=not train_mode)
+            X2_torch = Variable(torch.from_numpy(X2), volatile=not train_mode)
+            y_torch = Variable(torch.from_numpy(y), volatile=not train_mode)
             yield X1_torch, X2_torch, y_torch
 
 

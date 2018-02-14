@@ -143,7 +143,7 @@ class TrainerBuilder:
                 self.best_dev = dev_loss
                 self.patience_dev = 0
                 print('Saving best model so far, ' +
-                      'epoch {}... '.format(epoch+1), end='')
+                      'epoch {}... '.format(epoch+1), end='', flush=True)
                 self.network.save_network()
                 self.save_whoami()
                 print("Done.")
