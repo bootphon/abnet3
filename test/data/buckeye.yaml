@@ -2,11 +2,21 @@
 default_params:
   pathname_experience: /scratch2/rriad/projects/interspeech_paper_abnet3/exp/study_sampling_functions
   features:
-    class: FeaturesGenerator
-    num_stacked_frames: 7
-    wav_path:
     already_done: True
-    feature_path:
+    class: FeaturesGenerator
+    files: None
+    output_path: None
+    load_mean_variance_path: None
+    save_mean_variance_path: None
+    vad_folder: None
+    n_filters: 40
+    method: 'fbanks'
+    normalization: True
+    norm_per_file: False
+    stack: True
+    nframes: 7
+    deltas: False
+    deltasdeltas: False
   dataloader:
       class: OriginalDataLoader
       pairs_path : pairs_path
