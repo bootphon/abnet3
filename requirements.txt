@@ -6,5 +6,6 @@ numpydoc
 scipy >= 0.13.0
 matplotlib
 pyyaml
+tensorboard
 tensorboardX=1.0
 path.py

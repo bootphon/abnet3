@@ -5,13 +5,13 @@ default_params:
     already_done: True
     class: FeaturesGenerator
     files: None
-    output_path: None
-    load_mean_variance_path: None
-    save_mean_variance_path: None
+    output_path: /scratch2/rriad/projects/cdancette_project/fb40_normalized_stacked7.features
+    load_mean_variance_path:
+    save_mean_variance_path: False
     vad_folder: None
     n_filters: 40
     method: 'fbanks'
-    normalization: True
+    normalization: False
     norm_per_file: False
     stack: True
     nframes: 7
@@ -19,14 +19,9 @@ default_params:
     deltasdeltas: False
   dataloader:
       class: OriginalDataLoader
-      pairs_path : pairs_path
-      features_path : features_path
       seed : 0
       num_max_minibatches : 10000
       batch_size : 8
-      features : None
-      train_pairs : None
-      dev_pairs : None
   sampler:
     class: SamplerClusterSiamese
     already_done: False
@@ -52,13 +47,13 @@ default_params:
     batch_norm: False
     type_init: xavier_uni
     activation_layer: sigmoid
+    cuda: False
     num_hidden_layers_shared:
     num_hidden_layers_spk:
     num_hidden_layers_phn:
   loss:
     class: coscos2
     avg: False
-    margin:
   trainer:
     class: TrainerSiamese
     num_epochs: 200
@@ -66,7 +61,7 @@ default_params:
     lr: 0.1
     momentum:
     seed: 0
-    cuda: True
+    cuda: False
     optimizer_type: adadelta
   embedder:
     class: EmbedderSiamese

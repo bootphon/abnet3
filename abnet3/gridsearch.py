@@ -15,6 +15,7 @@ import os
 from path import Path
 import time
 import copy
+import datetime
 
 from abnet3.sampler import *
 from abnet3.loss import *
@@ -22,6 +23,7 @@ from abnet3.trainer import *
 from abnet3.model import *
 from abnet3.embedder import *
 from abnet3.dataloader import *
+from abnet3.features import *
 
 faulthandler.enable()
 
@@ -75,14 +77,20 @@ class GridSearch(object):
         assert single_experiment['loss'], 'loss properties missing'
 
         features_prop = single_experiment['features']
-        features = getattr(abnet3.features, features_prop['features'])(
-            n_filters=n_filters
-            method=method
-            normalization=normalization
-            stack=stack
-            nframes=nframes
-            deltas=deltas
-            deltasdeltas=deltasdeltas
+        features = getattr(abnet3.features, features_prop['class'])(
+             files=features_prop['files'],
+             output_path=features_prop['output_path'],
+             load_mean_variance_path=features_prop['load_mean_variance_path'],
+             save_mean_variance_path=features_prop['save_mean_variance_path'],
+             vad_folder=features_prop['vad_folder'],
+             n_filters=features_prop['n_filters'],
+             method=features_prop['method'],
+             normalization=features_prop['normalization'],
+             norm_per_file=features_prop['norm_per_file'],
+             stack=features_prop['stack'],
+             nframes=features_prop['nframes'],
+             deltas=features_prop['deltas'],
+             deltasdeltas=features_prop['deltasdeltas']
         )
 
         sampler_prop = single_experiment['sampler']
@@ -114,52 +122,68 @@ class GridSearch(object):
             activation_layer=model_prop['activation_layer'],
             batch_norm=model_prop['batch_norm'],
             output_path=os.path.join(
-                 single_experiment['pathname_experience'], 'networks')
+                 single_experiment['pathname_experience'], 'network.pth')
         )
 
-        import pdb
-        pdb.set_trace()
-        #
+        loss_prop = single_experiment['loss']
+        loss = getattr(abnet3.loss, loss_prop['class'])(
+            avg=loss_prop['avg']
+        )
 
         dataloader_prop = single_experiment['dataloader']
         dataloader = getattr(abnet3.dataloader, dataloader_prop['class'])(
             pairs_path=sampler.directory_output,
-            features_path=features_file,
-            num_max_minibatches=num_max_minibatches,
-            batch_size=batch_size
+            features_path=features.output_path,
+            num_max_minibatches=dataloader_prop['num_max_minibatches'],
+            batch_size=dataloader_prop['batch_size'],
+            seed=dataloader_prop['seed']
         )
-        # trainer = TrainerSiamese(
-        #     network=network,
-        #     loss=loss,
-        #     dataloader=dataloader,
-        #     cuda=cuda,
-        #     feature_path=features_file,
-        #     num_epochs=num_epochs,
-        #     lr=learning_rate,
-        #     patience=patience,
-        #     num_max_minibatches=num_max_minibatches,
-        #     optimizer_type=optimizer_type,
-        # )
-        # em = EmbedderSiamese(
-        #        network,
-        #        cuda=cuda,
-        #        output_path=output_features,
-        #        feature_path=features_file,
-        #        network_path='network.pth',
-        # )
+
+        trainer_prop = single_experiment['trainer']
+        trainer = getattr(abnet3.trainer, trainer_prop['class'])(
+            network=model,
+            loss=loss,
+            dataloader=dataloader,
+            cuda=trainer_prop['cuda'],
+            num_epochs=trainer_prop['num_epochs'],
+            lr=trainer_prop['lr'],
+            patience=trainer_prop['patience'],
+            optimizer_type=trainer_prop['optimizer_type'],
+            log_dir=os.path.join(
+                 single_experiment['pathname_experience'],
+                 'logs')
+        )
+
+        embedder_prop = single_experiment['embedder']
+        em = EmbedderSiamese(
+               network=model,
+               # network_path=
+               cuda=embedder_prop['cuda'],
+               output_path=os.path.join(
+                    single_experiment['pathname_experience'],
+                    'embeddings.h5f'),
+               feature_path=features.output_path,
+               network_path=model.output_path,
+        )
+
+        import pdb
+        pdb.set_trace()
 
     def build_grid_experiments(self):
         """Extract the list of experiments to build the
 
         """
         self.parse_yaml_input_file()
-        assert self.params['default_params'], 'Yaml not well formatted'
-        assert self.params['grid_params'], 'Yaml not well formatted'
-
+        msg_yaml_error = 'Yaml not well formatted : '
+        assert self.params['default_params'], msg_yaml_error + 'default_params'
+        assert self.params['grid_params'], msg_yaml_error + 'grid_params'
+        assert self.params['default_params']['pathname_experience'], \
+            msg_yaml_error + 'pathname_experience'
         default_params = self.params['default_params']
         grid_params = self.params['grid_params']
         grid_experiments = []
         current_exp = copy.deepcopy(default_params)
+        now = datetime.datetime.now()
         for submodule, submodule_params in grid_params.items():
             for param, values in submodule_params.items():
                 for value in values:
@@ -171,7 +195,8 @@ class GridSearch(object):
                     current_exp['pathname_experience'] = os.path.join(
                         current_exp['pathname_experience'],
                         param,
-                        value
+                        value,
+                        now.isoformat()
                         )
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
