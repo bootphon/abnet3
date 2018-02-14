@@ -108,13 +108,13 @@ class OriginalDataLoader(DataLoader):
         """
         Load only once the features, and the pairs
         """
-        print("Loading features")
         if self.features is None:
+            print("Loading features")
             features, align_features, feat_dim = read_feats(self.features_path)
             self.features = features
 
-        print("Loading word pairs")
         if self.pairs['train'] is None:
+            print("Loading word pairs")
             train_dir = os.path.join(self.pairs_path, 'train_pairs/dataset')
             self.pairs['train'] = read_dataset(train_dir)
 
@@ -267,7 +267,7 @@ class FramesDataLoader(OriginalDataLoader):
     """
 
     def __init__(self, pairs_path, features_path,
-                 batch_size=100, randomize_dataset=True):
+                 batch_size=100, randomize_dataset=True, max_batches_per_epoch=None):
         """
         :parameter int batch_size: number of frames in a batch
         :param bool randomize_dataset: wether to shuffle all the frames
@@ -282,16 +282,15 @@ class FramesDataLoader(OriginalDataLoader):
     def load_data(self):
         super(FramesDataLoader, self).load_data()
 
-        print("Loading all frames..", end='')
         if self.token_features['train'] is None:
+            print("Loading all frames..", end='')
             self.token_features['train'], self.frame_pairs['train'] = \
                 self.load_all_frames(self.pairs['train'])
+            print("Done")
 
         if self.token_features['dev'] is None:
             self.token_features['dev'], self.frame_pairs['dev'] = \
                 self.load_all_frames(self.pairs['dev'])
-        print("Done")
-
 
     def load_all_frames(self, pairs):
         """
