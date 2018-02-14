@@ -28,7 +28,7 @@ from abnet3.features import *
 faulthandler.enable()
 
 
-class GridSearch(object):
+class GridSearchBuilder(object):
     """Class Model for Grid search
 
         Parameters
@@ -45,7 +45,7 @@ class GridSearch(object):
     """
     def __init__(self, input_file=None,
                  num_jobs=1, gpu_ids=None, output_dir=None):
-        super(GridSearch, self).__init__()
+        super(GridSearchBuilder, self).__init__()
         self.input_file = input_file
         self.num_jobs = num_jobs
         self.gpu_ids = gpu_ids
@@ -64,6 +64,66 @@ class GridSearch(object):
                 self.params = yaml.load(stream)
             except yaml.YAMLError as exc:
                 print(exc)
+
+    def build_grid_experiments(self):
+        """Extract the list of experiments to build the
+
+        """
+        self.parse_yaml_input_file()
+        msg_yaml_error = 'Yaml not well formatted : '
+        assert self.params['default_params'], msg_yaml_error + 'default_params'
+        assert self.params['grid_params'], msg_yaml_error + 'grid_params'
+        assert self.params['default_params']['pathname_experience'], \
+            msg_yaml_error + 'pathname_experience'
+        default_params = self.params['default_params']
+        grid_params = self.params['grid_params']
+        grid_experiments = []
+        current_exp = copy.deepcopy(default_params)
+        now = datetime.datetime.now()
+        for submodule, submodule_params in grid_params.items():
+            for param, values in submodule_params.items():
+                for value in values:
+                    try:
+                        current_exp[submodule][param] = value
+                    except Exception as e:
+                        current_exp[submodule] = {}
+                        current_exp[submodule][param] = value
+                    current_exp['pathname_experience'] = os.path.join(
+                        current_exp['pathname_experience'] + now.isoformat(),
+                        param,
+                        value
+                        )
+                    grid_experiments.append(current_exp)
+                    current_exp = copy.deepcopy(default_params)
+        return grid_experiments
+
+    def run_single_experiment(self, single_experiment=None, gpu_id=0):
+        """Build a single experiment from a dictionnary of parameters
+
+        """
+        raise NotImplementedError('Unimplemented run_single_experiment' +
+                                  ' for class:',
+                                  self.__class__.__name__)
+
+    def run(self):
+        """Run command to launch the grid search
+
+        """
+        grid_experiments = self.build_grid_experiments()
+        self.run_single_experiment(single_experiment=grid_experiments[0])
+
+    def make_html(self):
+        """Build HTML outputs
+
+        """
+
+
+class GridSearchSiamese(TrainerBuilder):
+    """Siamese Trainer class for ABnet3
+
+    """
+    def __init__(self, *args, **kwargs):
+        super(GridSearchBuilder, self).__init__(*args, **kwargs)
 
     def run_single_experiment(self, single_experiment=None, gpu_id=0):
         """Build a single experiment from a dictionnary of parameters
@@ -155,7 +215,7 @@ class GridSearch(object):
         )
 
         embedder_prop = single_experiment['embedder']
-        em = EmbedderSiamese(
+        embedder = EmbedderSiamese(
                network=model,
                # network_path=
                cuda=embedder_prop['cuda'],
@@ -166,57 +226,9 @@ class GridSearch(object):
                network_path=model.output_path,
         )
 
-        import pdb
-        pdb.set_trace()
-
-    def build_grid_experiments(self):
-        """Extract the list of experiments to build the
-
-        """
-        self.parse_yaml_input_file()
-        msg_yaml_error = 'Yaml not well formatted : '
-        assert self.params['default_params'], msg_yaml_error + 'default_params'
-        assert self.params['grid_params'], msg_yaml_error + 'grid_params'
-        assert self.params['default_params']['pathname_experience'], \
-            msg_yaml_error + 'pathname_experience'
-        default_params = self.params['default_params']
-        grid_params = self.params['grid_params']
-        grid_experiments = []
-        current_exp = copy.deepcopy(default_params)
-        now = datetime.datetime.now()
-        for submodule, submodule_params in grid_params.items():
-            for param, values in submodule_params.items():
-                for value in values:
-                    try:
-                        current_exp[submodule][param] = value
-                    except Exception as e:
-                        current_exp[submodule] = {}
-                        current_exp[submodule][param] = value
-                    current_exp['pathname_experience'] = os.path.join(
-                        current_exp['pathname_experience'],
-                        param,
-                        value,
-                        now.isoformat()
-                        )
-                    grid_experiments.append(current_exp)
-                    current_exp = copy.deepcopy(default_params)
-        return grid_experiments
-
-    def run(self):
-        """Run command to launch the grid search
-
-        """
-        grid_experiments = self.build_grid_experiments()
-        self.run_single_experiment(single_experiment=grid_experiments[0])
-
-    def make_html(self):
-        """Build HTML outputs
-
-        """
-
 
 if __name__ == '__main__':
-    grid = GridSearch(input_file='test/data/buckeye.yaml')
+    grid = GridSearchBuilder(input_file='test/data/buckeye.yaml')
     grid.run()
     # import pdb
     # pdb.set_trace()

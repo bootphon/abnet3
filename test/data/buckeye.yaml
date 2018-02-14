@@ -65,6 +65,7 @@ default_params:
     optimizer_type: adadelta
   embedder:
     class: EmbedderSiamese
+    cuda: False
 
 grid_params:
     sampler:
