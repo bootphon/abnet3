@@ -6,7 +6,8 @@ This script contains different integration units, which receive
 multiple inputs and produce batches used for training
 """
 
-import torch
+from torch import cat, zeros
+from torch.autograd import Variable
 import torch.nn as nn
 
 class IntegrationUnitBuilder(nn.Module):
@@ -55,7 +56,7 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
             print("Input {} with size {}".format(i, input_mode.size()))
             i += 1
         print()
-        concat_batch = torch.cat(x_list, 1)
+        concat_batch = cat(x_list, 1)
 
         return concat_batch
 
@@ -63,3 +64,46 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
         X1_batch = self.integration_method(x1_list)
         X2_batch = self.integration_method(x2_list)
         return X1_batch, X2_batch, y
+
+class MultitaskIntegration(IntegrationUnitBuilder):
+    """
+    Specify parameters and description
+    """
+
+    def __init__(self, representation_modes, feed_modes, *args, **kwargs):
+        super(MultitaskIntegration, self).__init__(*args, **kwargs)
+
+
+    def apply_mode_mask(self, mode_map, features):
+            """
+            Receives features and mode map and returns the new vector
+
+            :param mode_map:    map for the new vector, binary vector of the same
+                                dimension as the number of features, on which every
+                                dimension must be 1 for the feature to appear on
+                                the mapped vector, and 0 if it must be zeroed out
+            :param features:    list of features, which order must correspond to the
+                                mode_map one.
+
+            :returns mapped_vector: with dimension equal to the sum of the input
+                                    features dimensions
+
+            :example: for mode map [0, 1], the first input will be zeroed out and the
+                      second one will show on the final vector
+            """
+
+            #TODO: maybe there's a more efficient way to do this
+
+            assert len(mode_map) == len(features), "Mode map incongruent with features list"
+
+            to_cat = []
+
+            for i in range(len(mode_map)):
+                if mode_map[i]:
+                    to_cat.append(features[i])
+                else:
+                    to_cat.append(Variable(zeros(features[i].size())))
+
+            mapped_vector = cat(to_cat)
+
+            return mapped_vector
