@@ -313,6 +313,68 @@ class TrainerSiameseMultitask(TrainerBuilder):
         self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
         return dev_loss
 
+class MultimodalTrainer(TrainerBuilder):
+    """Multimodal Trainer class for ABnet3
+
+    """
+    def __init__(self, integration_unit, *args, **kwargs):
+        super(MultimodalTrainer, self).__init__(*args, **kwargs)
+        assert type(self.network) == abnet3.model.SiameseNetwork
+        assert type(self.dataloader) == abnet3.dataloader.MultimodalDataLoader
+
+        self.integration_unit = integration_unit
+
+    def optimize_model(self, do_training=True):
+        """Optimization model step for the Multimodal Siamese network.
+
+        """
+        train_loss = 0.0
+        dev_loss = 0.0
+        self.network.train()
+
+        for minibatch in self.dataloader.batch_iterator(train_mode=True):
+            X_batch1, X_batch2, y_batch = self.integration_unit(*minibatch)
+            if self.cuda:
+                X_batch1 = X_batch1.cuda()
+                X_batch2 = X_batch2.cuda()
+                y_batch = y_batch.cuda()
+
+            self.optimizer.zero_grad()
+            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
+            train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+            if do_training:
+                train_loss_value.backward()
+                self.optimizer.step()
+            else:
+                self.num_batches_train += 1
+            train_loss += train_loss_value.data[0]
+
+        self.network.eval()
+        for minibatch in self.dataloader.batch_iterator(train_mode=False):
+            X_batch1, X_batch2, y_batch = self.integration_unit(*minibatch)
+            if self.cuda:
+                X_batch1 = X_batch1.cuda()
+                X_batch2 = X_batch2.cuda()
+                y_batch = y_batch.cuda()
+
+            if do_training:
+                pass
+            else:
+                self.num_batches_dev += 1
+
+            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
+            dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+            dev_loss += dev_loss_value.data[0]
+
+        self.train_losses.append(train_loss/self.num_batches_train)
+        self.dev_losses.append(dev_loss/self.num_batches_dev)
+        normalized_train_loss = train_loss/self.num_batches_train
+        normalized_dev_loss = dev_loss/self.num_batches_dev
+
+        self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
+        return dev_loss
+
+
 
 if __name__ == '__main__':
 

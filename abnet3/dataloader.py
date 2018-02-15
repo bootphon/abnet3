@@ -379,3 +379,136 @@ class MultiTaskDataLoader(FramesDataLoader):
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = map(Variable,
                                                                batch_els)
             yield X_batch1, X_batch2, y_spk_batch, y_phn_batch
+
+class MultimodalDataLoader(OriginalDataLoader):
+    """
+    Class to manage multiple inputs, extract features
+    from features file and provide iterator for multimodal
+    training of the siamese network
+    """
+
+    def __init__(self, pairs_path, features_path, num_max_minibatches=1000, seed=None, batch_size=8):
+        """
+
+        :param string pairs_path: path to dataset where the dev_pairs and train_pairs folders are
+        :param features_paths: list of paths from multiple inputs, this turns the OriginalDataLoader
+                               features_path parameter into a list
+
+        """
+        super().__init__(pairs_path, features_path)
+        self.features_dict = None
+
+        #TODO: label different modes for later analysis
+
+
+    def __getstate__(self):
+        """used for pickle"""
+
+        #TODO: implement
+        pass
+
+    def __setstate__(self, state):
+        """used for pickle"""
+
+        #TODO: implement
+        pass
+
+    def whoami(self):
+
+        #TODO: implement
+        pass
+
+    def check_consistency(self, features, deep=True):
+        """
+        This method checks that the pairs and features are
+        consistent between each other, meaning they have the
+        same items and can be used together
+
+        :param features: list of features to be used
+        :param deep: when True, a more extensive
+        """
+
+        #TODO: implement, for now consistent data is assumed.
+        pass
+
+    def load_data(self):
+        """
+        Load pairs and features
+        """
+
+        if self.features_dict is None:
+            self.features_dict = {}
+            for path in self.features_path:
+                self.features_dict[path], _ , _ = read_feats(path)
+
+        if self.train_pairs is None:
+            train_dir = os.path.join(self.pairs_path, 'train_pairs/dataset')
+
+            self.train_pairs = read_dataset(train_dir)
+
+        if self.dev_pairs is None:
+            dev_dir = os.path.join(self.pairs_path, 'dev_pairs/dataset')
+            self.dev_pairs = read_dataset(dev_dir)
+
+
+    def batch_iterator(self, train_mode=True):
+        """
+        Build iterator next batch from folder for a specific epoch
+        This function can be used when the batches were already created
+        by the sampler.
+
+        :param train: boolean, indicates if the pairs should be extracted from
+                      the train set (if True) or the dev set (if False)
+
+        Returns batches of the form (X1array, X2array, y), where X1list and
+        X2list are lists of torch variables, each one corresponding
+        to the different modes representing the same phenomena,
+        and y is a torch variable which contains same/different info, which is
+        the same for every mode
+        """
+
+        #TODO: support unsampled batches
+
+        #load pairs and features
+        self.load_data()
+
+        if train_mode:
+            pairs = self.train_pairs
+        else:
+            pairs = self.dev_pairs
+
+        num_pairs = len(pairs)
+
+        # TODO : shuffle the pairs before creating batches
+        # make batches
+        batches = [pairs[i:i+self.batch_size] for i in range(0, num_pairs, self.batch_size)]
+        num_batches = len(batches)
+
+        if self.num_max_minibatches < num_batches:
+            selected_batches = np.random.choice(range(num_batches),
+                                                self.num_max_minibatches,
+                                                replace=False)
+        else:
+            print("Number of batches not sufficient," +
+                  " iterating over all the batches")
+            selected_batches = np.random.permutation(range(num_batches))
+
+        #Yield batches
+        for batch_id in selected_batches:
+            grouped_pairs = group_pairs(batches[batch_id])
+            X1list, X2list = [], []
+            i = 1
+            for path in self.features_path:
+                self.features = self.features_dict[path]
+                batch_els = self.load_frames_from_pairs(grouped_pairs)
+                for _ in batch_els:
+                    print(np.shape(_))
+                batch_els = map(torch.from_numpy, batch_els)
+                X_batch1, X_batch2, y_batch = map(Variable, batch_els)
+                X1list.append(X_batch1)
+                X2list.append(X_batch2)
+
+                print("Input {} X1 size {}".format(i, X_batch1.size()))
+                print("Input {} X2 size {}".format(i, X_batch2.size()))
+                i += 1
+            yield X1list, X2list, y_batch
