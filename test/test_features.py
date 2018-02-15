@@ -7,8 +7,22 @@ import h5py
 import pytest
 import shutil
 
+
 class TestFeatures:
 
+    def test_save_load_mean_variance(self):
+
+        mean, variance = np.random.randn(10), np.random.randn(10)
+
+        features_generator = FeaturesGenerator()
+        tmp = tempfile.NamedTemporaryFile()
+        print(tmp.name)
+        features_generator.save_mean_variance(mean, variance, tmp.name)
+
+        saved = features_generator.load_mean_variance(tmp.name)
+
+        assert (saved['mean'] == mean).all()
+        assert (saved['variance'] == variance).all()
 
     def test_stack(self):
         features_generator = FeaturesGenerator()
@@ -40,8 +54,9 @@ class TestFeatures:
         mean, variance = features_generator.mean_variance_normalisation(
             h5f, h5f_mean_var)
 
-        assert mean == pytest.approx((1.0 * 1 + 2.0 * 1.5) / 2.5)
-        assert variance == pytest.approx(np.std(np.vstack(features)))
+        stacked_features = np.vstack(features)
+        assert mean == pytest.approx(np.mean(stacked_features, axis=0))
+        assert variance == pytest.approx(np.std(stacked_features, axis=0))
 
         # check that the new file has 0 mean and 1 variance
         dset = list(h5py.File(h5f_mean_var).keys())[0]
@@ -72,10 +87,14 @@ class TestFeatures:
         meansvars = features_generator.mean_var_norm_per_file(h5f,
                                                               h5f_mean_var)
 
-        assert meansvars == [
-            ('file1', 0, np.std(feature1)),
-            ('file2', 1.5, np.std(feature2)),
-        ]
+        assert meansvars[0][0] == 'file1'
+        assert all(meansvars[0][1] == np.mean(feature1, axis=0))
+        assert all(meansvars[0][2] == np.std(feature1, axis=0))
+
+        assert meansvars[1][0] == 'file2'
+        assert all(meansvars[1][1] == np.mean(feature2, axis=0))
+        assert all(meansvars[1][2] == np.std(feature2, axis=0))
+
 
         reader = h5features.Reader(h5f_mean_var)
         data = reader.read()
@@ -115,10 +134,8 @@ class TestFeatures:
         mean, var = features_generator.mean_variance_normalisation(
             h5f, h5f_mean_var, vad_folder=vad_path)
 
-        assert mean == pytest.approx\
-            (np.mean(np.vstack([feature1[:75], feature2])))
-        assert var == pytest.approx(
-            np.std(np.vstack([feature1[:75], feature2])))
+        assert all(mean == np.mean(np.vstack([feature1[:75], feature2]), axis=0))
+        assert all(var == np.std(np.vstack([feature1[:75], feature2]), axis=0))
 
         reader = h5features.Reader(h5f_mean_var)
         data = reader.read()
@@ -129,8 +146,6 @@ class TestFeatures:
             (feature2 - mean) / var)
 
         shutil.rmtree(tempdir)
-
-
 
     def test_norm_per_file_with_VAD(self):
 
@@ -162,11 +177,13 @@ class TestFeatures:
         meansvars = features_generator.mean_var_norm_per_file(
             h5f, h5f_mean_var, vad_folder=vad_path)
 
-        assert meansvars == [
-            ('file1', np.mean(feature1[:75]), np.std(feature1[:75])),
-            ('file2', np.mean(feature2), np.std(feature2)),
+        assert meansvars[0][0] == 'file1'
+        assert all(meansvars[0][1] == np.mean(feature1[:75], axis=0))
+        assert all(meansvars[0][2] == np.std(feature1[:75], axis=0))
 
-        ]
+        assert meansvars[1][0] == 'file2'
+        assert all(meansvars[1][1] == np.mean(feature2, axis=0))
+        assert all(meansvars[1][2] == np.std(feature2, axis=0))
 
         reader = h5features.Reader(h5f_mean_var)
         data = reader.read()

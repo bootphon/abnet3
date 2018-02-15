@@ -228,8 +228,8 @@ class FeaturesGenerator:
             mean = params['mean']
             std = params['variance']
         else:
-            mean = np.mean(features)
-            std = np.std(features)
+            mean = np.mean(features, axis=0)
+            std = np.std(features, axis=0)
         del features, data  # free memory
 
         # we reload all the features because we wan't to keep them in the
@@ -274,10 +274,10 @@ class FeaturesGenerator:
                     filtered_features = self.filter_vad(features, vad_data)
 
             if filtered_features is None:
-                mean, std = np.mean(features), np.std(features)
+                mean, std = np.mean(features, axis=0), np.std(features, axis=0)
             else:
-                mean = np.mean(filtered_features)
-                std = np.std(filtered_features)
+                mean = np.mean(filtered_features, axis=0)
+                std = np.std(filtered_features, axis=0)
             features = (features - mean) / (std + np.finfo(features.dtype).eps)
             h5features.write(mvn_h5f, '/features/', items, [times], [features])
             means_vars.append((f, mean, std))
@@ -308,30 +308,27 @@ class FeaturesGenerator:
 
     def save_mean_variance(self, mean, variance, output_file):
         """
-        This function will save the mean and variance into a file.
+        This function will save the mean and variance into a folder.
         It will take the form
 
         mean variance (file: optional)
 
-        :param mean: float
-        :param variance: float
+        :param mean: np.array
+        :param variance: np.array
         :param output_file: file where mean and variance will be saved
         """
-
-        with open(output_file, 'w') as f:
-            f.write('%.7f %.7f' % (mean, variance))
+        mean_var = np.vstack((mean, variance))
+        print(output_file)
+        np.savetxt(output_file, mean_var)
 
     def load_mean_variance(self, file_path):
         """
         :return: a dict {'mean': mean, 'variance': variance}
         """
+        mean_var = np.loadtxt(file_path)
 
-        with open(file_path, 'r') as f:
-            lines = f.readlines()
-            lines = [l.strip() for l in lines]
-            mean, variance = lines[0].split(" ")
-            mean, variance = float(mean), float(variance)
-        return {'mean': mean, 'variance': variance}
+        return {'mean': mean_var[0], 'variance': mean_var[1]}
+
 
     def generate(self):
 
