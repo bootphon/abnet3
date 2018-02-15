@@ -112,11 +112,6 @@ class GridSearchBuilder(object):
         grid_experiments = self.build_grid_experiments()
         self.run_single_experiment(single_experiment=grid_experiments[0])
 
-    def make_html(self):
-        """Build HTML outputs
-
-        """
-
 
 class GridSearchSiamese(TrainerBuilder):
     """Siamese Trainer class for ABnet3
