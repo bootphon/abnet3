@@ -34,7 +34,7 @@ class SamplerBuilder(object):
             Seed
 
     """
-    def __init__(self, batch_size=8, already_done=False, input_file=None,
+    def __init__(self, batch_size=8, already_done=False,
                  directory_output=None, ratio_train_dev=0.7, seed=0):
         super(SamplerBuilder, self).__init__()
         self.batch_size = batch_size
