@@ -39,7 +39,8 @@ class TrainerBuilder:
     def __init__(self, network=None, loss=None,
                  num_epochs=200, patience=20,
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
-                 seed=0, dataloader=None, log_dir=None):
+                 seed=0, dataloader=None, log_dir=None,
+                 feature_generator=None):
         self.network = network
         self.loss = loss
         self.num_epochs = num_epochs
@@ -51,6 +52,7 @@ class TrainerBuilder:
         self.cuda = cuda
         self.statistics_training = {}
         self.dataloader = dataloader
+        self.feature_generator = feature_generator
 
         if cuda:
             self.loss.cuda()
@@ -85,14 +87,18 @@ class TrainerBuilder:
     def params(self):
         params = copy.copy(self.__dict__)
         del params['dataloader']
+        del params['feature_generator']
 
     def whoami(self):
-        whoami = {'params': self.params(),
-                  'network': self.network.whoami(),
-                  'loss': self.loss.whoami(),
-                  'class_name': self.__class__.__name__,
-                  'dataloader': self.dataloader.whoami()
-                  }
+        whoami = {
+            'params': self.params(),
+            'network': self.network.whoami(),
+            'loss': self.loss.whoami(),
+            'class_name': self.__class__.__name__,
+            'dataloader': self.dataloader.whoami()
+        }
+        if self.feature_generator is not None:
+            whoami['feature_generator'] = self.feature_generator.whoami()
         return whoami
 
     def save_whoami(self):

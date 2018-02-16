@@ -55,9 +55,11 @@ you can launch:
 
 ### Tensorboard vizualisation
 
+The package tensorboardX needs to be installed to train the model: `pip install tensorboardX`.
+
 The package will save train / dev loss during training. To vizualise them :
 
-- Install tensorboard (`conda install tensorboard`)
+- Install tensorboard (`conda install tensorflow tensorflow-tensorboard`)
 
 - run `tensorboard --logdir path/to/logdir`.
 The default logdir is `./run` in the current directory.
