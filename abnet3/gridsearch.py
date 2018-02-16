@@ -110,7 +110,13 @@ class GridSearchBuilder(object):
 
         """
         grid_experiments = self.build_grid_experiments()
-        self.run_single_experiment(single_experiment=grid_experiments[0])
+        print('Start the grid search ...')
+        for index in len(grid_experiments):
+            pathname_exp = grid_experiments[index]['pathname_experience']
+            exp_name = 'Starting exp {} : {}'.format(index, pathname_exp)
+            self.run_single_experiment(
+                single_experiment=grid_experiments[index]
+                )
 
 
 class GridSearchSiamese(TrainerBuilder):
@@ -212,7 +218,6 @@ class GridSearchSiamese(TrainerBuilder):
         embedder_prop = single_experiment['embedder']
         embedder = EmbedderSiamese(
                network=model,
-               # network_path=
                cuda=embedder_prop['cuda'],
                output_path=os.path.join(
                     single_experiment['pathname_experience'],
@@ -221,9 +226,22 @@ class GridSearchSiamese(TrainerBuilder):
                network_path=model.output_path,
         )
 
+        if features.already_done:
+            pass
+        else:
+            features.generate()
+
+        if sampler.already_done:
+            pass
+        else:
+            sampler.sample()
+
+        trainer.train()
+        embedder.embed()
+
 
 if __name__ == '__main__':
-    grid = GridSearchBuilder(input_file='test/data/buckeye.yaml')
+    grid = GridSearchSiamese(input_file='test/data/buckeye.yaml')
     grid.run()
     # import pdb
     # pdb.set_trace()
