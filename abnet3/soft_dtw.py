@@ -33,8 +33,6 @@ class SoftDTW(torch.autograd.Function):
                np.exp(c - max_value))
         return - gamma * (np.log(sum) + max_value)
 
-
-
     def forward(self, matrix_a: FloatTensor, matrix_b: FloatTensor):
         """
         :param matrix_b: 
@@ -54,7 +52,7 @@ class SoftDTW(torch.autograd.Function):
                 distances[i, j] = self.distance(matrix_a[i], matrix_b[j])
 
         # soft DTW
-        R = np.full((n+1, m+1), np.inf)  # we index starting at 1 to facilitate the following loop
+        R = np.full((n+2, m+2), np.inf)  # we index starting at 1 to facilitate the following loop
         R[0, 0] = 0
         # forward passs
         for i in range(1, n + 1):
@@ -65,9 +63,15 @@ class SoftDTW(torch.autograd.Function):
         self.save_for_backward([
             distances, R,
         ])
+        self.save_for_backward(matrix_a, matrix_b, distances, R)
         return R
 
 
 
     def backward(self, grad_outputs):
+        matrix_a, matrix_b, D, R = self.saved_variables
+
+        
+
+
         pass
