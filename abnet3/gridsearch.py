@@ -10,7 +10,6 @@ It will run a search optimization for the different parameters of the model
 import yaml
 import faulthandler
 import os
-from path import Path
 import time
 import copy
 import datetime
@@ -202,7 +201,8 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument("experiments_file", type=str,
                            help="yaml file for the experiments")
-    argparser.add_argument("--gpu_id", type=int, default='0')
+    argparser.add_argument("--gpu_id", type=int, default=0,
+                           help="Gpu id")
     argparser.add_argument("--num_jobs", type=int, default=1,
                            help="Not implemented yet")
     args = argparser.parse_args()
