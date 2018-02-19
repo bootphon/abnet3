@@ -17,13 +17,20 @@ class TestGridsearch:
         dic_yaml = {'default_params': {
             'pathname_experience': '/empty_path',
             'features': {
-                'already_done': True,
-                'class': 'FeaturesGenerator'
+                'class': 'FeaturesGenerator',
+                'arguments': {
+                    'run': 'once'
+                }
+            },
+            'sampler': {
+                'class': 'SamplerClusterSiamese'
             }
             },
             'grid_params': {
                 'sampler': {
-                    'type_sampling_mode': ['1', 'log', 'f3', 'f', 'f2']
+                    'arguments': {
+                        'type_sampling_mode': ['1', 'log', 'f3', 'f', 'f2']
+                    }
                 }
             }
             }
@@ -37,8 +44,10 @@ class TestGridsearch:
 
         grid_experiments = grid.build_grid_experiments()
         assert len(grid_experiments) == 5
-        assert grid_experiments[0]['sampler']['type_sampling_mode'] == '1'
-        assert grid_experiments[1]['sampler']['type_sampling_mode'] == 'log'
+        sampler_arguments = grid_experiments[0]['sampler']['arguments']
+        assert sampler_arguments['type_sampling_mode'] == '1'
+        sampler_arguments = grid_experiments[1]['sampler']['arguments']
+        assert sampler_arguments['type_sampling_mode'] == 'log'
 
 
 if __name__ == '__main__':
