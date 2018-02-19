@@ -9,13 +9,12 @@ It will run a search optimization for the different parameters of the model
 
 import yaml
 import faulthandler
-import itertools
-import re
 import os
 from path import Path
 import time
 import copy
 import datetime
+import argparse
 
 from abnet3.sampler import *
 from abnet3.loss import *
@@ -24,6 +23,7 @@ from abnet3.model import *
 from abnet3.embedder import *
 from abnet3.dataloader import *
 from abnet3.features import *
+import torch
 
 faulthandler.enable()
 
@@ -37,18 +37,15 @@ class GridSearch(object):
             Path to yaml file for grid search
         num_jobs: int
             Number of jobs to use
-        gpu_ids: List
-            List of Gpu ids available for computation
-        output_dir: String
-            Path to directory for the outputs of the grid search
+        gpu_id: int
+            Gpu id available for computation
 
     """
     def __init__(self, input_file=None,
-                 num_jobs=1, gpu_ids=None, output_dir=None):
+                 num_jobs=1, gpu_ids=None):
         self.input_file = input_file
         self.num_jobs = num_jobs
         self.gpu_ids = gpu_ids
-        self.output_dir = output_dir
         self.sampler_run = False
         self.features_run = False
 
@@ -201,5 +198,20 @@ class GridSearch(object):
 
 
 if __name__ == '__main__':
-    grid = GridSearch(input_file='test/data/buckeye.yaml')
+
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("experiments_file", type=str,
+                           help="yaml file for the experiments")
+    argparser.add_argument("--gpu_id", type=int, default='0')
+    argparser.add_argument("--num_jobs", type=int, default=1,
+                           help="Not implemented yet")
+    args = argparser.parse_args()
+    if torch.cuda.is_available():
+        torch.cuda.set_device(args.gpu_id)
+    t1 = time.time()
+    print("Start experiment")
+    grid = GridSearch(input_file=args.experiments_file,
+                      gpu_ids=args.gpu_id,
+                      num_jobs=args.num_jobs)
     grid.run()
+    print("The experiment took {} s ".format(time.time() - t1))
