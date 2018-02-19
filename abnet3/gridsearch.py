@@ -127,7 +127,7 @@ class GridSearch(object):
         model_class = getattr(abnet3.model, model_prop['class'])
         arguments = model_prop['arguments']
         arguments['output_path'] = os.path.join(
-             single_experiment['pathname_experience'], 'network.pth')
+             single_experiment['pathname_experience'], 'network')
         model = model_class(**arguments)
 
         loss_prop = single_experiment['loss']
