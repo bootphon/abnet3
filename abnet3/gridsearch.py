@@ -105,6 +105,8 @@ class GridSearch(object):
         assert single_experiment['model'], 'model properties missing'
         assert single_experiment['loss'], 'loss properties missing'
 
+        os.makedirs(single_experiment['pathname_experience'], exist_ok=True)
+
         features_prop = single_experiment['features']
         features_class = getattr(abnet3.features, features_prop['class'])
         arguments = features_prop['arguments']
