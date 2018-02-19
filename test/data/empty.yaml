@@ -1,9 +1,13 @@
 default_params:
   pathname_experience: /empty_path
   features:
-    already_done: True
     class: FeaturesGenerator
+    arguments:
+        run: 'once'
+  sampler:
+    class: SamplerClusterSiamese
 
 grid_params:
     sampler:
-        type_sampling_mode: ['1','log','f3','f','f2']
+        arguments:
+            type_sampling_mode: ['1','log','f3','f','f2']

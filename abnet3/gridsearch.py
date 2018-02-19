@@ -49,6 +49,8 @@ class GridSearch(object):
         self.num_jobs = num_jobs
         self.gpu_ids = gpu_ids
         self.output_dir = output_dir
+        self.sampler_run = False
+        self.features_run = False
 
     def whoami(self):
         raise NotImplementedError('Unimplemented whoami for class:',
@@ -161,15 +163,25 @@ class GridSearch(object):
         arguments['network_path'] = model.output_path
         embedder = embedder_class(**arguments)
 
-        if features.already_done:
+        if features.run == 'never':
             pass
-        else:
+        if features.run == 'once' and self.features_run is False:
             features.generate()
-
-        if sampler.already_done:
-            pass
+            self.features_run = True
+        if features.run == 'always':
+            features.generate()
         else:
+            pass
+
+        if sampler.run == 'never':
+            pass
+        if sampler.run == 'once' and self.sampler_run is False:
             sampler.sample()
+            self.sampler_run = True
+        if sampler.run == 'always':
+            sampler.sample()
+        else:
+            pass
 
         trainer.train()
         embedder.embed()

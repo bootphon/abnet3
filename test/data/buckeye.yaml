@@ -4,7 +4,7 @@ default_params:
   features:
     class: FeaturesGenerator
     arguments:
-      already_done: True
+      run: never
       files: None
       output_path: /scratch2/rriad/projects/cdancette_project/fb40_normalized_stacked7.features
       load_mean_variance_path:
@@ -27,7 +27,7 @@ default_params:
   sampler:
     class: SamplerClusterSiamese
     arguments:
-      already_done: False
+      run: always
       std_file: /scratch2/rriad/projects/abnet3_zr/interspeech_paper/Abnet_neil_discovered.classes
       spkid_file: /scratch2/rriad/back_rriad/zerospeech2015/wav2spk.lst
       spk_list_file: /scratch2/rriad/back_rriad/zerospeech2015/all_spk.lst
