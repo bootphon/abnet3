@@ -88,7 +88,7 @@ class GridSearch(object):
                     current_exp['pathname_experience'] = os.path.join(
                         current_exp['pathname_experience'] + now.isoformat(),
                         param,
-                        value
+                        str(value)
                         )
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
@@ -108,14 +108,17 @@ class GridSearch(object):
         features_prop = single_experiment['features']
         features_class = getattr(abnet3.features, features_prop['class'])
         arguments = features_prop['arguments']
+        if 'output_path' not in arguments:
+            arguments['output_path'] = os.path.join(
+                single_experiment['pathname_experience'], 'features')
         features = features_class(**arguments)
 
         sampler_prop = single_experiment['sampler']
         sampler_class = getattr(abnet3.sampler, sampler_prop['class'])
         arguments = sampler_prop['arguments']
-
-        arguments['directory_output'] = os.path.join(
-             single_experiment['pathname_experience'], 'pairs')
+        if 'directory_output' not in arguments:
+            arguments['directory_output'] = os.path.join(
+                 single_experiment['pathname_experience'], 'pairs')
         sampler = sampler_class(**arguments)
 
         model_prop = single_experiment['model']
