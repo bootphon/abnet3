@@ -29,7 +29,7 @@ class FeaturesGenerator:
                  run='once'):
         """
 
-        :param files: list of wav file paths
+        :param files: list of wav file paths, or folder
         :param output_path: Location of the output h5features file
         :param load_mean_variance_path: (optional)
             Should be None, or the path to an existing file.
@@ -339,6 +339,14 @@ class FeaturesGenerator:
             'mfcc': self.do_mfccs,
             'fbanks': self.do_fbank
         }
+
+        if type(self.files) == str:
+            if not os.path.isdir(self.files):
+                raise ValueError("files must be a directory or a list of "
+                                 "files")
+            self.files = [os.path.join(self.files, f)
+                          for f in os.listdir(self.files)
+                          if f.endswith('.wav')]
 
         if self.method not in functions:
             raise ValueError("Method %s not authorized." % self.method)
