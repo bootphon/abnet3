@@ -125,9 +125,13 @@ class Features_Accessor(object):
 
 
     def get(self, f, on, off):
-        t = np.where(np.logical_and(self.times[f.encode('UTF-8')] >= on,
-                                    self.times[f.encode('UTF-8')] <= off))[0]
-        return self.features[f.encode('UTF-8')][t, :]
+        # check wether filename is string or byte
+        filename = f.encode('UTF-8')  # byte
+        if filename not in self.times:
+            filename = f
+        t = np.where(np.logical_and(self.times[filename] >= on,
+                                    self.times[filename] <= off))[0]
+        return self.features[filename][t, :]
 
 
 def get_dtw_alignment(feat1, feat2):
