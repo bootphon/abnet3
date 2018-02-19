@@ -86,7 +86,7 @@ class GridSearch(object):
                         current_exp[submodule]['arguments'] = {}
                         current_exp[submodule]['arguments'][param] = value
                     current_exp['pathname_experience'] = os.path.join(
-                        current_exp['pathname_experience'] + now.isoformat(),
+                        current_exp['pathname_experience'], now.isoformat(),
                         param,
                         str(value)
                         )
