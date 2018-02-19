@@ -29,7 +29,7 @@ class TestGridsearch:
             'grid_params': {
                 'sampler': {
                     'arguments': {
-                        'type_sampling_mode': ['1', 'log', 'f3', 'f', 'f2']
+                        'type_sampling_mode': ['1', 'log', 'fcube', 'f', 'f2']
                     }
                 }
             }

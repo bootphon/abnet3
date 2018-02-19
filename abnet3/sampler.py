@@ -411,7 +411,7 @@ class SamplerCluster(SamplerBuilder):
                     the members of the pair probabilities)
                 - f2 : proportional to speaker
                     or type probabilities
-                - fcube: proportionnal to log probabilities
+                - fcube: proportionnal to cubic root of probabilities
                 - 1 : equiprobable
 
             Parameters

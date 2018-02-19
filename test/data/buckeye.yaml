@@ -73,4 +73,4 @@ default_params:
 grid_params:
     sampler:
         arguments:
-          type_sampling_mode: ['log','f3','f','f2','1']
+          type_sampling_mode: ['log','fcube','f','f2','1']
