@@ -390,15 +390,20 @@ class MultimodalDataLoader(OriginalDataLoader):
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000, seed=None, batch_size=8):
         """
 
-        :param string pairs_path: path to dataset where the dev_pairs and train_pairs folders are
-        :param features_paths: list of paths from multiple inputs, this turns the OriginalDataLoader
-                               features_path parameter into a list
+        :param string pairs_path: path to dataset where the dev_pairs and train_pairs
+                                  folders are
+        :param features_paths: list of paths from multiple inputs, this turns the
+                               OriginalDataLoader features_path parameter into a
+                               list. The features corresponfing to the first path
+                               will be the ones on which the dtw paths are computed
 
         """
         super().__init__(pairs_path, features_path)
         self.features_dict = None
+        self.alignment_dict = {} #dict of the form {(f1, s1, e1, f2, s1, e2): (path1, path)}
 
         #TODO: label different modes for later analysis
+        #TODO: better and more ways to do alignment, not only by 1 mode
 
 
     def __getstate__(self):
@@ -450,6 +455,106 @@ class MultimodalDataLoader(OriginalDataLoader):
             dev_dir = os.path.join(self.pairs_path, 'dev_pairs/dataset')
             self.dev_pairs = read_dataset(dev_dir)
 
+    def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None, set_alignment=False):
+        """Prepare a batch in Pytorch format based on a batch file
+        :param pairs: list of pairs under the form
+                      {'same': [pairs], 'diff': [pairs] }
+        :param seed: randomness
+        :param fid2spk:
+            if None, will return X1, X2, y_phones
+            If it is the spkid mapping, will return X1, X2, y_phones, y_speaker
+        :param set_alignmet:
+            if True, the alignment attribute will be recomputed
+        """
+
+        #TODO: rethink alignment argument
+
+        # f are filenames, s are start times, e are end times
+        token_feats = {}
+        for f1, s1, e1, f2, s2, e2 in pairs['same']:
+            if (f1, s1, e1) not in token_feats:
+                token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
+            if (f2, s2, e2) not in token_feats:
+                token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
+        for f1, s1, e1, f2, s2, e2 in pairs['diff']:
+            if (f1, s1, e1) not in token_feats:
+                token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
+            if (f2, s2, e2) not in token_feats:
+                token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
+
+        # 2. align features for each pair
+        X1, X2, y_phn, y_spk = [], [], [], []
+        # get features for each same pair based on DTW alignment paths
+        for f1, s1, e1, f2, s2, e2 in pairs['same']:
+            if (s1 > e1) or (s2 > e2):
+                continue
+            feat1 = token_feats[f1, s1, e1]
+            feat2 = token_feats[f2, s2, e2]
+            try:
+                if set_alignment:
+                    path1, path2 = get_dtw_alignment(feat1, feat2)
+                    self.alignment_dict[f1, s1, e1, f2, s2, e2] = (path1, path2)
+                else:
+                    path1, path2 = self.alignment_dict[f1, s1, e1, f2, s2, e2]
+            except Exception:
+                continue
+
+            self.statistics_training['SameType'] += 1
+
+            if fid2spk:
+                spk1, spk2 = fid2spk[f1], fid2spk[f2]
+                if spk1 is spk2:
+                    y_spk.append(np.ones(len(path1)))
+                    self.statistics_training['SameTypeSameSpk'] += 1
+                else:
+                    y_spk.append(-1 * np.ones(len(path1)))
+                    self.statistics_training['SameTypeDiffSpk'] += 1
+
+            X1.append(feat1[path1, :])
+            X2.append(feat2[path2, :])
+            y_phn.append(np.ones(len(path1)))
+
+        for f1, s1, e1, f2, s2, e2 in pairs['diff']:
+            if (s1 > e1) or (s2 > e2):
+                continue
+            feat1 = token_feats[f1, s1, e1]
+            feat2 = token_feats[f2, s2, e2]
+            n1 = feat1.shape[0]
+            n2 = feat2.shape[0]
+            X1.append(feat1[:min(n1, n2), :])
+            X2.append(feat2[:min(n1, n2), :])
+            y_phn.append(-1 * np.ones(min(n1, n2)))
+
+            self.statistics_training['DiffType'] += 1
+
+            if fid2spk:
+                spk1, spk2 = fid2spk[f1], fid2spk[f2]
+                if spk1 is spk2:
+                    y_spk.append(np.ones(min(n1, n2)))
+                    self.statistics_training['DiffTypeSameSpk'] += 1
+                else:
+                    y_spk.append(-1 * np.ones(min(n1, n2)))
+                    self.statistics_training['DiffTypeDiffSpk'] += 1
+
+        if fid2spk:
+            assert len(y_phn) == len(y_spk), 'not same number of labels...'
+
+        # concatenate all features
+        X1, X2, y_phn = np.vstack(X1), np.vstack(X2), np.concatenate(y_phn)
+        np.random.seed(seed)
+        n_pairs = len(y_phn)
+
+        ind = np.random.permutation(n_pairs)
+        X1 = X1[ind, :]
+        X2 = X2[ind, :]
+        y_phn = y_phn[ind]
+
+        if fid2spk:
+            y_spk = np.concatenate(y_spk)[ind]
+            return X1, X2, y_spk, y_phn
+
+        return X1, X2, y_phn
+
 
     def batch_iterator(self, train_mode=True):
         """
@@ -479,8 +584,6 @@ class MultimodalDataLoader(OriginalDataLoader):
 
         num_pairs = len(pairs)
 
-        # TODO : shuffle the pairs before creating batches
-        # make batches
         batches = [pairs[i:i+self.batch_size] for i in range(0, num_pairs, self.batch_size)]
         num_batches = len(batches)
 
@@ -497,18 +600,15 @@ class MultimodalDataLoader(OriginalDataLoader):
         for batch_id in selected_batches:
             grouped_pairs = group_pairs(batches[batch_id])
             X1list, X2list = [], []
-            i = 1
+            set_alignment = True
             for path in self.features_path:
                 self.features = self.features_dict[path]
-                batch_els = self.load_frames_from_pairs(grouped_pairs)
-                for _ in batch_els:
-                    print(np.shape(_))
+                batch_els = self.load_frames_from_pairs(grouped_pairs,
+                                                        set_alignment=set_alignment)
                 batch_els = map(torch.from_numpy, batch_els)
                 X_batch1, X_batch2, y_batch = map(Variable, batch_els)
                 X1list.append(X_batch1)
                 X2list.append(X_batch2)
+                set_alignment = False #Only set alignment with the first path's features
 
-                print("Input {} X1 size {}".format(i, X_batch1.size()))
-                print("Input {} X2 size {}".format(i, X_batch2.size()))
-                i += 1
             yield X1list, X2list, y_batch
