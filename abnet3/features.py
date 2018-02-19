@@ -25,7 +25,8 @@ class FeaturesGenerator:
                  vad_folder=None,
                  n_filters=40, method='fbanks', normalization=True,
                  norm_per_file=False, stack=True,
-                 nframes=7, deltas=False, deltasdeltas=False):
+                 nframes=7, deltas=False, deltasdeltas=False,
+                 run='once'):
         """
 
         :param files: list of wav file paths
@@ -53,6 +54,7 @@ class FeaturesGenerator:
         :param nframes: number of frames in a stack (if stack is True)
         :param deltas: first order derivative
         :param deltasdeltas: second order derivative
+        :param run: Param to notify if features has to be computed
         """
 
         self.files = files
@@ -68,9 +70,11 @@ class FeaturesGenerator:
         self.deltas = deltas
         self.deltasdeltas = deltasdeltas
         self.norm_per_file = norm_per_file
+        self.run = run
 
         if self.method not in ['mfcc', 'fbanks']:
             raise ValueError("Method %s not recognized" % self.method)
+        assert self.run in ['never', 'once', 'always']
 
         if load_mean_variance_path is not None \
                 and save_mean_variance_path is not None:
@@ -329,7 +333,6 @@ class FeaturesGenerator:
 
         return {'mean': mean_var[0], 'variance': mean_var[1]}
 
-
     def generate(self):
 
         functions = {
@@ -364,7 +367,8 @@ class FeaturesGenerator:
                 )
                 if self.save_mean_variance_path is not None:
                     self.save_mean_variance(
-                        mean, variance, output_file=self.save_mean_variance_path)
+                        mean, variance,
+                        output_file=self.save_mean_variance_path)
         else:
             h5_temp2 = h5_temp1
         if self.stack:

@@ -25,11 +25,12 @@ import os
 import matplotlib
 import warnings
 import copy
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from tensorboardX import SummaryWriter
 from pathlib import Path
+
 
 class TrainerBuilder:
     """Generic Trainer class for ABnet3
@@ -99,7 +100,6 @@ class TrainerBuilder:
         if self.feature_generator is not None:
             whoami['feature_generator'] = self.feature_generator.whoami()
         return whoami
-
 
     def save_whoami(self):
         pickle.dump(self.whoami(),
@@ -201,7 +201,6 @@ class TrainerSiamese(TrainerBuilder):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseNetwork
 
-
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network.
 
@@ -260,7 +259,6 @@ class TrainerSiameseMultitask(TrainerBuilder):
     def __init__(self, *args, **kwargs):
         super(TrainerSiameseMultitask, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseMultitaskNetwork
-
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network with multitask.
