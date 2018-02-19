@@ -27,22 +27,23 @@ class SamplerBuilder(object):
         ----------
         batch_size : Int
             Number of words per batch
-        already_done : Bool
-            If already sampled, specify it
+        run : String
+            Param to notify if features has to be computed
         directory_output : String
             Path folder where train/dev pairs folder will be
         seed : int
             Seed
 
     """
-    def __init__(self, batch_size=8, already_done=False, input_file=None,
+    def __init__(self, batch_size=8, run='once', input_file=None,
                  directory_output=None, ratio_train_dev=0.7, seed=0):
         super(SamplerBuilder, self).__init__()
         self.batch_size = batch_size
-        self.already_done = already_done
+        self.run = run
         self.directory_output = directory_output
         self.seed = seed
         self.ratio_train_dev = ratio_train_dev
+        assert self.run in ['never', 'once', 'always']
 
     def whoami(self):
         raise NotImplementedError('Unimplemented whoami for class:',
@@ -771,13 +772,13 @@ if __name__ == '__main__':
     batch_size = 8
     directory_output = '/Users/rachine/abnet3/results/test_pairs_sampler'
     seed = 0
-    already_done = False
+    run = 'once'
     max_clusters = 2000
     type_sampling_mode = 'log'
     spk_sampling_mode = 'log'
 
     sam = SamplerClusterSiamese(std_file=input_file, batch_size=batch_size,
-                                already_done=already_done, seed=seed,
+                                run=run, seed=seed,
                                 type_sampling_mode=type_sampling_mode,
                                 spk_sampling_mode=spk_sampling_mode,
                                 max_clusters=max_clusters,

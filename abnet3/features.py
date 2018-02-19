@@ -26,7 +26,7 @@ class FeaturesGenerator:
                  n_filters=40, method='fbanks', normalization=True,
                  norm_per_file=False, stack=True,
                  nframes=7, deltas=False, deltasdeltas=False,
-                 already_done=False):
+                 run='once'):
         """
 
         :param files: list of wav file paths
@@ -54,8 +54,7 @@ class FeaturesGenerator:
         :param nframes: number of frames in a stack (if stack is True)
         :param deltas: first order derivative
         :param deltasdeltas: second order derivative
-        :param already_done: Boolean to notify if features have already between
-            done
+        :param run: Param to notify if features has to be computed
         """
 
         self.files = files
@@ -70,11 +69,12 @@ class FeaturesGenerator:
         self.nframes = nframes
         self.deltas = deltas
         self.deltasdeltas = deltasdeltas
-        self.already_done = already_done
         self.norm_per_file = norm_per_file
+        self.run = run
 
         if self.method not in ['mfcc', 'fbanks']:
             raise ValueError("Method %s not recognized" % self.method)
+        assert self.run in ['never', 'once', 'always']
 
         if load_mean_variance_path is not None \
                 and save_mean_variance_path is not None:
