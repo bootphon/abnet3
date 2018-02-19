@@ -28,7 +28,7 @@ from abnet3.features import *
 faulthandler.enable()
 
 
-class GridSearchBuilder(object):
+class GridSearch(object):
     """Class Model for Grid search
 
         Parameters
@@ -95,35 +95,6 @@ class GridSearchBuilder(object):
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
         return grid_experiments
-
-    def run_single_experiment(self, single_experiment=None, gpu_id=0):
-        """Build a single experiment from a dictionnary of parameters
-
-        """
-        raise NotImplementedError('Unimplemented run_single_experiment' +
-                                  ' for class:',
-                                  self.__class__.__name__)
-
-    def run(self):
-        """Run command to launch the grid search
-
-        """
-        grid_experiments = self.build_grid_experiments()
-        print('Start the grid search ...')
-        for index in range(len(grid_experiments)):
-            pathname_exp = grid_experiments[index]['pathname_experience']
-            exp_name = 'Starting exp {} : {}'.format(index, pathname_exp)
-            self.run_single_experiment(
-                single_experiment=grid_experiments[index]
-                )
-
-
-class GridSearchSiamese(GridSearchBuilder):
-    """Siamese Trainer class for ABnet3
-
-    """
-    def __init__(self, *args, **kwargs):
-        super(GridSearchSiamese, self).__init__(*args, **kwargs)
 
     def run_single_experiment(self, single_experiment=None, gpu_id=0):
         """Build a single experiment from a dictionnary of parameters
@@ -203,7 +174,20 @@ class GridSearchSiamese(GridSearchBuilder):
         trainer.train()
         embedder.embed()
 
+    def run(self):
+        """Run command to launch the grid search
+
+        """
+        grid_experiments = self.build_grid_experiments()
+        print('Start the grid search ...')
+        for index in range(len(grid_experiments)):
+            pathname_exp = grid_experiments[index]['pathname_experience']
+            exp_name = 'Starting exp {} : {}'.format(index, pathname_exp)
+            self.run_single_experiment(
+                single_experiment=grid_experiments[index]
+                )
+
 
 if __name__ == '__main__':
-    grid = GridSearchSiamese(input_file='test/data/buckeye.yaml')
+    grid = GridSearch(input_file='test/data/buckeye.yaml')
     grid.run()
