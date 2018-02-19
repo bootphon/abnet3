@@ -611,4 +611,7 @@ class MultimodalDataLoader(OriginalDataLoader):
                 X2list.append(X_batch2)
                 set_alignment = False #Only set alignment with the first path's features
 
+            assert len(X1list[0]) == len(X2list[0]), "Dimension error on batch construction"
+            assert len(X1list[0]) == len(y_batch), "Dimension error on batch construction"
+
             yield X1list, X2list, y_batch

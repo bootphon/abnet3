@@ -9,6 +9,7 @@ multiple inputs and produce batches used for training
 from torch import cat, zeros
 from torch.autograd import Variable
 import torch.nn as nn
+import numpy as np
 
 class IntegrationUnitBuilder(nn.Module):
 
@@ -50,12 +51,6 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
 
         """
 
-        print("Concatenating: ")
-        i = 1
-        for input_mode in x_list:
-            print("Input {} with size {}".format(i, input_mode.size()))
-            i += 1
-        print()
         concat_batch = cat(x_list, 1)
 
         return concat_batch
@@ -73,37 +68,63 @@ class MultitaskIntegration(IntegrationUnitBuilder):
     def __init__(self, representation_modes, feed_modes, *args, **kwargs):
         super(MultitaskIntegration, self).__init__(*args, **kwargs)
 
+        self.rep_modes = representation_modes
+        self.feed_modes = feed_modes
+
+        #TODO: different probebilities per method
 
     def apply_mode_mask(self, mode_map, features):
-            """
-            Receives features and mode map and returns the new vector
+        """
+        Receives features and mode map and returns the new vector
 
-            :param mode_map:    map for the new vector, binary vector of the same
-                                dimension as the number of features, on which every
-                                dimension must be 1 for the feature to appear on
-                                the mapped vector, and 0 if it must be zeroed out
-            :param features:    list of features, which order must correspond to the
-                                mode_map one.
+        :param mode_map:    map for the new vector, binary vector of the same
+                            dimension as the number of features, on which every
+                            dimension must be 1 for the feature to appear on
+                            the mapped vector, and 0 if it must be zeroed out
+        :param features:    list of features, which order must correspond to the
+                            mode_map one.
 
-            :returns mapped_vector: with dimension equal to the sum of the input
-                                    features dimensions
+        :returns mapped_vector: with dimension equal to the sum of the input
+                                features dimensions
 
-            :example: for mode map [0, 1], the first input will be zeroed out and the
-                      second one will show on the final vector
-            """
+        :example: for mode map [0, 1], the first input will be zeroed out and the
+                  second one will show on the final vector
+        """
 
-            #TODO: maybe there's a more efficient way to do this
+        #TODO: maybe there's a more efficient way to do this
 
-            assert len(mode_map) == len(features), "Mode map incongruent with features list"
+        assert len(mode_map) == len(features), "Mode map incongruent with features list"
 
-            to_cat = []
+        to_cat = []
+        for i in range(len(mode_map)):
+            if mode_map[i]:
+                to_cat.append(features[i])
+            else:
+                to_cat.append(Variable(zeros(features[i].size())))
 
-            for i in range(len(mode_map)):
-                if mode_map[i]:
-                    to_cat.append(features[i])
-                else:
-                    to_cat.append(Variable(zeros(features[i].size())))
+        mapped_vector = cat(to_cat)
+        return mapped_vector
 
-            mapped_vector = cat(to_cat)
+    def integration_method(self, x1_list, x2_list):
+        num_pairs = len(x1_list[0])
+        x1_zipped = list(zip(*x1_list))
+        x2_zipped = list(zip(*x2_list))
 
-            return mapped_vector
+        x1_to_cat = []
+        x2_to_cat = []
+
+        for i in range(num_pairs):
+            pair_mode = np.random.choice(self.feed_modes)
+            X1 = self.apply_mode_mask(self.rep_modes[pair_mode[0]], x1_zipped[i])
+            X2 = self.apply_mode_mask(self.rep_modes[pair_mode[1]], x2_zipped[i])
+
+            x1_to_cat.append(X1)
+            x2_to_cat.append(X2)
+
+        X1_batch = cat(x1_to_cat)
+        X2_batch = cat(x2_to_cat)
+        return X1_batch, X2_batch
+
+    def forward(self, x1_list, x2_list, y):
+        X1_batch, X2_batch = self.integration_method(x1_list, x2_list)
+        return X1_batch, X2_batch, y
