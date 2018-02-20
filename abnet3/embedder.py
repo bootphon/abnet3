@@ -137,7 +137,7 @@ class MultimodalEmbedder(EmbedderBuilder):
     """
 
     def __init__(self, integration_unit, *args, **kwargs):
-        super(EmbedderSiamese, self).__init__(*args, **kwargs)
+        super(MultimodalEmbedder, self).__init__(*args, **kwargs)
 
         self.integration_unit = integration_unit
 
