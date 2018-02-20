@@ -122,8 +122,8 @@ class MultitaskIntegration(IntegrationUnitBuilder):
             x1_to_cat.append(X1)
             x2_to_cat.append(X2)
 
-        X1_batch = stack(x1_to_cat)
-        X2_batch = stack(x2_to_cat)
+        X1_batch = stack(x1_to_cat, 0)
+        X2_batch = stack(x2_to_cat, 0)
         return X1_batch, X2_batch
 
     def forward(self, x1_list, x2_list, y):
