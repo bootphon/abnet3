@@ -161,7 +161,7 @@ class GridSearch(object):
              single_experiment['pathname_experience'],
              'embeddings.h5f')
         arguments['feature_path'] = features.output_path
-        arguments['network_path'] = model.output_path
+        arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
 
         if features.run == 'never':
