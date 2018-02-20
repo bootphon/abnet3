@@ -131,7 +131,7 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
         with h5features.Writer(self.output_path+'.phn') as fh:
             fh.write(data_phn, 'features')
 
-class EmbedderSiamese(EmbedderBuilder):
+class MultimodalEmbedder(EmbedderBuilder):
     """Embedder class for multimodal siamese network
 
     """
