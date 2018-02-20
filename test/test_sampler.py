@@ -5,6 +5,7 @@ import os
 import pytest
 from abnet3.sampler import SamplerClusterSiamese
 
+
 class TestSampler:
 
     def test_parse_input_file(self):
@@ -24,8 +25,10 @@ class TestSampler:
                             [['s2403a', 258.748, 259.267]],
                             [['s0102a', 152.623, 153.083]],
                             [['s2702a', 31.902, 32.37]],
-                            [['s0101a', 295.416, 295.955], ['s0101a', 546.471, 546.681]],
-                            [['s2001a', 217.712, 218.591], ['s2001a', 546.471, 546.681]]]
+                            [['s0101a', 295.416, 295.955],
+                            ['s0101a', 546.471, 546.681]],
+                            [['s2001a', 217.712, 218.591],
+                            ['s2001a', 546.471, 546.681]]]
 
         # test with max clusters
         clusters = sampler.parse_input_file(file_name, max_num_clusters=3)
@@ -56,3 +59,7 @@ class TestSampler:
 
         # check that no cluster is bigger than 3
         assert max([len(cluster) for cluster in train_clusters]) <= 3
+
+
+if __name__ == '__main__':
+    pytest.main([__file__])
