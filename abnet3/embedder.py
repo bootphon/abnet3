@@ -130,3 +130,65 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
 
         with h5features.Writer(self.output_path+'.phn') as fh:
             fh.write(data_phn, 'features')
+
+class EmbedderSiamese(EmbedderBuilder):
+    """Embedder class for multimodal siamese network
+
+    """
+
+    def __init__(self, integration_unit, *args, **kwargs):
+        super(EmbedderSiamese, self).__init__(*args, **kwargs)
+
+        self.integration_unit = integration_unit
+
+    def embed(self):
+        """ Embed method to embed features based on a saved network
+
+        """
+        if self.network_path is not None:
+            self.network.load_network(self.network_path)
+        self.network.eval()
+        print("Done loading network weights")
+
+        items = None
+        times = None
+        features_list = []
+        for path in self.features_path:
+            with h5features.Reader(path, 'features') as fh:
+                features = fh.read()
+                features_list.append(features.features)
+                check_items = features.items()
+                check_times = features.times()
+
+            if not items:
+                items = check_items
+            else:
+                assert items == check_items, "Items inconsistency found on path {}".format(path)
+
+            if not items:
+                times = check_times
+            else:
+                assert times == check_times, "Times inconsistency found on path {}".format(path)
+
+        print("Done loading input feature file")
+
+        zipped_feats = zip(*features_list)
+
+        embeddings = []
+        for feats in zipped_feats:
+            modes_list = []
+            for feat in feats:
+                if feat.dtype != np.float32:
+                    feat = feat.astype(np.float32)
+                feat_torch = Variable(torch.from_numpy(feat), volatile=True)
+                if self.cuda:
+                    feat_torch = feat_torch.cuda()
+                modes_list.append(feat_torch)
+            x1_input, _ = self.integration_unit(modes_list, modes_list, None)
+            emb, _ = self.network(x1_input[0], x1_input[0])
+            emb = emb.cpu()
+            embeddings.append(emb.data.numpy())
+
+        data = h5features.Data(items, times, embeddings, check=True)
+        with h5features.Writer(self.output_path) as fh:
+            fh.write(data, 'features')
