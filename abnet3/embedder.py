@@ -153,7 +153,7 @@ class MultimodalEmbedder(EmbedderBuilder):
         items = None
         times = None
         features_list = []
-        for path in self.features_path:
+        for path in self.feature_path:
             with h5features.Reader(path, 'features') as fh:
                 features = fh.read()
                 features_list.append(features.features)
