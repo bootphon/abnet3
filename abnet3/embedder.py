@@ -158,7 +158,7 @@ class MultimodalEmbedder(EmbedderBuilder):
                 features = fh.read()
                 features_list.append(features.features)
                 check_items = features.items()
-                check_times = features.times()
+                check_times = features.labels()
 
             if not items:
                 items = check_items
