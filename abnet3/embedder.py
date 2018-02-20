@@ -165,7 +165,7 @@ class MultimodalEmbedder(EmbedderBuilder):
             else:
                 assert items == check_items, "Items inconsistency found on path {}".format(path)
 
-            if not items:
+            if not times:
                 times = check_times
             else:
                 assert times == check_times, "Times inconsistency found on path {}".format(path)
