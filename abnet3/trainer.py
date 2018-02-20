@@ -25,12 +25,11 @@ import os
 import matplotlib
 import warnings
 import copy
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from tensorboardX import SummaryWriter
 from pathlib import Path
-
 
 class TrainerBuilder:
     """Generic Trainer class for ABnet3
@@ -39,8 +38,7 @@ class TrainerBuilder:
     def __init__(self, network=None, loss=None,
                  num_epochs=200, patience=20,
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
-                 seed=0, dataloader=None, log_dir=None,
-                 feature_generator=None):
+                 seed=0, dataloader=None, log_dir=None):
         self.network = network
         self.loss = loss
         self.num_epochs = num_epochs
@@ -52,7 +50,6 @@ class TrainerBuilder:
         self.cuda = cuda
         self.statistics_training = {}
         self.dataloader = dataloader
-        self.feature_generator = feature_generator
 
         if cuda:
             self.loss.cuda()
@@ -87,19 +84,16 @@ class TrainerBuilder:
     def params(self):
         params = copy.copy(self.__dict__)
         del params['dataloader']
-        del params['feature_generator']
 
     def whoami(self):
-        whoami = {
-            'params': self.params(),
-            'network': self.network.whoami(),
-            'loss': self.loss.whoami(),
-            'class_name': self.__class__.__name__,
-            'dataloader': self.dataloader.whoami()
-        }
-        if self.feature_generator is not None:
-            whoami['feature_generator'] = self.feature_generator.whoami()
+        whoami = {'params': self.params(),
+                'network': self.network.whoami(),
+                'loss': self.loss.whoami(),
+                'class_name': self.__class__.__name__,
+                'dataloader': self.dataloader.whoami()
+                }
         return whoami
+
 
     def save_whoami(self):
         pickle.dump(self.whoami(),
@@ -150,7 +144,7 @@ class TrainerBuilder:
                 self.best_dev = dev_loss
                 self.patience_dev = 0
                 print('Saving best model so far, ' +
-                      'epoch {}... '.format(epoch+1), end='', flush=True)
+                      'epoch {}... '.format(epoch+1), end='')
                 self.network.save_network()
                 self.save_whoami()
                 print("Done.")
@@ -200,6 +194,7 @@ class TrainerSiamese(TrainerBuilder):
     def __init__(self, *args, **kwargs):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseNetwork
+
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network.
@@ -259,6 +254,7 @@ class TrainerSiameseMultitask(TrainerBuilder):
     def __init__(self, *args, **kwargs):
         super(TrainerSiameseMultitask, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseMultitaskNetwork
+
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network with multitask.

@@ -6,4 +6,4 @@ numpydoc
 scipy >= 0.13.0
 matplotlib
 pyyaml
-tensorboardX==1.0
+tensorboardX=1.0

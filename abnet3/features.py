@@ -25,11 +25,10 @@ class FeaturesGenerator:
                  vad_folder=None,
                  n_filters=40, method='fbanks', normalization=True,
                  norm_per_file=False, stack=True,
-                 nframes=7, deltas=False, deltasdeltas=False,
-                 run='once'):
+                 nframes=7, deltas=False, deltasdeltas=False):
         """
 
-        :param files: list of wav file paths, or folder
+        :param files: list of wav file paths
         :param output_path: Location of the output h5features file
         :param load_mean_variance_path: (optional)
             Should be None, or the path to an existing file.
@@ -54,7 +53,6 @@ class FeaturesGenerator:
         :param nframes: number of frames in a stack (if stack is True)
         :param deltas: first order derivative
         :param deltasdeltas: second order derivative
-        :param run: Param to notify if features has to be computed
         """
 
         self.files = files
@@ -70,11 +68,9 @@ class FeaturesGenerator:
         self.deltas = deltas
         self.deltasdeltas = deltasdeltas
         self.norm_per_file = norm_per_file
-        self.run = run
 
         if self.method not in ['mfcc', 'fbanks']:
             raise ValueError("Method %s not recognized" % self.method)
-        assert self.run in ['never', 'once', 'always']
 
         if load_mean_variance_path is not None \
                 and save_mean_variance_path is not None:
@@ -232,8 +228,8 @@ class FeaturesGenerator:
             mean = params['mean']
             std = params['variance']
         else:
-            mean = np.mean(features, axis=0)
-            std = np.std(features, axis=0)
+            mean = np.mean(features)
+            std = np.std(features)
         del features, data  # free memory
 
         # we reload all the features because we wan't to keep them in the
@@ -278,10 +274,10 @@ class FeaturesGenerator:
                     filtered_features = self.filter_vad(features, vad_data)
 
             if filtered_features is None:
-                mean, std = np.mean(features, axis=0), np.std(features, axis=0)
+                mean, std = np.mean(features), np.std(features)
             else:
-                mean = np.mean(filtered_features, axis=0)
-                std = np.std(filtered_features, axis=0)
+                mean = np.mean(filtered_features)
+                std = np.std(filtered_features)
             features = (features - mean) / (std + np.finfo(features.dtype).eps)
             h5features.write(mvn_h5f, '/features/', items, [times], [features])
             means_vars.append((f, mean, std))
@@ -312,26 +308,30 @@ class FeaturesGenerator:
 
     def save_mean_variance(self, mean, variance, output_file):
         """
-        This function will save the mean and variance into a folder.
+        This function will save the mean and variance into a file.
         It will take the form
 
         mean variance (file: optional)
 
-        :param mean: np.array
-        :param variance: np.array
+        :param mean: float
+        :param variance: float
         :param output_file: file where mean and variance will be saved
         """
-        mean_var = np.vstack((mean, variance))
-        print(output_file)
-        np.savetxt(output_file, mean_var)
+
+        with open(output_file, 'w') as f:
+            f.write('%.7f %.7f' % (mean, variance))
 
     def load_mean_variance(self, file_path):
         """
         :return: a dict {'mean': mean, 'variance': variance}
         """
-        mean_var = np.loadtxt(file_path)
 
-        return {'mean': mean_var[0], 'variance': mean_var[1]}
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+            lines = [l.strip() for l in lines]
+            mean, variance = lines[0].split(" ")
+            mean, variance = float(mean), float(variance)
+        return {'mean': mean, 'variance': variance}
 
     def generate(self):
 
@@ -340,19 +340,11 @@ class FeaturesGenerator:
             'fbanks': self.do_fbank
         }
 
-        if type(self.files) == str:
-            if not os.path.isdir(self.files):
-                raise ValueError("files must be a directory or a list of "
-                                 "files")
-            self.files = [os.path.join(self.files, f)
-                          for f in os.listdir(self.files)
-                          if f.endswith('.wav')]
-
         if self.method not in functions:
             raise ValueError("Method %s not authorized." % self.method)
         f = functions[self.method]
 
-        tempdir = tempfile.mkdtemp(prefix=self.output_path)
+        tempdir = tempfile.mkdtemp()
         h5_temp1 = tempdir + '/temp1'
         print("Spectral transforming with %s" % self.method)
         self.h5features_compute(self.files, h5_temp1, featfunc=f)
@@ -375,8 +367,7 @@ class FeaturesGenerator:
                 )
                 if self.save_mean_variance_path is not None:
                     self.save_mean_variance(
-                        mean, variance,
-                        output_file=self.save_mean_variance_path)
+                        mean, variance, output_file=self.save_mean_variance_path)
         else:
             h5_temp2 = h5_temp1
         if self.stack:

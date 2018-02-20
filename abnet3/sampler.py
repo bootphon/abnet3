@@ -19,7 +19,6 @@ import codecs
 import random
 from collections import defaultdict
 
-
 class SamplerBuilder(object):
     """Sampler Model interface
 
@@ -27,23 +26,22 @@ class SamplerBuilder(object):
         ----------
         batch_size : Int
             Number of words per batch
-        run : String
-            Param to notify if features has to be computed
+        already_done : Bool
+            If already sampled, specify it
         directory_output : String
             Path folder where train/dev pairs folder will be
         seed : int
             Seed
 
     """
-    def __init__(self, batch_size=8, run='once', input_file=None,
+    def __init__(self, batch_size=8, already_done=False, input_file=None,
                  directory_output=None, ratio_train_dev=0.7, seed=0):
         super(SamplerBuilder, self).__init__()
         self.batch_size = batch_size
-        self.run = run
+        self.already_done = already_done
         self.directory_output = directory_output
         self.seed = seed
         self.ratio_train_dev = ratio_train_dev
-        assert self.run in ['never', 'once', 'always']
 
     def whoami(self):
         raise NotImplementedError('Unimplemented whoami for class:',
@@ -88,8 +86,7 @@ class SamplerCluster(SamplerBuilder):
     spk_sampling_mode : String
         function applied to the observed speaker frequencies
     create_batches: bool
-        If you want the sampler to save one file for each dataset,
-        or multiple batches
+        If you want the sampler to save one file for each dataset, or multiple batches
 
     """
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.75,
@@ -153,8 +150,7 @@ class SamplerCluster(SamplerBuilder):
                     i = i+1
 
         # select the clusters we will keep
-        if max_num_clusters is not None and \
-                0 < max_num_clusters < len(clusters):
+        if max_num_clusters is not None and 0 < max_num_clusters < len(clusters):
             clusters = random.sample(clusters, max_num_clusters)
         return clusters
 
@@ -217,7 +213,7 @@ class SamplerCluster(SamplerBuilder):
             token_speaker : speaker_id for each token
             types: {type : number of tokens}
             speakers: { speaker : number of tokens}
-            speaker_types: { speaker: number of clusters the spk appears in}
+            speaker_types: { speaker: number of clusters the speaker appears in}
             type_speakers: {type: number of speakers in the type (cluster)}
         }
         """
@@ -307,8 +303,17 @@ class SamplerCluster(SamplerBuilder):
         return p_types
 
     def sample_spk_p(self, std_descr, spk_sampling_mode='log'):
-        """Sampling proba modes for the speakers conditionned
-        by the drawn type(s)
+        """
+        This function creates the probability matrix for sampling speakers.
+
+        We have 4 different matrices:
+        Same Type / Same Speaker : P(speaker | type)
+        Same Type / Different Speaker : P(speaker1, speaker2 | type)
+        Different Type / Same Speaker : P(speaker | type1, type2)
+        Different Type / Different Speaker : P(speaker1, speaker2 | type1, type2)
+
+
+        Sampling proba modes for the speakers conditionned by the drawn type(s)
             - 1 : equiprobable
             - f2 : proportional to type probabilities
             - f : proportional to square root of type probabilities
@@ -342,9 +347,7 @@ class SamplerCluster(SamplerBuilder):
         if spk_sampling_mode == 'log':
             def spk_samp_func(x): return np.log(1+x)
 
-        print_progress = progress(len(W_spk_types.keys()),
-                                  every=0.01,
-                                  title="Generate speaker probas")
+        print_progress = progress(len(W_spk_types.keys()), every=0.1, title="Generate speaker probas")
         i = 0
         for (spk, type_idx) in W_spk_types.keys():
             print_progress(i)
@@ -411,7 +414,7 @@ class SamplerCluster(SamplerBuilder):
                     the members of the pair probabilities)
                 - f2 : proportional to speaker
                     or type probabilities
-                - fcube: proportionnal to cubic root of probabilities
+                - fcube: proportionnal to log probabilities
                 - 1 : equiprobable
 
             Parameters
@@ -440,9 +443,7 @@ class SamplerCluster(SamplerBuilder):
         for config in p_spk_types.keys():
             p_spk_types[config] = normalize_distribution(p_spk_types[config])
 
-        print_progress = progress(len(p_spk_types.keys()),
-                                  every=0.01,
-                                  title="Generate type-speaker probas")
+        print_progress = progress(len(p_spk_types.keys()), every=0.1, title="Generate type-speaker probas")
         i = 0
         for config in p_spk_types.keys():
             print_progress(i)
@@ -556,8 +557,7 @@ class SamplerClusterSiamese(SamplerCluster):
                 for key in sample:
                     spk, type_idx = key
                     tokens = token_dict[int(type_idx), spk]
-                    tok1, tok2 = np.random.choice(tokens, size=2,
-                                                  replace=False)
+                    tok1, tok2 = np.random.choice(tokens, size=2, replace=False)
                     sampled_tokens[config].append(
                         (tok1, tok2))
             if config == 'Stype_Dspk':
@@ -590,7 +590,7 @@ class SamplerClusterSiamese(SamplerCluster):
         return sampled_tokens
 
     def write_tokens(self, descr=None, proba=None, cdf=None,
-                     token_dict=None, batch_size=8, num_samples=0,
+                    token_dict=None, batch_size=8, num_samples=0,
                      out_dir=None, seed=0):
         """Write tokens based on all different parameters and write the tokens
         in a batch.
@@ -635,8 +635,7 @@ class SamplerClusterSiamese(SamplerCluster):
             for idx in range(1, int(num_samples // batch_size)):
                 with open(os.path.join(out_dir, 'pair_' +
                           str(idx)+'.batch'), 'w') as fh:
-                        curr_lines = lines[(idx-1)*batch_size:(idx)*batch_size]
-                        fh.writelines(curr_lines)
+                        fh.writelines(lines[(idx-1)*batch_size:(idx)*batch_size])
         else:
             text = "".join(lines)
             with open(os.path.join(out_dir, 'dataset'), 'w') as fh:
@@ -742,8 +741,7 @@ class SamplerClusterSiamese(SamplerCluster):
         os.makedirs(os.path.join(self.directory_output, 'train_pairs'))
 
         if self.num_total_sampled_pairs is not None:
-            prop_train = self.num_total_sampled_pairs * self.ratio_train_dev
-            num_samples_train = int(prop_train)
+            num_samples_train = int(self.num_total_sampled_pairs * self.ratio_train_dev)
             num_samples_dev = self.num_total_sampled_pairs - num_samples_train
         else:
             num_samples_train, num_samples_dev = None, None
@@ -763,8 +761,7 @@ class SamplerClusterSiamese(SamplerCluster):
                           spk_sampling_mode=self.spk_sampling_mode,
                           seed=self.seed+1, batch_size=self.batch_size,
                           num_samples=num_samples_dev)
-        print("Done writing dev pairs")
-
+        print("Done writing testing pairs")
 
 if __name__ == '__main__':
 
@@ -772,13 +769,13 @@ if __name__ == '__main__':
     batch_size = 8
     directory_output = '/Users/rachine/abnet3/results/test_pairs_sampler'
     seed = 0
-    run = 'once'
+    already_done = False
     max_clusters = 2000
     type_sampling_mode = 'log'
     spk_sampling_mode = 'log'
 
     sam = SamplerClusterSiamese(std_file=input_file, batch_size=batch_size,
-                                run=run, seed=seed,
+                                already_done=already_done, seed=seed,
                                 type_sampling_mode=type_sampling_mode,
                                 spk_sampling_mode=spk_sampling_mode,
                                 max_clusters=max_clusters,
