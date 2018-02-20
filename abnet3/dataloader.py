@@ -669,9 +669,9 @@ class MultimodalDataLoader(OriginalDataLoader):
         self.load_data()
 
         if train_mode:
-            mode = "train"
+            mode = 'train'
         else:
-            mode = "test"
+            mode = 'dev'
 
         pairs = self.pairs[mode]
         num_pairs = len(pairs)
