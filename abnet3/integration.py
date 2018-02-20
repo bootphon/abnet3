@@ -6,7 +6,7 @@ This script contains different integration units, which receive
 multiple inputs and produce batches used for training
 """
 
-from torch import cat, zeros
+from torch import cat, stack, zeros
 from torch.autograd import Variable
 import torch.nn as nn
 import numpy as np
@@ -114,15 +114,16 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         x2_to_cat = []
 
         for i in range(num_pairs):
-            pair_mode = np.random.choice(self.feed_modes)
+            mode_idx = np.random.randint(len(self.feed_modes))
+            pair_mode = self.feed_modes[mode_idx]
             X1 = self.apply_mode_mask(self.rep_modes[pair_mode[0]], x1_zipped[i])
             X2 = self.apply_mode_mask(self.rep_modes[pair_mode[1]], x2_zipped[i])
 
             x1_to_cat.append(X1)
             x2_to_cat.append(X2)
 
-        X1_batch = cat(x1_to_cat)
-        X2_batch = cat(x2_to_cat)
+        X1_batch = stack(x1_to_cat)
+        X2_batch = stack(x2_to_cat)
         return X1_batch, X2_batch
 
     def forward(self, x1_list, x2_list, y):
