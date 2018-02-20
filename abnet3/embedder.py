@@ -156,19 +156,18 @@ class MultimodalEmbedder(EmbedderBuilder):
         for path in self.feature_path:
             with h5features.Reader(path, 'features') as fh:
                 features = fh.read()
-                features_list.append(features.features)
+                features_list.append(features.features())
                 check_items = features.items()
                 check_times = features.labels()
 
             if not items:
                 items = check_items
-            else:
-                assert items == check_items, "Items inconsistency found on path {}".format(path)
+                #TODO: assert items == check_items, "Items inconsistency found on path {}".format(path)
 
             if not times:
                 times = check_times
-            else:
-                assert times == check_times, "Times inconsistency found on path {}".format(path)
+                #TODO: assert times == check_times, "Times inconsistency found on path {}".format(path)
+
 
         print("Done loading input feature file")
 
