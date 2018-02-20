@@ -40,9 +40,6 @@ class SoftDTWDistance(torch.autograd.Function):
     pass for the Soft DTW algorithm, given a distance matrix.
     """
 
-    def __init__(self):
-        super().__init__()
-
     @staticmethod
     def softmin(a, b, c, gamma):
         """
