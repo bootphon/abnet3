@@ -532,18 +532,19 @@ class MultimodalDataLoader(OriginalDataLoader):
         """
 
         if self.features_dict is None:
+            print("Loading features")
             self.features_dict = {}
             for path in self.features_path:
                 self.features_dict[path], _ , _ = read_feats(path)
 
-        if self.train_pairs is None:
+        if self.pairs['train'] is None:
+            print("Loading word pairs")
             train_dir = os.path.join(self.pairs_path, 'train_pairs/dataset')
+            self.pairs['train'] = read_dataset(train_dir)
 
-            self.train_pairs = read_dataset(train_dir)
-
-        if self.dev_pairs is None:
+        if self.pairs['dev'] is None:
             dev_dir = os.path.join(self.pairs_path, 'dev_pairs/dataset')
-            self.dev_pairs = read_dataset(dev_dir)
+            self.pairs['dev'] = read_dataset(dev_dir)
 
     def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None, set_alignment=False):
         """Prepare a batch in Pytorch format based on a batch file
@@ -668,13 +669,15 @@ class MultimodalDataLoader(OriginalDataLoader):
         self.load_data()
 
         if train_mode:
-            pairs = self.train_pairs
+            mode = "train"
         else:
-            pairs = self.dev_pairs
+            mode = "test"
 
+        pairs = self.pairs[mode]
         num_pairs = len(pairs)
 
-        batches = [pairs[i:i+self.batch_size] for i in range(0, num_pairs, self.batch_size)]
+        sliced_indexes = range(0, num_pairs, self.batch_size)
+        batches = [pairs[idx:idx + self.batch_size] for idx in sliced_indexes]
         num_batches = len(batches)
 
         if self.num_max_minibatches < num_batches:
