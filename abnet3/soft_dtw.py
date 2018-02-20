@@ -10,6 +10,8 @@ def distance_matrix(A: Variable, B: Variable, distance='cos'):
     :param B: matrix B
     :param distance: 'cos', or a callable(vector1, vector2).
     :return: the distance matrix D[i, j] = distance(A[i], B[j])
+    
+    Note : this function is differentiable
     """
 
     if distance == 'cos':
@@ -30,32 +32,6 @@ def distance_matrix(A: Variable, B: Variable, distance='cos'):
     BB = BB.transpose(1, 2)  # n, m, l
 
     return distance(AA, BB, dim=2)
-
-class DistanceMatrix(torch.nn.Module):
-
-    def __init__(self, distance='cos'):
-        super().__init__()
-
-        if distance == 'cos':
-            self.distance = F.cosine_similarity
-        elif callable(distance):
-            self.distance = distance
-        else:
-            raise ValueError("This distance is not supported")
-
-    def forward(self, A: Variable, B: Variable):
-        n, l = A.size()
-        m, _ = B.size()
-        AA = A.unsqueeze(2)
-        AA = AA.expand(n, l, m)  # type: Variable
-        AA = torch.transpose(AA, 1, 2)  # n, m, l
-
-        BB = B.unsqueeze(2)
-        BB = BB.expand(m, l, n)
-        BB = BB.transpose(2, 0)  # n, l, m
-        BB = BB.transpose(1, 2)  # n, m, l
-
-        return self.distance(AA, BB, dim=2)
 
 
 class SoftDTWDistance(torch.autograd.Function):
@@ -134,17 +110,7 @@ class SoftDTWDistance(torch.autograd.Function):
         return grad_outputs * E[1:n+1, 1:m+1], None
 
 
-class SoftDTW(torch.nn.Module):
-    """
-    Module Wrapper around DistanceMatrix and SoftDTWDistance classes
-    """
-
-    def __init__(self, gamma=0.1):
-        super().__init__()
-        self.gamma = gamma
-        self.distance_matrix = DistanceMatrix()
-
-    def forward(self, A, B):
-        D = self.distance_matrix(A, B)
-        r = SoftDTW.apply(D, self.gamma)
-        return r
+def soft_dtw(A, B, distance='cos', gamma=0.1):
+    D = distance_matrix(A, B, distance=distance)
+    r = SoftDTWDistance.apply(D, gamma)
+    return r
