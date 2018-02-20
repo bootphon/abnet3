@@ -42,7 +42,8 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
     def __init__(self, *args, **kwargs):
         super(ConcatenationIntegration, self).__init__(*args, **kwargs)
 
-    def integration_method(self, x_list):
+    @staticmethod
+    def integration_method(x_list):
         """
         Receives batch list of inputs and concatenates them
 
@@ -73,7 +74,8 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 
         #TODO: different probebilities per method
 
-    def apply_mode_mask(self, mode_map, features):
+    @staticmethod
+    def apply_mode_mask(mode_map, features):
         """
         Receives features and mode map and returns the new vector
 
