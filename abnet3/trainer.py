@@ -201,6 +201,23 @@ class TrainerSiamese(TrainerBuilder):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseNetwork
 
+    def give_batch_to_model(self, batch):
+        """
+        This function processes the minibatch given by the dataloader,
+        and outputs the loss of the network.
+        :param batch: minibatch given by the dataloader
+        :return: loss variable
+        """
+        X_batch1, X_batch2, y_batch = batch
+        if self.cuda:
+            X_batch1 = X_batch1.cuda()
+            X_batch2 = X_batch2.cuda()
+            y_batch = y_batch.cuda()
+
+        emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
+        loss = self.loss(emb_batch1, emb_batch2, y_batch)
+        return loss
+
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network.
 
@@ -210,15 +227,8 @@ class TrainerSiamese(TrainerBuilder):
         self.network.train()
 
         for minibatch in self.dataloader.batch_iterator(train_mode=True):
-            X_batch1, X_batch2, y_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_batch = y_batch.cuda()
-
             self.optimizer.zero_grad()
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+            train_loss_value = self.give_batch_to_model(minibatch)
             if do_training:
                 train_loss_value.backward()
                 self.optimizer.step()
@@ -228,19 +238,11 @@ class TrainerSiamese(TrainerBuilder):
 
         self.network.eval()
         for minibatch in self.dataloader.batch_iterator(train_mode=False):
-            X_batch1, X_batch2, y_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_batch = y_batch.cuda()
-
             if do_training:
                 pass
             else:
                 self.num_batches_dev += 1
-
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+            dev_loss_value = self.give_batch_to_model(minibatch)
             dev_loss += dev_loss_value.data[0]
 
         self.train_losses.append(train_loss/self.num_batches_train)
@@ -250,6 +252,20 @@ class TrainerSiamese(TrainerBuilder):
 
         self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
         return dev_loss
+
+
+class SoftDTWTrainer(TrainerSiamese):
+
+    def give_batch_to_model(self, batch):
+        n = len(batch)
+        sum_loss = torch.zeros(1)
+        for word1, word2, type in batch:
+            frames1, frames2 = self.network(word1, word2)
+            sum_loss += self.loss(frames1, frames2, type)
+
+        return sum_loss / n
+
+
 
 
 class TrainerSiameseMultitask(TrainerBuilder):

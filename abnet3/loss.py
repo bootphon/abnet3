@@ -11,6 +11,7 @@ import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 
+from abnet3.soft_dtw import soft_dtw
 
 class LossBuilder(nn.Module):
     """Generic Loss class for ABnet3
@@ -104,6 +105,31 @@ class cosmargin(LossBuilder):
             output = torch.div(output, input1.size()[0])
         return output
 
+
+class SoftDTWLoss(LossBuilder):
+    """
+    This loss computes the Soft DTW loss between words.
+    If words are the same : Soft DTW
+    If they are different : coscos2 distance on the beginning of the frames
+    """
+
+    def __init__(self, distance='cos', gamma=0.1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.distance = distance
+        self.gamma = gamma
+
+    def forward(self,  word1, word2, type):
+        if type == 1:
+            return soft_dtw(word1, word2,
+                            distance=self.distance, gamma=self.gamma)
+        else:
+            min_word = min((word1, word2), key=len)
+            max_word = max((word1, word2), key=len)
+            mapping = np.linspace(0, len(max_word), num=len(min_word))
+            min_word_mapped = min_word[mapping, :]
+            return coscos2()(
+                max_word, min_word_mapped, -1 * torch.ones(len(max_word)))
 
 class weighted_loss_multi(LossBuilder):
     """weighted_loss_multi Loss function

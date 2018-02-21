@@ -261,6 +261,58 @@ class OriginalDataLoader(DataLoader):
             yield X_batch1, X_batch2, y_batch
 
 
+class SoftDTWDataLoader(OriginalDataLoader):
+    """
+    Loads pair of words
+    """
+
+    def batch_iterator(self, train_mode=True):
+        """Build iterator next batch from folder for a specific epoch
+        This function can be used when the batches were already created
+        by the sampler.
+
+        If you use the sampler that didn't create batches, use the
+        new_get_batches function
+        Returns batches of the form (X1, X2, y)
+
+        """
+        # load features
+        self.load_data()
+
+        if train_mode:
+            mode = 'train'
+        else:
+            mode = 'dev'
+        pairs = self.pairs[mode]
+        num_pairs = len(pairs)
+
+        # TODO : shuffle the pairs before creating batches
+        # make batches
+        sliced_indexes = range(0, num_pairs, self.batch_size)
+        batches = [pairs[idx:idx + self.batch_size] for idx in sliced_indexes]
+        num_batches = len(batches)
+
+        if self.num_max_minibatches < num_batches:
+            selected_batches = np.random.choice(range(num_batches),
+                                                self.num_max_minibatches,
+                                                replace=False)
+        else:
+            print("Number of batches not sufficient," +
+                  " iterating over all the batches")
+            selected_batches = np.random.permutation(range(num_batches))
+        for batch_id in selected_batches:
+            word_pairs = batches[batch_id]
+            batch = []
+            for (f1, s1, e1, f2, s2, e2, pair_type) in word_pairs:
+                frames_1 = Variable(
+                    torch.from_numpy(self.features.get(f1, s1, e1)))
+                frames_2 = Variable(
+                    torch.from_numpy(self.features.get(f2, s2, e2)))
+                type = 1 if pair_type == "same" else -1
+                batch.append((frames_1, frames_2, type))
+            yield batch
+
+
 class FramesDataLoader(OriginalDataLoader):
     """
     This data loader constructs batches with frames, and not words (tokens).
