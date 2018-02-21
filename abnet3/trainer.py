@@ -25,11 +25,12 @@ import os
 import matplotlib
 import warnings
 import copy
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from tensorboardX import SummaryWriter
 from pathlib import Path
+
 
 class TrainerBuilder:
     """Generic Trainer class for ABnet3
@@ -100,7 +101,6 @@ class TrainerBuilder:
             whoami['feature_generator'] = self.feature_generator.whoami()
         return whoami
 
-
     def save_whoami(self):
         pickle.dump(self.whoami(),
                     open(self.network.output_path+'.params', "wb"))
@@ -150,7 +150,7 @@ class TrainerBuilder:
                 self.best_dev = dev_loss
                 self.patience_dev = 0
                 print('Saving best model so far, ' +
-                      'epoch {}... '.format(epoch+1), end='')
+                      'epoch {}... '.format(epoch+1), end='', flush=True)
                 self.network.save_network()
                 self.save_whoami()
                 print("Done.")
@@ -200,7 +200,6 @@ class TrainerSiamese(TrainerBuilder):
     def __init__(self, *args, **kwargs):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseNetwork
-
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network.
@@ -260,7 +259,6 @@ class TrainerSiameseMultitask(TrainerBuilder):
     def __init__(self, *args, **kwargs):
         super(TrainerSiameseMultitask, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseMultitaskNetwork
-
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network with multitask.
