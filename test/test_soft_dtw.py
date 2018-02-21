@@ -1,4 +1,4 @@
-from abnet3.soft_dtw import SoftDTWDistance, DistanceMatrix, distance_matrix
+from abnet3.soft_dtw import SoftDTWDistance, distance_matrix
 import torch
 from torch.nn.functional import cosine_similarity
 from torch.autograd import Variable
@@ -17,24 +17,25 @@ def compute_distance_matrix(A, B):
 
     return D
 
+
 def test_softmin():
-
     a, b, c = 1, 2, 3
+    sm = SoftDTWDistance.softmin(a, b, c, 0.1)
+    print(sm)
+    assert abs(sm - min(a, b, c)) <= 0.1  # softmin is close to min
 
-    min = SoftDTWDistance.softmin(a, b, c, 0.1)
-    print(min)
 
 def test_soft_dtw():
 
 
     A = Variable(torch.randn(3, 3), requires_grad=True)
     B = Variable(torch.randn(2, 3), requires_grad=True)
-    distance_matrix = DistanceMatrix()
     D = distance_matrix(A, B)
     print(type(D))
 
     R = SoftDTWDistance.apply(D, 0.1)
     print(R)
+
 
 def test_distance_matrix():
 
@@ -53,7 +54,6 @@ def test_distance_matrix():
 
     A2 = A + dA  # so S(A2) = S(A) + dA * d(S(A))
 
-    distance_matrix_2 = DistanceMatrix()
-    D2 = distance_matrix_2(A2, B)
+    D2 = distance_matrix(A2, B)
     s2 = torch.sum(D2)
     assert s2.data[0] == pytest.approx((s + torch.sum(dA * A.grad)).data[0])

@@ -22,14 +22,11 @@ def distance_matrix(A: Variable, B: Variable, distance='cos'):
         raise ValueError("This distance is not supported")
     n, l = A.size()
     m, _ = B.size()
-    AA = A.unsqueeze(2)
-    AA = AA.expand(n, l, m)
-    AA = torch.transpose(AA, 1, 2)  # n, m, l
+    AA = A[:, None, :]  # n, 1, l
+    AA = AA.expand(n, m, l)
 
-    BB = B.unsqueeze(2)
-    BB = BB.expand(m, l, n)
-    BB = BB.transpose(2, 0)  # n, l, m
-    BB = BB.transpose(1, 2)  # n, m, l
+    BB = B[None, :, :]  # 1, m, l
+    BB = BB.expand(n, m, l)
 
     return distance(AA, BB, dim=2)
 
