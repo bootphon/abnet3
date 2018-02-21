@@ -120,7 +120,7 @@ class SoftDTWLoss(LossBuilder):
         self.gamma = gamma
 
     def forward(self,  word1, word2, type):
-        if type == 1:
+        if type == 1: # words are equal
             return soft_dtw(word1, word2,
                             distance=self.distance, gamma=self.gamma)
         else:
@@ -128,6 +128,9 @@ class SoftDTWLoss(LossBuilder):
             max_word = max((word1, word2), key=len)
             mapping = np.linspace(0, len(max_word), num=len(min_word))
             min_word_mapped = min_word[mapping, :]
+            # TODO : do we want to run a DTW also here ?
+            # For now we just take the diagonal
+            # Next : discard 
             return coscos2()(
                 max_word, min_word_mapped, -1 * torch.ones(len(max_word)))
 
