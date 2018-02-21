@@ -44,13 +44,13 @@ class SoftDTWDistance(torch.autograd.Function):
         There is a trick here to get better precision (remove max value from vector
         before doing the exponentiation).
         """
+        if gamma == 0:
+            return min(a, b, c)
 
         a /= -gamma
         b /= -gamma
         c /= -gamma
 
-        if gamma == 0:
-            return min(a, b, c)
         max_value = max(a, b, c)
         sum = (np.exp(a - max_value) +
                np.exp(b - max_value) +
