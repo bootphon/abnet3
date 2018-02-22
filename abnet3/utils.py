@@ -238,7 +238,6 @@ def read_vad_file(path):
     with open(path, 'r') as f:
         lines = [line.strip().split(',') for line in f]
         lines = lines[1:]  # skip header
-        print(lines)
         lines = [(name, float(s), float(e)) for name, s, e in lines]
 
         dict_vad = defaultdict(list)

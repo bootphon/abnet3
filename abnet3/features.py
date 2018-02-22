@@ -323,7 +323,6 @@ class FeaturesGenerator:
         :param output_file: file where mean and variance will be saved
         """
         mean_var = np.vstack((mean, variance))
-        print(output_file)
         np.savetxt(output_file, mean_var)
 
     def load_mean_variance(self, file_path):
