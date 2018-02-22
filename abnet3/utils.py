@@ -114,8 +114,6 @@ def Parse_Dataset(path):
     return batches
 
 
-
-
 class Features_Accessor(object):
 
     def __init__(self, times, features):
@@ -136,7 +134,8 @@ class Features_Accessor(object):
         filename = f.encode('UTF-8')  # byte
         if filename not in self.times:
             filename = f
-        return self.get_features_between(self.features[filename], self.times[filename], on, off)
+        return self.get_features_between(self.features[filename],
+                                         self.times[filename], on, off)
 
 
 def get_dtw_alignment(feat1, feat2):

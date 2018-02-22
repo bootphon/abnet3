@@ -250,13 +250,15 @@ class FeaturesGenerator:
         for file in vad_data:
             filtered_features = []
             for start, end in vad_data[file]:
-                filtered_features.append(features_accessor.get(file, start, end))
+                filtered_features.append(features_accessor.get(file,
+                                                               start, end))
             features_accessor.features[file] = np.concatenate(filtered_features)
 
     def filter_vad_one_file(self, feature, time, vad_data):
         filtered_features = []
         for start, end in vad_data:
-            filtered_features.append(Features_Accessor.get_features_between(feature, time, start, end))
+            filtered_features.append(Features_Accessor.get_features_between(
+                feature, time, start, end))
         return np.concatenate(filtered_features)
 
     def mean_var_norm_per_file(self, h5f, mvn_h5f, vad_file=None):
@@ -273,7 +275,8 @@ class FeaturesGenerator:
             if vad_file is not None:
                 vad_data = read_vad_file(vad_file)
                 if str(f) in vad_data:
-                    filtered_features = self.filter_vad_one_file(features, times, vad_data[str(f)])
+                    filtered_features = self.filter_vad_one_file(
+                        features, times, vad_data[str(f)])
 
             if filtered_features is None:
                 mean, std = np.mean(features, axis=0), np.std(features, axis=0)
