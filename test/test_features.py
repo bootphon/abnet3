@@ -114,9 +114,9 @@ class TestFeatures:
 
         # write VAD data for file 1
         with open(vad_file, 'w') as vad1:
-            vad1.write("file start stop\n"
-                       "file1 0.0025 0.5000\n"
-                       "file1 0.7525 1.000\n")
+            vad1.write("file,start,stop\n"
+                       "file1,0.0025,0.5000\n"
+                       "file1,0.7525,1.000\n")
 
         items = ['file1', 'file2']
 
@@ -160,9 +160,9 @@ class TestFeatures:
 
         # write VAD data for file 1
         with open(str(vad_path), 'w') as vad1:
-            vad1.write("file start stop\n"
-                       "file1 0.0025 0.5000\n"
-                       "file1 0.7525 1.000\n")
+            vad1.write("file,start,stop\n"
+                       "file1,0.0025,0.5000\n"
+                       "file1,0.7525,1.000\n")
 
         items = ['file1', 'file2']
 

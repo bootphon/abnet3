@@ -237,7 +237,7 @@ def read_vad_file(path):
     returns a dictionnary of the form {file: [[s1, e1], [s2, e2], ...]}
     """
     with open(path, 'r') as f:
-        lines = [line.strip().split() for line in f]
+        lines = [line.strip().split(',') for line in f]
         lines = lines[1:]  # skip header
         print(lines)
         lines = [(name, float(s), float(e)) for name, s, e in lines]
