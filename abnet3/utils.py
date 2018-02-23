@@ -13,7 +13,7 @@ import os
 import h5features
 from dtw import DTW
 import scipy
-
+from collections import defaultdict
 
 def get_var_name(**variable):
     return list(variable.keys())[0]
@@ -123,15 +123,19 @@ class Features_Accessor(object):
         else:
             self.features = cast_features(features)
 
+    @staticmethod
+    def get_features_between(feature, time, start, end):
+        t = np.where(np.logical_and(time >= start,
+                                    time <= end))[0]
+        return feature[t, :]
 
     def get(self, f, on, off):
         # check wether filename is string or byte
         filename = f.encode('UTF-8')  # byte
         if filename not in self.times:
             filename = f
-        t = np.where(np.logical_and(self.times[filename] >= on,
-                                    self.times[filename] <= off))[0]
-        return self.features[filename][t, :]
+        return self.get_features_between(self.features[filename],
+                                         self.times[filename], on, off)
 
 
 def get_dtw_alignment(feat1, feat2):
@@ -226,10 +230,22 @@ def cast_features(features, target_type=np.float32):
 
 
 def read_vad_file(path):
+    """
+    Read vad file of the form 
+    https://github.com/bootphon/Zerospeech2015/blob/master/english_vad.txt
+    returns a dictionnary of the form {file: [[s1, e1], [s2, e2], ...]}
+    """
     with open(path, 'r') as f:
-        lines = [line.strip().split() for line in f]
-        lines = [[int(x) for x in line] for line in lines]
-    return lines
+        lines = [line.strip().split(',') for line in f]
+        lines = lines[1:]  # skip header
+        lines = [(name, float(s), float(e)) for name, s, e in lines]
+
+        dict_vad = defaultdict(list)
+
+        for name, s, e in lines:
+            dict_vad[name].append([s, e])
+
+    return dict_vad
 
 
 def progress(max_number, every=0.1, title=""):
