@@ -352,7 +352,8 @@ class FeaturesGenerator:
             raise ValueError("Method %s not authorized." % self.method)
         f = functions[self.method]
 
-        tempdir = tempfile.mkdtemp(prefix=self.output_path)
+        tempdir = os.path.join(os.path.dirname(self.output_path), 'tmp')
+        os.makedirs(tempdir, exist_ok=True)
         h5_temp1 = tempdir + '/temp1'
         print("Spectral transforming with %s" % self.method)
         self.h5features_compute(self.files, h5_temp1, featfunc=f)
