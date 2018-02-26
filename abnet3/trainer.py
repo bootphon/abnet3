@@ -258,14 +258,11 @@ class SoftDTWTrainer(TrainerSiamese):
 
     def give_batch_to_model(self, batch):
         n = len(batch)
-        sum_loss = torch.zeros(1)
+        losses = []
         for word1, word2, type in batch:
             frames1, frames2 = self.network(word1, word2)
-            sum_loss += self.loss(frames1, frames2, type)
-
-        return sum_loss / n
-
-
+            losses.append(self.loss(frames1, frames2, type))
+        return sum(losses) / n
 
 
 class TrainerSiameseMultitask(TrainerBuilder):

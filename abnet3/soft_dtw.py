@@ -1,5 +1,6 @@
 import torch
 from torch.autograd import Variable
+from torch.autograd.function import once_differentiable
 from torch.nn import functional as F
 import numpy as np
 
@@ -64,8 +65,8 @@ class SoftDTWDistance(torch.autograd.Function):
         :param gamma: Soft-DTW parameter (see paper)
         :param D: Distance matrix
         """
-        print(type(D))
         n, m = D.size()
+        ctx.gamma = gamma
 
         R = np.full((n+2, m+2), np.inf)  # we index starting at 1 to facilitate the following loop
         R[0, 0] = 0
@@ -78,31 +79,43 @@ class SoftDTWDistance(torch.autograd.Function):
         R = torch.from_numpy(R)
         ctx.R = R
         ctx.save_for_backward(D)
-        print(R)
         return torch.Tensor([R[n, m]])
 
     @staticmethod
+    @once_differentiable
     def backward(ctx, grad_outputs):
         gamma = ctx.gamma
         R = ctx.R
         D, = ctx.saved_variables
+        D = D.data
 
         n, m = D.size()
 
         # add an extra row and column to D to deal with edge cases
-        D = torch.stack([D, torch.zeros(1, n)], dim=0)
-        D = torch.stack([D, torch.zeros(m, 1)], dim=1)
+        D = torch.cat([D, torch.zeros(n, 1)], dim=1)
+        D = torch.cat([D, torch.zeros(1, m+1)], dim=0)
 
         E = torch.zeros(n+2, m+2)  # one indexed
+        E[n+1, m+1] = 1
+
+        for i in range(1, n+1):
+            D[i-1, m] = 0
+            R[i, m+1] = -np.inf
+
+        for j in range(1, m+1):
+            D[n, j-1] = 0
+            R[n+1, j] = -np.inf
+
+        D[n, m] = 0
+        R[n + 1, m + 1] = R[n, m]
 
         for j in reversed(range(1, m+1)):
             for i in reversed(range(1, n+1)):
-                a = torch.exp(1/gamma * (R[i+1, j] - R[i, j] - D[i, j-1]))
-                b = torch.exp(1/gamma * (R[i, j+1] - R[i, j] - D[i-1, j]))
-                c = torch.exp(1/gamma * (R[i+1, j+1] - R[i, j] - D[i, j]))
+                a = np.exp(1/gamma * (R[i+1, j] - R[i, j] - D[i, j-1]))
+                b = np.exp(1/gamma * (R[i, j+1] - R[i, j] - D[i-1, j]))
+                c = np.exp(1/gamma * (R[i+1, j+1] - R[i, j] - D[i, j]))
                 E[i, j] = E[i+1, j] * a + E[i, j+1] * b + E[i+1, j+1] * c
-        return grad_outputs * E[1:n+1, 1:m+1], None
-
+        return E[1:-1, 1:-1] * grad_outputs, None
 
 def soft_dtw(A, B, distance='cos', gamma=0.1):
     D = distance_matrix(A, B, distance=distance)

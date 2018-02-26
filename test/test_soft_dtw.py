@@ -27,15 +27,22 @@ def test_softmin():
 
 def test_soft_dtw():
 
+    D = Variable(torch.rand(3, 2), requires_grad=True)
 
-    A = Variable(torch.randn(3, 3), requires_grad=True)
-    B = Variable(torch.randn(2, 3), requires_grad=True)
-    D = distance_matrix(A, B)
-    print(type(D))
+    perturbation = Variable(torch.randn(D.size())) * 1e-4
+
+    Dprime = D + perturbation
+    Rprime = SoftDTWDistance.apply(Dprime, 0.1)
 
     R = SoftDTWDistance.apply(D, 0.1)
-    print(R)
+    R.backward()
 
+    Rexpected = R + torch.sum(perturbation * D.grad)
+    Rexpected = R + torch.dot(perturbation.data, D.grad.data)
+    assert Rprime.data.numpy() == pytest.approx(Rexpected.data.numpy(),
+                                                abs=1e-12)
+    assert Rprime.data.numpy() != pytest.approx(R.data.numpy(),
+                                                abs=1e-12)
 
 def test_distance_matrix():
 

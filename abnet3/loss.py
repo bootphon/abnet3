@@ -126,7 +126,8 @@ class SoftDTWLoss(LossBuilder):
         else:
             min_word = min((word1, word2), key=len)
             max_word = max((word1, word2), key=len)
-            mapping = np.linspace(0, len(max_word), num=len(min_word))
+            mapping = np.linspace(0, len(min_word) - 1,
+                                  num=len(max_word)).astype(np.int)
             min_word_mapped = min_word[mapping, :]
             # TODO : do we want to run a DTW also here ?
             # For now we just take the diagonal
