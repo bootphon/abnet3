@@ -26,6 +26,7 @@ class FeaturesGenerator:
                  n_filters=40, method='fbanks', normalization=True,
                  norm_per_file=False, stack=True,
                  nframes=7, deltas=False, deltasdeltas=False,
+                 norm_per_channel=True,
                  run='once'):
         """
 
@@ -70,6 +71,7 @@ class FeaturesGenerator:
         self.deltas = deltas
         self.deltasdeltas = deltasdeltas
         self.norm_per_file = norm_per_file
+        self.norm_per_channel = norm_per_channel
         self.run = run
 
         if self.method not in ['mfcc', 'fbanks']:
@@ -210,6 +212,8 @@ class FeaturesGenerator:
         mvn_h5f: str, h5features output name
         params : dict {'mean': mean, 'variance': variance}
         """
+        # normalize either per channel or on the whole spectrum.
+        axis = 0 if self.norm_per_channel else None
 
         features_accessor, _, _ = read_feats(h5f)
 
@@ -226,8 +230,8 @@ class FeaturesGenerator:
             mean = params['mean']
             std = params['variance']
         else:
-            mean = np.mean(features, axis=0)
-            std = np.std(features, axis=0)
+            mean = np.mean(features, axis=axis)
+            std = np.std(features, axis=axis)
         del features, features_accessor  # free memory
 
         # we reload all the features because we wan't to keep them in the
@@ -262,6 +266,9 @@ class FeaturesGenerator:
         return np.concatenate(filtered_features)
 
     def mean_var_norm_per_file(self, h5f, mvn_h5f, vad_file=None):
+        # normalize either per channel or on the whole spectrum.
+        axis = 0 if self.norm_per_channel else None
+
         dset_name = list(h5py.File(h5f).keys())[0]
         files = h5py.File(h5f)[dset_name]['items']
         reader = h5features.Reader(h5f)
@@ -279,10 +286,11 @@ class FeaturesGenerator:
                         features, times, vad_data[str(f)])
 
             if filtered_features is None:
-                mean, std = np.mean(features, axis=0), np.std(features, axis=0)
+                mean = np.mean(features, axis=axis)
+                std = np.std(features, axis=axis)
             else:
-                mean = np.mean(filtered_features, axis=0)
-                std = np.std(filtered_features, axis=0)
+                mean = np.mean(filtered_features, axis=axis)
+                std = np.std(filtered_features, axis=axis)
             features = (features - mean) / (std + np.finfo(features.dtype).eps)
             h5features.write(mvn_h5f, '/features/', items, [times], [features])
             means_vars.append((f, mean, std))

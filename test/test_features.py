@@ -64,6 +64,22 @@ class TestFeatures:
         means = np.mean(data, axis=0)
         assert all(means == pytest.approx(0.0, abs=1e-6))
         assert all(np.std(data, axis=0) == pytest.approx(1.0, abs=1e-6))
+
+        ## test normalization across all chanels
+        tmp2 = str(tempdir/'h5temp.h5')
+        features_generator = FeaturesGenerator(normalization=True,
+                                               norm_per_channel=False)
+        mean, variance = features_generator.mean_variance_normalisation(
+            h5f, tmp2)
+        assert mean == pytest.approx(np.mean(stacked_features))
+        assert variance == pytest.approx(np.std(np.vstack(features)))
+
+        # check that the new file has 0 mean and 1 variance
+        dset = list(h5py.File(tmp2).keys())[0]
+        data = h5py.File(h5f_mean_var)[dset]['features'][:]
+        assert np.mean(data) == pytest.approx(0, abs=1e-6)
+        assert np.std(data) == pytest.approx(1)
+
         shutil.rmtree(str(tempdir))
 
     def test_normalization_per_file(self):
@@ -96,8 +112,26 @@ class TestFeatures:
         assert all(meansvars[1][1] == np.mean(feature2, axis=0))
         assert all(meansvars[1][2] == np.std(feature2, axis=0))
 
-
         reader = h5features.Reader(h5f_mean_var)
+        data = reader.read()
+        for file in data.items():
+            assert np.mean(data.dict_features()[file]) == pytest.approx(0)
+            assert np.std(data.dict_features()[file]) == pytest.approx(1)
+
+        # no per channel
+        tmp2 = str(tempdir / 'h5-tmp2')
+        features_generator = FeaturesGenerator(normalization=True,
+                                               norm_per_file=True,
+                                               norm_per_channel=False)
+        meansvars = features_generator.mean_var_norm_per_file(
+            h5f, tmp2)
+
+        assert meansvars == [
+            ('file1', 0, np.std(feature1)),
+            ('file2', 1.5, np.std(feature2)),
+        ]
+
+        reader = h5features.Reader(tmp2)
         data = reader.read()
         for file in data.items():
             assert np.mean(data.dict_features()[file]) == pytest.approx(0)
@@ -136,8 +170,6 @@ class TestFeatures:
         mean, var = features_generator.mean_variance_normalisation(
             h5f, h5f_mean_var, vad_file=vad_file)
 
-        print(mean)
-        print(np.mean(np.vstack([feature1[:75], feature2]), axis=0))
         assert mean == pytest.approx(np.mean(np.vstack([feature1[:75], feature2]), axis=0))
         assert var == pytest.approx(np.std(np.vstack([feature1[:75], feature2]), axis=0))
 
@@ -148,6 +180,28 @@ class TestFeatures:
 
         assert data.dict_features()['file2'] == pytest.approx(
             (feature2 - mean) / var)
+
+        ## test no per channel
+        tmp2 = str(tempdir / 'tmp2.h5')
+        features_generator = FeaturesGenerator(normalization=True,
+                                               norm_per_file=True,
+                                               norm_per_channel=False)
+        mean, var = features_generator.mean_variance_normalisation(
+            h5f, tmp2, vad_file=vad_file)
+
+        assert mean == pytest.approx\
+            (np.mean(np.vstack([feature1[:75], feature2])))
+        assert var == pytest.approx(
+            np.std(np.vstack([feature1[:75], feature2])))
+
+        reader = h5features.Reader(tmp2)
+        data = reader.read()
+        assert data.dict_features()['file1'] == pytest.approx(
+            (feature1 - mean) / var)
+
+        assert data.dict_features()['file2'] == pytest.approx(
+            (feature2 - mean) / var)
+
 
         shutil.rmtree(str(tempdir))
 
@@ -183,7 +237,6 @@ class TestFeatures:
             h5f, h5f_mean_var, vad_file=str(vad_path))
 
         assert meansvars[0][0] == 'file1'
-        print(meansvars)
 
         assert all(meansvars[0][1] == np.mean(feature1[:75], axis=0))
         assert all(meansvars[0][2] == np.std(feature1[:75], axis=0))
@@ -200,4 +253,28 @@ class TestFeatures:
         assert np.mean(data.dict_features()['file2']) == pytest.approx(0)
         assert np.std(data.dict_features()['file2']) == pytest.approx(1)
 
+        # test no per channel
+        features_generator = FeaturesGenerator(
+            normalization=True,
+            norm_per_file=True,
+            norm_per_channel=False,
+        )
+        tmp2 = str(tempdir/'tmp2.h5')
+        meansvars = features_generator.mean_var_norm_per_file(
+            h5f, tmp2, vad_file=str(vad_path))
+
+        assert meansvars == [
+            ('file1', np.mean(feature1[:75]), np.std(feature1[:75])),
+            ('file2', np.mean(feature2), np.std(feature2)),
+
+        ]
+
+        reader = h5features.Reader(tmp2)
+        data = reader.read()
+        assert data.dict_features()['file1'] == pytest.approx(
+            (feature1 - np.mean(feature1[:75])) / np.std(feature1[:75]))
+
+        assert np.mean(data.dict_features()['file2']) == pytest.approx(0)
+        assert np.std(data.dict_features()['file2']) == pytest.approx(1)
         shutil.rmtree(str(tempdir))
+
