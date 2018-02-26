@@ -72,10 +72,11 @@ class GridSearch(object):
         assert self.params['default_params']['pathname_experience'], \
             msg_yaml_error + 'pathname_experience'
         default_params = self.params['default_params']
-        grid_params = self.params['grid_params']
 
         if 'grid_params' not in self.params:
             return [default_params]
+
+        grid_params = self.params['grid_params']
         grid_experiments = []
         current_exp = copy.deepcopy(default_params)
         now = datetime.datetime.now()
