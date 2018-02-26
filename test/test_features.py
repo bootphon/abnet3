@@ -112,6 +112,12 @@ class TestFeatures:
         assert all(meansvars[1][1] == np.mean(feature2, axis=0))
         assert all(meansvars[1][2] == np.std(feature2, axis=0))
 
+        reader = h5features.Reader(h5f_mean_var)
+        data = reader.read()
+        for file in data.items():
+            assert np.mean(data.dict_features()[file]) == pytest.approx(0)
+            assert np.std(data.dict_features()[file]) == pytest.approx(1)
+
         # no per channel
         tmp2 = str(tempdir / 'h5-tmp2')
         features_generator = FeaturesGenerator(normalization=True,
