@@ -134,9 +134,12 @@ class SoftDTWLoss(LossBuilder):
             min_word_mapped = min_word[mapping, :]
             # TODO : do we want to run a DTW also here ?
             # For now we just take the diagonal
-            # Next : discard 
+            # Next : discard
+            labels = -1 * torch.ones(len(max_word))
+            if self.cuda:
+                labels = labels.cuda()
             return coscos2()(
-                max_word, min_word_mapped, -1 * torch.ones(len(max_word)))
+                max_word, min_word_mapped, labels)
 
 class weighted_loss_multi(LossBuilder):
     """weighted_loss_multi Loss function
