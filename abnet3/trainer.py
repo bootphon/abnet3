@@ -260,6 +260,9 @@ class SoftDTWTrainer(TrainerSiamese):
         n = len(batch)
         losses = []
         for word1, word2, type in batch:
+            if self.cuda:
+                word1 = word1.cuda()
+                word2 = word2.cuda()
             frames1, frames2 = self.network(word1, word2)
             losses.append(self.loss(frames1, frames2, type))
         return sum(losses) / n
