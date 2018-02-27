@@ -128,6 +128,9 @@ class SoftDTWLoss(LossBuilder):
             max_word = max((word1, word2), key=len)
             mapping = np.linspace(0, len(min_word) - 1,
                                   num=len(max_word)).astype(np.int)
+            mapping = torch.LongTensor(mapping)
+            if self.cuda:
+                mapping = mapping.cuda()
             min_word_mapped = min_word[mapping, :]
             # TODO : do we want to run a DTW also here ?
             # For now we just take the diagonal
