@@ -81,7 +81,10 @@ class SoftDTWDistance(torch.autograd.Function):
             R = R.cuda()
         ctx.R = R
         ctx.save_for_backward(D)
-        return torch.Tensor([R[n, m]])
+        result = torch.Tensor([R[n, m]])
+        if D.is_cuda:
+            result = result.cuda()
+        return result
 
     @staticmethod
     @once_differentiable
