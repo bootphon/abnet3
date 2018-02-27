@@ -97,10 +97,15 @@ class SoftDTWDistance(torch.autograd.Function):
         n, m = D.size()
 
         # add an extra row and column to D to deal with edge cases
-        D = torch.cat([D, torch.zeros(n, 1)], dim=1)
-        D = torch.cat([D, torch.zeros(1, m+1)], dim=0)
+        if D.is_cuda:
+            D = torch.cat([D, torch.cuda.FloatTensor(n, 1).fill_(0)], dim=1)
+            D = torch.cat([D, torch.cuda.FloatTensor(1, m+1).fill_(0)], dim=0)
+            E = torch.cuda.FloatTensor(n+2, m+2).fill_(0)  # one indexed
+        else:
+            D = torch.cat([D, torch.zeros(n, 1)], dim=1)
+            D = torch.cat([D, torch.zeros(1, m+1)], dim=0)
+            E = torch.zeros(n+2, m+2)  # one indexed
 
-        E = torch.zeros(n+2, m+2)  # one indexed
         E[n+1, m+1] = 1
 
         for i in range(1, n+1):
@@ -120,8 +125,6 @@ class SoftDTWDistance(torch.autograd.Function):
                 b = np.exp(1/gamma * (R[i, j+1] - R[i, j] - D[i-1, j]))
                 c = np.exp(1/gamma * (R[i+1, j+1] - R[i, j] - D[i, j]))
                 E[i, j] = E[i+1, j] * a + E[i, j+1] * b + E[i+1, j+1] * c
-        if D.is_cuda:
-            E = E.cuda()
         return E[1:-1, 1:-1] * grad_outputs, None
 
 def soft_dtw(A, B, distance='cos', gamma=0.1):
