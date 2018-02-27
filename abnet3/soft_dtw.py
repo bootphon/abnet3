@@ -77,6 +77,8 @@ class SoftDTWDistance(torch.autograd.Function):
 
         # after this, we have to save some variables for the backward pass (mostly D and R)
         R = torch.from_numpy(R)
+        if D.is_cuda:
+            R = R.cuda()
         ctx.R = R
         ctx.save_for_backward(D)
         return torch.Tensor([R[n, m]])
@@ -115,6 +117,8 @@ class SoftDTWDistance(torch.autograd.Function):
                 b = np.exp(1/gamma * (R[i, j+1] - R[i, j] - D[i-1, j]))
                 c = np.exp(1/gamma * (R[i+1, j+1] - R[i, j] - D[i, j]))
                 E[i, j] = E[i+1, j] * a + E[i, j+1] * b + E[i+1, j+1] * c
+        if D.is_cuda:
+            E = E.cuda()
         return E[1:-1, 1:-1] * grad_outputs, None
 
 def soft_dtw(A, B, distance='cos', gamma=0.1):
