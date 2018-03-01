@@ -69,10 +69,13 @@ class GridSearch(object):
         self.parse_yaml_input_file()
         msg_yaml_error = 'Yaml not well formatted : '
         assert self.params['default_params'], msg_yaml_error + 'default_params'
-        assert self.params['grid_params'], msg_yaml_error + 'grid_params'
         assert self.params['default_params']['pathname_experience'], \
             msg_yaml_error + 'pathname_experience'
         default_params = self.params['default_params']
+
+        if 'grid_params' not in self.params:
+            return [default_params]
+
         grid_params = self.params['grid_params']
         grid_experiments = []
         current_exp = copy.deepcopy(default_params)
