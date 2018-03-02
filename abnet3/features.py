@@ -341,30 +341,35 @@ class FeaturesGenerator:
 
         return {'mean': mean_var[0], 'variance': mean_var[1]}
 
-    def generate(self):
+    def generate(self, files=None, output_path=None):
 
         functions = {
             'mfcc': self.do_mfccs,
             'fbanks': self.do_fbank
         }
 
-        if type(self.files) == str:
-            if not os.path.isdir(self.files):
+        if files is None:
+            files = self.files
+        if output_path is None:
+            output_path = self.output_path
+
+        if type(files) == str:
+            if not os.path.isdir(files):
                 raise ValueError("files must be a directory or a list of "
                                  "files")
-            self.files = [os.path.join(self.files, f)
-                          for f in os.listdir(self.files)
+            files = [os.path.join(files, f)
+                          for f in os.listdir(files)
                           if f.endswith('.wav')]
 
         if self.method not in functions:
             raise ValueError("Method %s not authorized." % self.method)
         f = functions[self.method]
 
-        tempdir = os.path.join(os.path.dirname(self.output_path), 'tmp')
+        tempdir = os.path.join(os.path.dirname(output_path), 'tmp')
         os.makedirs(tempdir, exist_ok=True)
         h5_temp1 = tempdir + '/temp1'
         print("Spectral transforming with %s" % self.method)
-        self.h5features_compute(self.files, h5_temp1, featfunc=f)
+        self.h5features_compute(files, h5_temp1, featfunc=f)
 
         if self.normalization:
             print("Normalizing")
@@ -390,9 +395,9 @@ class FeaturesGenerator:
             h5_temp2 = h5_temp1
         if self.stack:
             print("Stacking frames")
-            self.h5features_feats2stackedfeats(h5_temp2, self.output_path,
+            self.h5features_feats2stackedfeats(h5_temp2, output_path,
                                                nframes=self.nframes)
         else:
-            shutil.copy(h5_temp2, self.output_path)
+            shutil.copy(h5_temp2, output_path)
 
         shutil.rmtree(tempdir)

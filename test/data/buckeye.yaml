@@ -18,6 +18,7 @@ default_params:
       nframes: 7
       deltas: False
       deltasdeltas: False
+    test_files: None
   dataloader:
       class: OriginalDataLoader
       arguments:
@@ -69,6 +70,7 @@ default_params:
     class: EmbedderSiamese
     arguments:
       cuda: False
+    test_features: None
 
 grid_params:
     sampler:

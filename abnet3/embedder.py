@@ -53,7 +53,7 @@ class EmbedderSiamese(EmbedderBuilder):
     def __init__(self, *args, **kwargs):
         super(EmbedderSiamese, self).__init__(*args, **kwargs)
 
-    def embed(self):
+    def embed(self, features_path=None, output_path=None):
         """ Embed method to embed features based on a saved network
 
         """

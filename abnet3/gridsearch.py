@@ -98,8 +98,8 @@ class GridSearch(object):
         return grid_experiments
 
     def run_single_experiment(self, single_experiment=None, gpu_id=0):
-        """Build a single experiment from a dictionnary of parameters
-
+        """
+        Build a single experiment from a dictionnary of parameters
         """
         assert single_experiment['features'], 'features properties missing'
         assert single_experiment['sampler'], 'sampler properties missing'
@@ -116,6 +116,9 @@ class GridSearch(object):
         if 'output_path' not in arguments:
             arguments['output_path'] = os.path.join(
                 single_experiment['pathname_experience'], 'features')
+        if 'test_files' in features_prop:
+            features_prop['features_test_output'] = os.path.join(
+                single_experiment['pathname_experience'], 'test-features')
         features = features_class(**arguments)
 
         sampler_prop = single_experiment['sampler']
@@ -166,29 +169,48 @@ class GridSearch(object):
         arguments['feature_path'] = features.output_path
         arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
+        if ('test_features' not in embedder_prop
+                or embedder_prop['test_features'] is None) \
+                and 'test_files' in features_prop:
+            embedder_prop['test_features'] = features_prop['features_test_output']
+            embedder_prop['test_embeddings_output'] = os.path.join(
+                single_experiment['pathname_experience'],
+                'test-embeddings.h5f')
 
         if features.run == 'never':
             pass
         if features.run == 'once' and self.features_run is False:
             features.generate()
             self.features_run = True
+            if 'test_files' in features_prop:
+                features.generate(files=features_prop['test_files'],
+                                  output=features_prop['test_features_output'])
         if features.run == 'always':
             features.generate()
-        else:
-            pass
+            if 'test_files' in features_prop:
+                features.generate(files=features_prop['test_files'],
+                                  output=features_prop['test_features_output'])
 
         if sampler.run == 'never':
             pass
         if sampler.run == 'once' and self.sampler_run is False:
+            # save sampler
+            pickle.dump(sampler.whoami(), os.path.join(
+                single_experiment['pathname_experience']), 'sampler.params')
             sampler.sample()
             self.sampler_run = True
         if sampler.run == 'always':
+            # save sampler
+            pickle.dump(sampler.whoami(), os.path.join(
+                single_experiment['pathname_experience']), 'sampler.params')
             sampler.sample()
-        else:
-            pass
 
         trainer.train()
         embedder.embed()
+        #  embedding on testing set
+        if 'test_features_output' in embedder_prop:
+            embedder.embed(features_path=embedder_prop['test_features_output'],
+                           output_path=embedder_prop['test_embedding_output'])
 
     def run(self):
         """Run command to launch the grid search
@@ -198,7 +220,7 @@ class GridSearch(object):
         print('Start the grid search ...')
         for index in range(len(grid_experiments)):
             pathname_exp = grid_experiments[index]['pathname_experience']
-            exp_name = 'Starting exp {} : {}'.format(index, pathname_exp)
+            print('Starting exp {} : {}'.format(index, pathname_exp))
             self.run_single_experiment(
                 single_experiment=grid_experiments[index]
                 )
