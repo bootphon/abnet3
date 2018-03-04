@@ -478,7 +478,8 @@ class MultimodalDataLoader(FramesDataLoader):
     of the frames dataloader
     """
 
-    def __init__(self, pairs_path, features_path, num_max_minibatches=1000, seed=None, batch_size=8):
+    def __init__(self, pairs_path, features_path,
+                 batch_size=500, randomize_dataset=False, max_batches_per_epoch=None):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and train_pairs
@@ -489,7 +490,8 @@ class MultimodalDataLoader(FramesDataLoader):
                                will be the ones on which the dtw paths are computed
 
         """
-        super().__init__(pairs_path, features_path)
+        super().__init__(pairs_path, features_path, batch_size, randomize_dataset,
+                         max_batches_per_epoch)
         self.features_dict = None
         self.alignment_dict = {} #dict of the form {(f1, s1, e1, f2, s1, e2): (path1, path)}
 
