@@ -564,7 +564,7 @@ class MultimodalDataLoader(FramesDataLoader):
         token_feats, frames = super(MultimodalDataLoader, self).load_all_frames(pairs)
                               #loads token feats, alignment and
                               #frames for first path
-        token_feats_list.append(token_feats_list)
+        token_feats_list.append(token_feats)
 
         pairs = group_pairs(pairs)
         for path in self.features_path[1:]: #add token feats of the other modalities
