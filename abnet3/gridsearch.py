@@ -203,8 +203,7 @@ class GridSearch(object):
             pickle.dump(sampler.whoami(), open(
                 os.path.join(
                     single_experiment['pathname_experience'],
-                    'sampler.params')),
-                "wb")
+                    'sampler.params'), "wb"))
             sampler.sample()
             self.sampler_run = True
         if sampler.run == 'always':
@@ -212,8 +211,7 @@ class GridSearch(object):
             pickle.dump(sampler.whoami(), open(
                 os.path.join(
                     single_experiment['pathname_experience'],
-                    'sampler.params')),
-                "wb")
+                    'sampler.params'), "wb"))
             sampler.sample()
 
         trainer.train()
