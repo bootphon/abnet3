@@ -3,6 +3,8 @@ default_params:
   pathname_experience: /scratch2/rriad/projects/interspeech_paper_abnet3/exp/study_sampling_functions
   features:
     class: FeaturesGenerator
+    test_files:
+    test_features_output:
     arguments:
       run: never
       files: None
@@ -18,7 +20,6 @@ default_params:
       nframes: 7
       deltas: False
       deltasdeltas: False
-    test_files: None
   dataloader:
       class: OriginalDataLoader
       arguments:
@@ -70,7 +71,6 @@ default_params:
     class: EmbedderSiamese
     arguments:
       cuda: False
-    test_features: None
 
 grid_params:
     sampler:

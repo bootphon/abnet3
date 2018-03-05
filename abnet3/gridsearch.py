@@ -63,8 +63,8 @@ class GridSearch(object):
                 print(exc)
 
     def build_grid_experiments(self):
-        """Extract the list of experiments to build the
-
+        """
+        Extract the list of experiments to build the
         """
         self.parse_yaml_input_file()
         msg_yaml_error = 'Yaml not well formatted : '
@@ -116,9 +116,11 @@ class GridSearch(object):
         if 'output_path' not in arguments:
             arguments['output_path'] = os.path.join(
                 single_experiment['pathname_experience'], 'features')
-        if 'test_files' in features_prop:
-            features_prop['features_test_output'] = os.path.join(
-                single_experiment['pathname_experience'], 'test-features')
+
+        if features_prop.get('test_files', None) is not None:
+            if features_prop.get('test_features_output', None) is not None:
+                features_prop['test_features_output'] = os.path.join(
+                    single_experiment['pathname_experience'], 'test-features')
         features = features_class(**arguments)
 
         sampler_prop = single_experiment['sampler']
@@ -169,10 +171,10 @@ class GridSearch(object):
         arguments['feature_path'] = features.output_path
         arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
-        if ('test_features' not in embedder_prop
-                or embedder_prop['test_features'] is None) \
-                and 'test_files' in features_prop:
-            embedder_prop['test_features'] = features_prop['features_test_output']
+
+        if embedder_prop.get('test_features', None) is None \
+                and features_prop.get('test_features_output', None) is not None:
+            embedder_prop['test_features'] = features_prop['test_features_output']
             embedder_prop['test_embeddings_output'] = os.path.join(
                 single_experiment['pathname_experience'],
                 'test-embeddings.h5f')
@@ -182,12 +184,12 @@ class GridSearch(object):
         if features.run == 'once' and self.features_run is False:
             features.generate()
             self.features_run = True
-            if 'test_files' in features_prop:
+            if features_prop.get('test_files', None) is not None:
                 features.generate(files=features_prop['test_files'],
                                   output=features_prop['test_features_output'])
         if features.run == 'always':
             features.generate()
-            if 'test_files' in features_prop:
+            if features_prop.get('test_files', None) is not None:
                 features.generate(files=features_prop['test_files'],
                                   output=features_prop['test_features_output'])
 
@@ -208,7 +210,7 @@ class GridSearch(object):
         trainer.train()
         embedder.embed()
         #  embedding on testing set
-        if 'test_features_output' in embedder_prop:
+        if embedder_prop.get('test_features_output', None) is not None:
             embedder.embed(features_path=embedder_prop['test_features_output'],
                            output_path=embedder_prop['test_embedding_output'])
 
