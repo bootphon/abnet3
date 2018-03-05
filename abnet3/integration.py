@@ -6,10 +6,18 @@ This script contains different integration units, which receive
 multiple inputs and produce batches used for training
 """
 
-from torch import cat, stack, zeros
+import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import numpy as np
+
+activation_functions = {'relu': nn.ReLU(),
+                        'sigmoid': nn.Sigmoid(),
+                        'tanh': nn.Tanh()}
+
+init_functions = {'xavier_uni': nn.init.xavier_uniform,
+                  'xavier_normal': nn.init.xavier_normal,
+                  'orthogonal': torch.nn.init.orthogonal}
 
 class IntegrationUnitBuilder(nn.Module):
 
@@ -52,7 +60,7 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
 
         """
 
-        concat_batch = cat(x_list, 1)
+        concat_batch = torch.cat(x_list, 1)
 
         return concat_batch
 
@@ -72,7 +80,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         self.rep_modes = representation_modes
         self.feed_modes = feed_modes
 
-        #TODO: different probebilities per method
+        #TODO: different probabilities per method
 
     @staticmethod
     def apply_mode_mask(mode_map, features):
@@ -102,9 +110,9 @@ class MultitaskIntegration(IntegrationUnitBuilder):
             if mode_map[i]:
                 to_cat.append(features[i])
             else:
-                to_cat.append(Variable(zeros(features[i].size())))
+                to_cat.append(Variable(torch.zeros(features[i].size())))
 
-        mapped_vector = cat(to_cat)
+        mapped_vector = torch.cat(to_cat)
         return mapped_vector
 
     def integration_method(self, x1_list, x2_list):
@@ -124,10 +132,85 @@ class MultitaskIntegration(IntegrationUnitBuilder):
             x1_to_cat.append(X1)
             x2_to_cat.append(X2)
 
-        X1_batch = stack(x1_to_cat, 0)
-        X2_batch = stack(x2_to_cat, 0)
+        X1_batch = torch.stack(x1_to_cat, 0)
+        X2_batch = torch.stack(x2_to_cat, 0)
         return X1_batch, X2_batch
 
     def forward(self, x1_list, x2_list, y):
         X1_batch, X2_batch = self.integration_method(x1_list, x2_list)
+        return X1_batch, X2_batch, y
+
+class BiWeighted(IntegrationUnitBuilder):
+    """
+    Specify parameters and description
+    """
+
+    def __init__(self, activation_type, init_type, *args, **kwargs):
+        super(BiWeighted, self).__init__(*args, **kwargs)
+        assert activation_type in ('relu', 'sigmoid', 'tanh')
+        assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
+
+        self.activation = activation_functions[activation_type]
+        self.activation_type = activation_type
+        self.init_function = init_functions[init_type]
+        self.constructed = False
+
+    def init_weight_method(self, layer):
+        if isinstance(layer, nn.Linear):
+            init_func = init_functions[self.init_function]
+            init_func(layer.weight.data,
+                      gain=nn.init.calculate_gain(self.activation_type))
+            layer.bias.data.fill_(0.0)
+
+    def construct_linear_projection(self, input_dim, output_dim):
+        projection_layer = [nn.Linear(input_dim, output_dim),
+                            self.activation]
+        return nn.Sequential(*projection_layer)
+
+    def construct_net(self, features):
+        dim1 = features[0].shape[1]
+        dim2 = features[1].shape[1]
+        attention_vector_dim = max(dim1, dim2)
+
+        self.net1 = self.construct_linear_projection(dim1, attention_vector_dim)
+        self.net2 = self.construct_linear_projection(dim2, attention_vector_dim)
+        self.apply(self.init_weight_method)
+
+        self.constructed = True
+
+    def compute_attention_vector(self, i1, i2):
+        net1_output = self.net1(i1)
+        net2_output = self.net2(i2)
+
+        return torch.add(net1_output, value=1, net2_output)
+
+    def integration_method(self, i1, i2):
+        attention_vector = self.compute_attention_vector(i1, i2)
+        attention_complement = torch.add(torch.mul(attention_vector, -1), 1) # (1 - attention)
+
+        #pad
+
+        term1 = torch.mul(attention_vector, i1)
+        term2 = torch.mul(attention_complement, i2)
+
+        return torch.add(term1, value=1, term2)
+
+
+    def forward(self, x1_list, x2_list, y):
+        num_pairs = len(x1_list[0])
+        x1_zipped = list(zip(*x1_list))
+        x2_zipped = list(zip(*x2_list))
+
+        x1_to_cat = []
+        x2_to_cat = []
+
+        for i in range(num_pairs):
+            X1 = self.integration_method(*x1_zipped[i])
+            X2 = self.integration_method(*x2_zipped[i])
+
+            x1_to_cat.append(X1)
+            x2_to_cat.append(X2)
+
+        X1_batch = torch.stack(x1_to_cat, 0)
+        X2_batch = torch.stack(x2_to_cat, 0)
         return X1_batch, X2_batch, y
