@@ -57,12 +57,18 @@ class EmbedderSiamese(EmbedderBuilder):
         """ Embed method to embed features based on a saved network
 
         """
+
+        if features_path is None:
+            features_path = self.feature_path
+        if output_path is None:
+            output_path = self.output_path
+
         if self.network_path is not None:
             self.network.load_network(self.network_path)
         self.network.eval()
         print("Done loading network weights")
 
-        with h5features.Reader(self.feature_path, 'features') as fh:
+        with h5features.Reader(features_path, 'features') as fh:
             features = fh.read()
 
         items = features.items()
@@ -82,7 +88,7 @@ class EmbedderSiamese(EmbedderBuilder):
             embeddings.append(emb.data.numpy())
 
         data = h5features.Data(items, times, embeddings, check=True)
-        with h5features.Writer(self.output_path) as fh:
+        with h5features.Writer(output_path) as fh:
             fh.write(data, 'features')
 
 
