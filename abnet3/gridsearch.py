@@ -118,7 +118,7 @@ class GridSearch(object):
                 single_experiment['pathname_experience'], 'features')
 
         if features_prop.get('test_files', None) is not None:
-            if features_prop.get('test_features_output', None) is not None:
+            if features_prop.get('test_features_output', None) is None:
                 features_prop['test_features_output'] = os.path.join(
                     single_experiment['pathname_experience'], 'test-features')
         features = features_class(**arguments)
