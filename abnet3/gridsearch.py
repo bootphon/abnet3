@@ -220,7 +220,7 @@ class GridSearch(object):
         if embedder_prop.get('test_features') is not None:
             print("Running test embedding")
             embedder.embed(features_path=embedder_prop['test_features'],
-                           output_path=embedder_prop['test_embedding_output'])
+                           output_path=embedder_prop['test_embeddings_output'])
 
     def run(self):
         """Run command to launch the grid search
