@@ -201,13 +201,13 @@ class GridSearch(object):
         if sampler.run == 'once' and self.sampler_run is False:
             # save sampler
             pickle.dump(sampler.whoami(), os.path.join(
-                single_experiment['pathname_experience']), 'sampler.params')
+                single_experiment['pathname_experience'], 'sampler.params'))
             sampler.sample()
             self.sampler_run = True
         if sampler.run == 'always':
             # save sampler
             pickle.dump(sampler.whoami(), os.path.join(
-                single_experiment['pathname_experience']), 'sampler.params')
+                single_experiment['pathname_experience'], 'sampler.params'))
             sampler.sample()
 
         trainer.train()
