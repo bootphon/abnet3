@@ -172,8 +172,7 @@ class GridSearch(object):
         arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
 
-        if embedder_prop.get('test_features', None) is None \
-                and features_prop.get('test_features_output', None) is not None:
+        if features_prop.get('test_features_output') is not None:
             embedder_prop['test_features'] = features_prop['test_features_output']
             embedder_prop['test_embeddings_output'] = os.path.join(
                 single_experiment['pathname_experience'],
@@ -184,12 +183,12 @@ class GridSearch(object):
         if features.run == 'once' and self.features_run is False:
             features.generate()
             self.features_run = True
-            if features_prop.get('test_files', None) is not None:
+            if features_prop.get('test_files') is not None:
                 features.generate(files=features_prop['test_files'],
                                   output=features_prop['test_features_output'])
         if features.run == 'always':
             features.generate()
-            if features_prop.get('test_files', None) is not None:
+            if features_prop.get('test_files') is not None:
                 features.generate(files=features_prop['test_files'],
                                   output=features_prop['test_features_output'])
 
@@ -210,7 +209,7 @@ class GridSearch(object):
         trainer.train()
         embedder.embed()
         #  embedding on testing set
-        if embedder_prop.get('test_features_output', None) is not None:
+        if embedder_prop.get('test_features_output') is not None:
             embedder.embed(features_path=embedder_prop['test_features_output'],
                            output_path=embedder_prop['test_embedding_output'])
 
