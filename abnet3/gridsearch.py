@@ -184,13 +184,17 @@ class GridSearch(object):
             features.generate()
             self.features_run = True
             if features_prop.get('test_files') is not None:
-                features.generate(files=features_prop['test_files'],
-                                  output=features_prop['test_features_output'])
+                print("Creating test features")
+                features.generate(
+                    files=features_prop['test_files'],
+                    output_path=features_prop['test_features_output'])
         if features.run == 'always':
             features.generate()
             if features_prop.get('test_files') is not None:
-                features.generate(files=features_prop['test_files'],
-                                  output=features_prop['test_features_output'])
+                print("Creating test features")
+                features.generate(
+                    files=features_prop['test_files'],
+                    output_path=features_prop['test_features_output'])
 
         if sampler.run == 'never':
             pass
@@ -210,6 +214,7 @@ class GridSearch(object):
         embedder.embed()
         #  embedding on testing set
         if embedder_prop.get('test_features_output') is not None:
+            print("Running test embedding")
             embedder.embed(features_path=embedder_prop['test_features_output'],
                            output_path=embedder_prop['test_embedding_output'])
 
