@@ -321,12 +321,61 @@ class MultimodalTrainer(TrainerBuilder):
     """Multimodal Trainer class for ABnet3
 
     """
-    def __init__(self, integration_unit, *args, **kwargs):
-        super(MultimodalTrainer, self).__init__(*args, **kwargs)
+    def __init__(self, integration_unit, network=None, loss=None,
+                 num_epochs=200, patience=20,
+                 optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
+                 seed=0, dataloader=None, log_dir=None,
+                 feature_generator=None):
         assert type(self.network) == abnet3.model.SiameseNetwork
         assert type(self.dataloader) == abnet3.dataloader.MultimodalDataLoader
-
+        self.network = network
+        self.loss = loss
+        self.num_epochs = num_epochs
+        self.patience = patience
+        self.lr = lr
+        self.momentum = momentum
+        self.best_epoch = 0
+        self.seed = seed
+        self.cuda = cuda
+        self.statistics_training = {}
+        self.dataloader = dataloader
+        self.feature_generator = feature_generator
         self.integration_unit = integration_unit
+
+        if cuda:
+            self.loss.cuda()
+            self.network.cuda()
+
+        if log_dir is None:
+            self.log_dir = Path('./runs/%s' % time.strftime('%m-%d-%Hh%M-%S'))
+        else:
+            self.log_dir = Path(log_dir) / ('%s' % time.strftime('%m-%d-%Hh%M-%S'))
+
+        assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
+                                  'RMSprop', 'LBFGS')
+
+
+        optimizer_params = self.network.parameters() + self.integration_unit.parameters()
+        
+        if optimizer_type == 'sgd':
+            self.optimizer = optim.SGD(optimizer_parameters,
+                                       lr=self.lr, momentum=self.momentum)
+        if optimizer_type == 'adadelta':
+            self.optimizer = optim.Adadelta(optimizer_parameters,
+                                            lr=self.lr)
+        if optimizer_type == 'adam':
+            self.optimizer = optim.Adam(optimizer_parameters,
+                                        lr=self.lr)
+        if optimizer_type == 'adagrad':
+            self.optimizer = optim.Adagrad(optimizer_parameters,
+                                           lr=self.lr)
+        if optimizer_type == 'RMSprop':
+            self.optimizer = optim.RMSprop(optimizer_parameters,
+                                           lr=self.lr)
+        if optimizer_type == 'LBFGS':
+            self.optimizer = optim.LBFGS(optimizer_parameters,
+                                         lr=self.lr)
+
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Multimodal Siamese network.
