@@ -217,9 +217,9 @@ class GridSearch(object):
         trainer.train()
         embedder.embed()
         #  embedding on testing set
-        if embedder_prop.get('test_features_output') is not None:
+        if embedder_prop.get('test_features') is not None:
             print("Running test embedding")
-            embedder.embed(features_path=embedder_prop['test_features_output'],
+            embedder.embed(features_path=embedder_prop['test_features'],
                            output_path=embedder_prop['test_embedding_output'])
 
     def run(self):
