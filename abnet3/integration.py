@@ -140,7 +140,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         X1_batch, X2_batch = self.integration_method(x1_list, x2_list)
         return X1_batch, X2_batch, y
 
-class BiWeighted(IntegrationUnitBuilder):
+class BiWeightedIntegration(IntegrationUnitBuilder):
     """
     Specify parameters and description
     """
@@ -153,6 +153,8 @@ class BiWeighted(IntegrationUnitBuilder):
         self.activation = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
+        self.padding_size = 0
+        self.shorter_input = None
         self.constructed = False
 
     def init_weight_method(self, layer):
@@ -167,20 +169,26 @@ class BiWeighted(IntegrationUnitBuilder):
                             self.activation]
         return nn.Sequential(*projection_layer)
 
-    def construct_net(self, features):
-        dim1 = features[0].shape[1]
-        dim2 = features[1].shape[1]
+    def init_net(self, features):
+        dim1 = features[0].size()
+        dim2 = features[1].size()
         attention_vector_dim = max(dim1, dim2)
 
-        self.net1 = self.construct_linear_projection(dim1, attention_vector_dim)
-        self.net2 = self.construct_linear_projection(dim2, attention_vector_dim)
+
+        self.linear1 = self.construct_linear_projection(dim1, attention_vector_dim)
+        self.linear2 = self.construct_linear_projection(dim2, attention_vector_dim)
         self.apply(self.init_weight_method)
 
-        self.constructed = True
+        self.padding_size = abs(dim1 - dim2)
+        if dim1 < dim2:
+            self.shorter_input = 0
+        elif dim2 < dim1:
+            self.shorter_input = 1
+
 
     def compute_attention_vector(self, i1, i2):
-        net1_output = self.net1(i1)
-        net2_output = self.net2(i2)
+        linear1_output = self.linear1(i1)
+        linear2_output = self.linear2(i2)
 
         return torch.add(net1_output, value=1, net2_output)
 
@@ -188,7 +196,13 @@ class BiWeighted(IntegrationUnitBuilder):
         attention_vector = self.compute_attention_vector(i1, i2)
         attention_complement = torch.add(torch.mul(attention_vector, -1), 1) # (1 - attention)
 
-        #pad
+        #TODO: use padding pytorch function
+        if self.shorter_input == 0:
+            padding = Variable(torch.zeros(self.padding_size))
+            i1 = torch.cat([i1, padding], 0)
+        elif self.shorter_input == 1:
+            padding = Variable(torch.zeros(self.padding_size))
+            i2 = torch.cat([i2, padding], 0)
 
         term1 = torch.mul(attention_vector, i1)
         term2 = torch.mul(attention_complement, i2)

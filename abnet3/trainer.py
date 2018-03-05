@@ -355,8 +355,9 @@ class MultimodalTrainer(TrainerBuilder):
                                   'RMSprop', 'LBFGS')
 
 
-        optimizer_params = self.network.parameters() + self.integration_unit.parameters()
-        
+        optimizer_params = list(self.network.parameters()) + \
+                           list(self.integration_unit.parameters())
+
         if optimizer_type == 'sgd':
             self.optimizer = optim.SGD(optimizer_parameters,
                                        lr=self.lr, momentum=self.momentum)
