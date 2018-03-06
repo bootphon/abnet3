@@ -71,7 +71,39 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
 
 class MultitaskIntegration(IntegrationUnitBuilder):
     """
-    Specify parameters and description
+    Receives list of features from different modalities and joins them, zeroing
+    out features when required.
+
+    :param representation_modes:    list of representation modes. A representation
+                                    mode is a tuple-like object that should
+                                    have the same length as the number of modalities
+                                    for the integration. Every element of the
+                                    representation mode is either a 1 or a 0,
+                                    and corresponds to one modality used for
+                                    training, so a 1 means that the corresponding
+                                    modality will appear on the returned batch,
+                                    and a 0 means that said modality will be zeroed
+                                    out. Finally, the features, zeroed out or not,
+                                    are concatenated.
+    :param feed_modes:              list of feed modes. A feed mode is a 2 dimensional
+                                    tuple-like object, on which each element
+                                    corresponds to one branch of the siamese network.
+                                    Each element must be a number, that represents
+                                    the index of a representation mode from the
+                                    representation_modes parameter. This tuple
+                                    represents pairs of representation modes that
+                                    will be used for the training.
+
+    :examples:                       For an integration with 2 different modalities,
+                                    the representation mode (1, 0) indicates
+                                    that the first modality should be used and the
+                                    second one should be zeroed out.
+
+                                    Given the  representation modes [(1, 0), (0, 1)],
+                                    the feed mode (0, 1) means that for the first
+                                    branch of  the siamese network the representation
+                                    mode (1, 0) will be used, and for the second branch,
+                                    the representation mode (0, 1) will be used.
     """
 
     def __init__(self, representation_modes, feed_modes, *args, **kwargs):
