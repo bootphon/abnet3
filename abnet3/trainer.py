@@ -329,7 +329,7 @@ class MultimodalTrainer(TrainerBuilder):
 
         self.network = network
         assert type(self.network) == abnet3.model.SiameseNetwork
-        
+
         self.loss = loss
         self.num_epochs = num_epochs
         self.patience = patience
@@ -341,7 +341,7 @@ class MultimodalTrainer(TrainerBuilder):
         self.statistics_training = {}
         self.dataloader = dataloader
         assert type(self.dataloader) == abnet3.dataloader.MultimodalDataLoader
-        
+
         self.feature_generator = feature_generator
         self.integration_unit = integration_unit
 
@@ -358,7 +358,7 @@ class MultimodalTrainer(TrainerBuilder):
                                   'RMSprop', 'LBFGS')
 
 
-        optimizer_params = list(self.network.parameters()) + \
+        optimizer_parameters = list(self.network.parameters()) + \
                            list(self.integration_unit.parameters())
 
         if optimizer_type == 'sgd':
