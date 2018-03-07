@@ -171,8 +171,8 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
     Specify parameters and description
     """
 
-    def __init__(self, activation_type, init_type, *args, **kwargs):
-        super(BiWeighted, self).__init__(*args, **kwargs)
+    def __init__(self, activation_type, init_type='xavier_uni', *args, **kwargs):
+        super(BiWeightedIntegration, self).__init__(*args, **kwargs)
         assert activation_type in ('relu', 'sigmoid', 'tanh')
         assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
 
