@@ -326,9 +326,10 @@ class MultimodalTrainer(TrainerBuilder):
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
                  seed=0, dataloader=None, log_dir=None,
                  feature_generator=None):
-        assert type(self.network) == abnet3.model.SiameseNetwork
-        assert type(self.dataloader) == abnet3.dataloader.MultimodalDataLoader
+
         self.network = network
+        assert type(self.network) == abnet3.model.SiameseNetwork
+        
         self.loss = loss
         self.num_epochs = num_epochs
         self.patience = patience
@@ -339,6 +340,8 @@ class MultimodalTrainer(TrainerBuilder):
         self.cuda = cuda
         self.statistics_training = {}
         self.dataloader = dataloader
+        assert type(self.dataloader) == abnet3.dataloader.MultimodalDataLoader
+        
         self.feature_generator = feature_generator
         self.integration_unit = integration_unit
 
