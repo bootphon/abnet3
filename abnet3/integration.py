@@ -181,6 +181,8 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
         self.init_function = init_functions[init_type]
         self.padding_size = 0
         self.shorter_input = None
+        self.linear1 = None
+        self.linear2 = None
 
     def init_weight_method(self, layer):
         if isinstance(layer, nn.Linear):
@@ -194,9 +196,9 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
                             self.activation]
         return nn.Sequential(*projection_layer)
 
-    def bootstrap(self, features):
-        dim1 = features[0].size()
-        dim2 = features[1].size()
+    def bootstrap(self, bootstrap_batch):
+        dim1 = bootstrap_batch[0][0][0].size()
+        dim2 = bootstrap_batch[0][1][0].size()
         attention_vector_dim = max(dim1, dim2)
 
 
