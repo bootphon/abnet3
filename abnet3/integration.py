@@ -45,6 +45,7 @@ class IntegrationUnitBuilder(nn.Module):
         raise NotImplementedError('Unimplemented whoami for class:',
                                   self.__class__.__name__)
 
+
 class ConcatenationIntegration(IntegrationUnitBuilder):
 
     def __init__(self, *args, **kwargs):
@@ -94,7 +95,12 @@ class MultitaskIntegration(IntegrationUnitBuilder):
                                     represents pairs of representation modes that
                                     will be used for the training.
 
-    :examples:                       For an integration with 2 different modalities,
+    :param dimensions:              list of modality dimensions, meaning the length
+                                    of one vector of each modality (in the order
+                                    the paths were passed to the dataloader)
+
+
+    :examples:                      For an integration with 2 different modalities,
                                     the representation mode (1, 0) indicates
                                     that the first modality should be used and the
                                     second one should be zeroed out.
@@ -106,66 +112,54 @@ class MultitaskIntegration(IntegrationUnitBuilder):
                                     the representation mode (0, 1) will be used.
     """
 
-    def __init__(self, representation_modes, feed_modes, *args, **kwargs):
+    def __init__(self, representation_modes, feed_modes, dimensions, batch_size,
+                 *args, **kwargs):
         super(MultitaskIntegration, self).__init__(*args, **kwargs)
 
-        self.rep_modes = representation_modes
+        self.rep_modes = self.bootstrap(representation_modes, dimensions)
         self.feed_modes = feed_modes
-
+        self.batch_size = batch_size
         #TODO: different probabilities per method
 
-    @staticmethod
-    def apply_mode_mask(mode_map, features):
-        """
-        Receives features and mode map and returns the new vector
-
-        :param mode_map:    map for the new vector, binary vector of the same
-                            dimension as the number of features, on which every
-                            dimension must be 1 for the feature to appear on
-                            the mapped vector, and 0 if it must be zeroed out
-        :param features:    list of features, which order must correspond to the
-                            mode_map one.
-
-        :returns mapped_vector: with dimension equal to the sum of the input
-                                features dimensions
-
-        :example: for mode map [0, 1], the first input will be zeroed out and the
-                  second one will show on the final vector
+    def bootstrap(self,representation_modes, dimensions_list):
+        """Constructs necessary elements for integration
         """
 
-        #TODO: maybe there's a more efficient way to do this
+        print("Expanding masks for multitask integration")
+        expanded_rep_modes = []
+        for rep_mode in representation_modes:
+            expanded = []
+            for binary, dimension in zip(rep_mode, dimensions_list):
+                expanded += [binary] * dimension
+            expanded_rep_modes.append(expanded)
+        return expanded_rep_modes
 
-        assert len(mode_map) == len(features), "Mode map incongruent with features list"
 
-        to_cat = []
-        for i in range(len(mode_map)):
-            if mode_map[i]:
-                to_cat.append(features[i])
-            else:
-                to_cat.append(Variable(torch.zeros(features[i].size())))
+    def get_batch_masks(self):
+        mask1 = []
+        mask2 = []
+        for i in np.random.random_integers(0, len(self.feed_modes) - 1,
+                                            size = self.batch_size):
 
-        mapped_vector = torch.cat(to_cat)
-        return mapped_vector
+            feed_mode = self.feed_modes[i]
+            mask1.append(self.rep_modes[feed_mode[0]])
+            mask2.append(self.rep_modes[feed_mode[1]])
+
+        mask1 = Variable(torch.Tensor(mask1))
+        mask2 = Variable(torch.Tensor(mask2))
+        return mask1, mask2
+
 
     def integration_method(self, x1_list, x2_list):
-        num_pairs = len(x1_list[0])
-        x1_zipped = list(zip(*x1_list))
-        x2_zipped = list(zip(*x2_list))
 
-        x1_to_cat = []
-        x2_to_cat = []
+        x1_cat = torch.cat(x1_list, 1)
+        x2_cat = torch.cat(x2_list, 1)
 
-        for i in range(num_pairs):
-            mode_idx = np.random.randint(len(self.feed_modes))
-            pair_mode = self.feed_modes[mode_idx]
-            X1 = self.apply_mode_mask(self.rep_modes[pair_mode[0]], x1_zipped[i])
-            X2 = self.apply_mode_mask(self.rep_modes[pair_mode[1]], x2_zipped[i])
+        mask1, mask2 = self.get_batch_masks()
 
-            x1_to_cat.append(X1)
-            x2_to_cat.append(X2)
+        X1_batch = torch.mul(mask1, x1_cat)
+        X2_batch = torch.mul(mask2, x2_cat)
 
-        X1_batch = torch.stack(x1_to_cat, 0)
-        X2_batch = torch.stack(x2_to_cat, 0)
         return X1_batch, X2_batch
 
     def forward(self, x1_list, x2_list, y):
@@ -187,7 +181,6 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
         self.init_function = init_functions[init_type]
         self.padding_size = 0
         self.shorter_input = None
-        self.constructed = False
 
     def init_weight_method(self, layer):
         if isinstance(layer, nn.Linear):
@@ -201,7 +194,7 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
                             self.activation]
         return nn.Sequential(*projection_layer)
 
-    def init_net(self, features):
+    def bootstrap(self, features):
         dim1 = features[0].size()
         dim2 = features[1].size()
         attention_vector_dim = max(dim1, dim2)
