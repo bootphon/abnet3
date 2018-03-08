@@ -400,8 +400,8 @@ class MultimodalTrainer(TrainerBuilder):
 
         for X_list1, X_list2, y_batch in self.dataloader.batch_iterator(train_mode=True):
             if self.cuda:
-                X_list1 = cuda_all_modes(X_list1)
-                X_list2 = cuda_all_modes(X_list2)
+                X_list1 = self.cuda_all_modes(X_list1)
+                X_list2 = self.cuda_all_modes(X_list2)
                 y_batch = y_batch.cuda()
             X_batch1, X_batch2, y_batch = self.integration_unit(X_list1,
                                                                 X_list2,
@@ -421,8 +421,8 @@ class MultimodalTrainer(TrainerBuilder):
         self.network.eval()
         for X_list1, X_list2, y_batch in self.dataloader.batch_iterator(train_mode=False):
             if self.cuda:
-                X_list1 = cuda_all_modes(X_list1)
-                X_list2 = cuda_all_modes(X_list2)
+                X_list1 = self.cuda_all_modes(X_list1)
+                X_list2 = self.cuda_all_modes(X_list2)
                 y_batch = y_batch.cuda()
             X_batch1, X_batch2, y_batch = self.integration_unit(X_list1,
                                                                 X_list2,
