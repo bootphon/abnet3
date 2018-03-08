@@ -219,7 +219,7 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
         linear1_output = self.linear1(i1)
         linear2_output = self.linear2(i2)
 
-        return torch.add(linear1_output, 1, linear2_output)
+        return torch.add(linear1_output, linear2_output)
 
     def integration_method(self, i1, i2):
         attention_vector = self.compute_attention_vector(i1, i2)
@@ -236,7 +236,7 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
         term1 = torch.mul(attention_vector, i1)
         term2 = torch.mul(attention_complement, i2)
 
-        return torch.add(term1, 1, term2)
+        return torch.add(term1, term2)
 
 
     def forward(self, x1_list, x2_list, y):
