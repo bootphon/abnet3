@@ -25,8 +25,10 @@ class IntegrationUnitBuilder(nn.Module):
     Base class for integration units
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, cuda_bool=False *args, **kwargs):
         super(IntegrationUnitBuilder, self).__init__()
+
+        self.cuda_bool = cuda_bool
 
     def integration_method(self, *args, **kwargs):
         raise NotImplementedError('Unimplemented integration_method for class:',
