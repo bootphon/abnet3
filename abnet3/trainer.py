@@ -346,7 +346,7 @@ class MultimodalTrainer(TrainerBuilder):
         self.integration_unit = integration_unit
         to_bootstrap = self.dataloader.batch_iterator(train_mode=True)
         self.integration_unit.bootstrap(next(to_bootstrap))
-        
+
         if cuda:
             self.loss.cuda()
             self.network.cuda()
@@ -383,6 +383,12 @@ class MultimodalTrainer(TrainerBuilder):
             self.optimizer = optim.LBFGS(optimizer_parameters,
                                          lr=self.lr)
 
+    def cuda_all_modes(self, batch_list):
+        cuda_on = []
+        for mode in batch_list:
+            cuda_on.append(mode.cuda())
+        return cuda_on
+
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Multimodal Siamese network.
@@ -392,12 +398,15 @@ class MultimodalTrainer(TrainerBuilder):
         dev_loss = 0.0
         self.network.train()
 
-        for minibatch in self.dataloader.batch_iterator(train_mode=True):
-            X_batch1, X_batch2, y_batch = self.integration_unit(*minibatch)
+        for X_list1, X_list2, y_batch in self.dataloader.batch_iterator(train_mode=True):
             if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
+                X_list1 = cuda_all_modes(X_list1)
+                X_list2 = cuda_all_modes(X_list2)
                 y_batch = y_batch.cuda()
+            X_batch1, X_batch2, y_batch = self.integration_unit(X_list1,
+                                                                X_list2,
+                                                                y_batch)
+
 
             self.optimizer.zero_grad()
             emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
@@ -410,12 +419,14 @@ class MultimodalTrainer(TrainerBuilder):
             train_loss += train_loss_value.data[0]
 
         self.network.eval()
-        for minibatch in self.dataloader.batch_iterator(train_mode=False):
-            X_batch1, X_batch2, y_batch = self.integration_unit(*minibatch)
+        for X_list1, X_list2, y_batch in self.dataloader.batch_iterator(train_mode=False):
             if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
+                X_list1 = cuda_all_modes(X_list1)
+                X_list2 = cuda_all_modes(X_list2)
                 y_batch = y_batch.cuda()
+            X_batch1, X_batch2, y_batch = self.integration_unit(X_list1,
+                                                                X_list2,
+                                                                y_batch)
 
             if do_training:
                 pass
