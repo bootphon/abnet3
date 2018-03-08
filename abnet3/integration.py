@@ -25,10 +25,8 @@ class IntegrationUnitBuilder(nn.Module):
     Base class for integration units
     """
 
-    def __init__(self, cuda=False, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(IntegrationUnitBuilder, self).__init__()
-
-        self.cuda = cuda
 
     def integration_method(self, *args, **kwargs):
         raise NotImplementedError('Unimplemented integration_method for class:',
@@ -44,6 +42,10 @@ class IntegrationUnitBuilder(nn.Module):
         """
         raise NotImplementedError('Unimplemented whoami for class:',
                                   self.__class__.__name__)
+
+    def bootstrap(self, *args, **kwargs):
+        """Used for starting the integration unit
+        """
 
 
 class ConcatenationIntegration(IntegrationUnitBuilder):

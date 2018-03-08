@@ -346,6 +346,7 @@ class MultimodalTrainer(TrainerBuilder):
         self.integration_unit = integration_unit
         to_bootstrap = self.dataloader.batch_iterator(train_mode=True)
         self.integration_unit.bootstrap(next(to_bootstrap))
+        
         if cuda:
             self.loss.cuda()
             self.network.cuda()
