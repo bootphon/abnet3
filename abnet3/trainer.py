@@ -256,15 +256,29 @@ class TrainerSiamese(TrainerBuilder):
 
 class SoftDTWTrainer(TrainerSiamese):
 
+    def unstack_words(self, frames, lengths):
+        words = []
+        position = 0
+        for l in lengths:
+            words.append(frames[position: position + l])
+            position += l
+        return words
+
     def give_batch_to_model(self, batch):
         n = len(batch)
         losses = []
-        for word1, word2, type in batch:
-            if self.cuda:
-                word1 = word1.cuda()
-                word2 = word2.cuda()
-            frames1, frames2 = self.network(word1, word2)
-            losses.append(self.loss(frames1, frames2, type))
+
+        frames1, lengths1, frames2, lengths2, types = batch
+        if self.cuda:
+            frames1 = frames1.cuda()
+            frames2 = frames2.cuda()
+        embeddings1, embeddings2 = self.network(frames1, frames2)
+        embeddings1 = self.unstack_words(embeddings1, lengths1)
+        embeddings2 = self.unstack_words(embeddings2, lengths2)
+
+        # we will cut the words
+        for word1, word2, type in zip(embeddings1, embeddings2, types):
+            losses.append(self.loss(word1, word2, type))
         return sum(losses) / n
 
 

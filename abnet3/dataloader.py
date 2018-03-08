@@ -301,15 +301,29 @@ class SoftDTWDataLoader(OriginalDataLoader):
                   " iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
         for batch_id in selected_batches:
+            frames1 = []
+            lengths1 = []
+            frames2 = []
+            lengths2 = []
+            types = []
             word_pairs = batches[batch_id]
-            batch = []
+
             for (f1, s1, e1, f2, s2, e2, pair_type) in word_pairs:
-                frames_1 = Variable(
-                    torch.from_numpy(self.features.get(f1, s1, e1)))
-                frames_2 = Variable(
-                    torch.from_numpy(self.features.get(f2, s2, e2)))
+                frame1 = self.features.get(f1, s1, e1)
+                frames1.append(frame1)
+                lengths1.append(len(frame1))
+                frame2 = self.features.get(f2, s2, e2)
+                frames2.append(frame2)
+                lengths2.append(len(frame2))
                 type = 1 if pair_type == "same" else -1
-                batch.append((frames_1, frames_2, type))
+                types.append(type)
+
+            frames1 = Variable(torch.from_numpy(np.vstack(frames1)),
+                               volatile=not train_mode)
+            frames2 = Variable(torch.from_numpy(np.vstack(frames2)),
+                               volatile=not train_mode)
+
+            batch = (frames1, lengths1, frames2, lengths2, types)
             yield batch
 
 
