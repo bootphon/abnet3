@@ -221,17 +221,22 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
 
         return torch.add(linear1_output, linear2_output)
 
+    def pad_shorter(self, i):
+        padding = Variable(torch.zeros(self.padding_size))
+        if self.cuda_bool:
+            padding = padding.cuda()
+        i = torch.cat([i, padding], 0)
+        return i
+
     def integration_method(self, i1, i2):
         attention_vector = self.compute_attention_vector(i1, i2)
         attention_complement = torch.add(torch.mul(attention_vector, -1), 1) # (1 - attention)
 
         #TODO: use padding pytorch function
         if self.shorter_input == 0:
-            padding = Variable(torch.zeros(self.padding_size))
-            i1 = torch.cat([i1, padding], 0)
+            i1 = self.pad_shorter(i1)
         elif self.shorter_input == 1:
-            padding = Variable(torch.zeros(self.padding_size))
-            i2 = torch.cat([i2, padding], 0)
+            i2 = self.pad_shorter(i2)
 
         term1 = torch.mul(attention_vector, i1)
         term2 = torch.mul(attention_complement, i2)
