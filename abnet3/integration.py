@@ -147,7 +147,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         return expanded_rep_modes
 
 
-    def get_batch_masks(self):
+    def get_batch_masks(self, embed=False):
         mask1 = []
         mask2 = []
         if embed:
@@ -163,6 +163,11 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 
         mask1 = Variable(torch.Tensor(mask1))
         mask2 = Variable(torch.Tensor(mask2))
+
+        if self.cuda_bool:
+            mask1 = mask1.cuda()
+            mask2 = mask2.cuda()
+
         return mask1, mask2
 
 
@@ -171,7 +176,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         x1_cat = torch.cat(x1_list, 1)
         x2_cat = torch.cat(x2_list, 1)
 
-        mask1, mask2 = self.get_batch_masks(embed)
+        mask1, mask2 = self.get_batch_masks()
 
         X1_batch = torch.mul(mask1, x1_cat)
         X2_batch = torch.mul(mask2, x2_cat)
