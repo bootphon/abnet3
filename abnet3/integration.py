@@ -187,7 +187,35 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         X1_batch, X2_batch = self.integration_method(x1_list, x2_list, embed)
         return X1_batch, X2_batch, y
 
-class BiWeightedIntegration(IntegrationUnitBuilder):
+class BiWeightedFixedSum(IntegrationUnitBuilder):
+    """
+    Sums two vectors of the same dimension, using a weight and it's compliment
+    """
+
+
+    def __init__(self, a_value = 0.5, *args, **kwargs):
+        super(BiWeightedFixedSum, self).__init__(*args, **kwargs)
+
+        assert a_value >= 0, "a_value must be possitive"
+        assert a_value <= 1, "a_value must be less or equal than 1"
+        self.a_value = a_value
+        self.a_complement = 1 - a_value
+
+    def integration_method(self, x_list):
+        v1_weighted = torch.mul(x_list[0], self.a_value)
+        v2_weighted = torch.mul(x_list[1], self.a_complement)
+
+        return torch.add(v1_weighted, v2_weighted)
+
+
+
+    def forward(self, x1_list, x2_list, y):
+        X1_batch = self.integration_method(x1_list)
+        X2_batch = self.integration_method(x2_list)
+        return X1_batch, X2_batch, y
+
+
+class BiWeightedSumIntegration(IntegrationUnitBuilder):
     """
     Specify parameters and description
     """
