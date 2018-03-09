@@ -183,7 +183,10 @@ class MultimodalEmbedder(EmbedderBuilder):
                 if self.cuda:
                     feat_torch = feat_torch.cuda()
                 modes_list.append(feat_torch)
-            x1_input, _, _ = self.integration_unit(modes_list, modes_list, None)
+            x1_input, _, _ = self.integration_unit(modes_list,
+                                                   modes_list,
+                                                   None, 
+                                                   embed=True)
             emb, _ = self.network(x1_input, x1_input)
             emb = emb.cpu()
             embeddings.append(emb.data.numpy())

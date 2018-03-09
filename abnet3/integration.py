@@ -69,7 +69,7 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
 
         return concat_batch
 
-    def forward(self, x1_list, x2_list, y):
+    def forward(self, x1_list, x2_list, y, *args, **kwargs):
         X1_batch = self.integration_method(x1_list)
         X2_batch = self.integration_method(x2_list)
         return X1_batch, X2_batch, y
@@ -139,11 +139,15 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         return expanded_rep_modes
 
 
-    def get_batch_masks(self):
+    def get_batch_masks(self, embed=False):
         mask1 = []
         mask2 = []
+        if embed:
+            size = 1
+        else:
+            size = self.batch_size
         for i in np.random.random_integers(0, len(self.feed_modes) - 1,
-                                            size = self.batch_size):
+                                            size = size):
 
             feed_mode = self.feed_modes[i]
             mask1.append(self.rep_modes[feed_mode[0]])
@@ -154,19 +158,19 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         return mask1, mask2
 
 
-    def integration_method(self, x1_list, x2_list):
+    def integration_method(self, x1_list, x2_list, embed=False):
 
         x1_cat = torch.cat(x1_list, 1)
         x2_cat = torch.cat(x2_list, 1)
 
-        mask1, mask2 = self.get_batch_masks()
+        mask1, mask2 = self.get_batch_masks(embed)
 
         X1_batch = torch.mul(mask1, x1_cat)
         X2_batch = torch.mul(mask2, x2_cat)
 
         return X1_batch, X2_batch
 
-    def forward(self, x1_list, x2_list, y):
+    def forward(self, x1_list, x2_list, y, embed=False, *args, **kwargs):
         X1_batch, X2_batch = self.integration_method(x1_list, x2_list)
         return X1_batch, X2_batch, y
 
@@ -246,7 +250,7 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
         return torch.add(term1, term2)
 
 
-    def forward(self, x1_list, x2_list, y):
+    def forward(self, x1_list, x2_list, y, *args, **kwargs):
         num_pairs = len(x1_list[0])
         x1_zipped = list(zip(*x1_list))
         x2_zipped = list(zip(*x2_list))
