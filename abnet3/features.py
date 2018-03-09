@@ -31,7 +31,7 @@ class FeaturesGenerator:
         """
 
         :param files: list of wav file paths, or folder
-        :param output_path: Location of the output h5features file
+        :param output_path: path to the output h5features file
         :param load_mean_variance_path: (optional)
             Should be None, or the path to an existing file.
             If this is a path, it will use the file at the provided location
@@ -362,37 +362,38 @@ class FeaturesGenerator:
 
         tempdir = os.path.join(os.path.dirname(self.output_path), 'tmp')
         os.makedirs(tempdir, exist_ok=True)
-        h5_temp1 = tempdir + '/temp1'
-        print("Spectral transforming with %s" % self.method)
-        self.h5features_compute(self.files, h5_temp1, featfunc=f)
+        try:
+            h5_temp1 = tempdir + '/temp1'
+            print("Spectral transforming with %s" % self.method)
+            self.h5features_compute(self.files, h5_temp1, featfunc=f)
 
-        if self.normalization:
-            print("Normalizing")
-            h5_temp2 = tempdir + '/temp2'
-            if self.norm_per_file:
-                self.mean_var_norm_per_file(h5_temp1, h5_temp2,
-                                            vad_file=self.vad_file)
-            else:
-                if self.load_mean_variance_path is not None:
-                    params = self.load_mean_variance(
-                        file_path=self.load_mean_variance_path)
+            if self.normalization:
+                print("Normalizing")
+                h5_temp2 = tempdir + '/temp2'
+                if self.norm_per_file:
+                    self.mean_var_norm_per_file(h5_temp1, h5_temp2,
+                                                vad_file=self.vad_file)
                 else:
-                    params = None
-                mean, variance = self.mean_variance_normalisation(
-                    h5_temp1, h5_temp2, params=params,
-                    vad_file=self.vad_file
-                )
-                if self.save_mean_variance_path is not None:
-                    self.save_mean_variance(
-                        mean, variance,
-                        output_file=self.save_mean_variance_path)
-        else:
-            h5_temp2 = h5_temp1
-        if self.stack:
-            print("Stacking frames")
-            self.h5features_feats2stackedfeats(h5_temp2, self.output_path,
-                                               nframes=self.nframes)
-        else:
-            shutil.copy(h5_temp2, self.output_path)
-
-        shutil.rmtree(tempdir)
+                    if self.load_mean_variance_path is not None:
+                        params = self.load_mean_variance(
+                            file_path=self.load_mean_variance_path)
+                    else:
+                        params = None
+                    mean, variance = self.mean_variance_normalisation(
+                        h5_temp1, h5_temp2, params=params,
+                        vad_file=self.vad_file
+                    )
+                    if self.save_mean_variance_path is not None:
+                        self.save_mean_variance(
+                            mean, variance,
+                            output_file=self.save_mean_variance_path)
+            else:
+                h5_temp2 = h5_temp1
+            if self.stack:
+                print("Stacking frames")
+                self.h5features_feats2stackedfeats(h5_temp2, self.output_path,
+                                                   nframes=self.nframes)
+            else:
+                shutil.copy(h5_temp2, self.output_path)
+        finally:
+            shutil.rmtree(tempdir)
