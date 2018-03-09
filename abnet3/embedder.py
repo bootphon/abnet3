@@ -156,6 +156,9 @@ class MultimodalEmbedder(EmbedderBuilder):
         self.network.eval()
         print("Done loading network weights")
 
+        if self.cuda:
+            self.network.cuda()
+
         items = None
         times = None
         features_list = []
