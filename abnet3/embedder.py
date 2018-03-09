@@ -136,15 +136,21 @@ class MultimodalEmbedder(EmbedderBuilder):
 
     """
 
-    def __init__(self, integration_unit, *args, **kwargs):
+    def __init__(self, integration_unit, integration_path=None, *args, **kwargs):
         super(MultimodalEmbedder, self).__init__(*args, **kwargs)
 
         self.integration_unit = integration_unit
+        self.integration_path = integration_path
 
     def embed(self):
         """ Embed method to embed features based on a saved network
 
         """
+
+        if self.integration_path is not None:
+            self.integration_unit.load(self.integration_path)
+        print("Done loading integration unit")
+
         if self.network_path is not None:
             self.network.load_network(self.network_path)
         self.network.eval()
@@ -185,7 +191,7 @@ class MultimodalEmbedder(EmbedderBuilder):
                 modes_list.append(feat_torch)
             x1_input, _, _ = self.integration_unit(modes_list,
                                                    modes_list,
-                                                   None, 
+                                                   None,
                                                    embed=True)
             emb, _ = self.network(x1_input, x1_input)
             emb = emb.cpu()

@@ -25,9 +25,10 @@ class IntegrationUnitBuilder(nn.Module):
     Base class for integration units
     """
 
-    def __init__(self, cuda_bool=False, *args, **kwargs):
+    def __init__(self, output_path="", cuda_bool=False, *args, **kwargs):
         super(IntegrationUnitBuilder, self).__init__()
 
+        self.output_path = output_path
         self.cuda_bool = cuda_bool
 
     def integration_method(self, *args, **kwargs):
@@ -49,6 +50,13 @@ class IntegrationUnitBuilder(nn.Module):
         """Used for starting the integration unit
         """
 
+    def save(self, epoch=''):
+        torch.save(self.state_dict(), self.output_path + epoch + '.pth')
+
+    def load(self, integration_path=None):
+        self.load_state_dict(torch.load(integration_path))
+
+
 
 class ConcatenationIntegration(IntegrationUnitBuilder):
 
@@ -69,7 +77,7 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
 
         return concat_batch
 
-    def forward(self, x1_list, x2_list, y, *args, **kwargs):
+    def forward(self, x1_list, x2_list, y):
         X1_batch = self.integration_method(x1_list)
         X2_batch = self.integration_method(x2_list)
         return X1_batch, X2_batch, y
@@ -139,7 +147,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         return expanded_rep_modes
 
 
-    def get_batch_masks(self, embed=False):
+    def get_batch_masks(self):
         mask1 = []
         mask2 = []
         if embed:
@@ -158,7 +166,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         return mask1, mask2
 
 
-    def integration_method(self, x1_list, x2_list, embed=False):
+    def integration_method(self, x1_list, x2_list):
 
         x1_cat = torch.cat(x1_list, 1)
         x2_cat = torch.cat(x2_list, 1)
@@ -170,7 +178,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 
         return X1_batch, X2_batch
 
-    def forward(self, x1_list, x2_list, y, embed=False, *args, **kwargs):
+    def forward(self, x1_list, x2_list, y):
         X1_batch, X2_batch = self.integration_method(x1_list, x2_list)
         return X1_batch, X2_batch, y
 
@@ -250,7 +258,7 @@ class BiWeightedIntegration(IntegrationUnitBuilder):
         return torch.add(term1, term2)
 
 
-    def forward(self, x1_list, x2_list, y, *args, **kwargs):
+    def forward(self, x1_list, x2_list, y):
         num_pairs = len(x1_list[0])
         x1_zipped = list(zip(*x1_list))
         x2_zipped = list(zip(*x2_list))

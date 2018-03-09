@@ -383,6 +383,63 @@ class MultimodalTrainer(TrainerBuilder):
             self.optimizer = optim.LBFGS(optimizer_parameters,
                                          lr=self.lr)
 
+    def train(self):
+        """Train method to train the model
+
+        """
+        self.patience_dev = 0
+        self.best_dev = None
+
+        self.train_losses = []
+        self.dev_losses = []
+        self.num_batches_train = 0
+        self.num_batches_dev = 0
+
+        self.network.eval()
+        self.network.save_network()
+
+        train_writer = SummaryWriter(log_dir=str(self.log_dir / 'train_loss'))
+        dev_writer = SummaryWriter(log_dir=str(self.log_dir / 'dev_loss'))
+
+        _ = self.optimize_model(do_training=False)
+        train_writer.add_scalar('loss', self.train_losses[-1], 0)
+        dev_writer.add_scalar('loss', self.dev_losses[-1], 0)
+
+        for key in self.statistics_training.keys():
+            self.statistics_training[key] = 0
+
+        for epoch in range(self.num_epochs):
+            start_time = time.time()
+
+            dev_loss = self.optimize_model(do_training=True)
+
+            # tensorboard logging
+            train_writer.add_scalar('loss', self.train_losses[-1], epoch + 1)
+            dev_writer.add_scalar('loss', self.dev_losses[-1], epoch + 1)
+
+            if self.best_dev is None or dev_loss < self.best_dev:
+                self.best_dev = dev_loss
+                self.patience_dev = 0
+                print('Saving best model so far, ' +
+                      'epoch {}... '.format(epoch+1), end='', flush=True)
+                self.save_state()
+                self.save_whoami()
+                print("Done.")
+                self.best_epoch = epoch
+            else:
+                self.patience_dev += 1
+                if self.patience_dev > self.patience:
+                    print("No improvements after {} iterations, "
+                          "stopping now".format(self.patience))
+                    print('Finished Training')
+                    break
+
+        print('Saving best checkpoint network')
+
+    def save_state(self):
+        self.network.save_network()
+        self.integration_unit.save()
+
     def cuda_all_modes(self, batch_list):
         cuda_on = []
         for mode in batch_list:
