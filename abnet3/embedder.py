@@ -147,7 +147,6 @@ class MultimodalEmbedder(EmbedderBuilder):
         if self.network_path is not None:
             self.network.load_network(self.network_path)
         self.network.eval()
-        print("Done loading network weights")
 
         if self.cuda:
             self.network.cuda()

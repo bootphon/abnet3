@@ -404,7 +404,6 @@ class MultimodalSiameseNetwork(SiameseNetwork):
                        p_dropout=0, batch_norm=False,
                        type_init='xavier_uni', activation_layer=None,
                        output_path=None):
-        super(MultimodalSiameseNetwork, self).__init__()
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
         assert not pre_integration_net_params or \
