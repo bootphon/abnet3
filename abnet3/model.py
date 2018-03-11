@@ -518,6 +518,12 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         output2 = self.forward_once(input2)
         return output1, output2
 
+    def whoami(self):
+        """Output description for the neural network and all parameters
+
+        """
+        return {'params': self.__dict__, 'class_name': self.__class__.__name__}
+
     def save_network(self, epoch=''):
         torch.save(self.state_dict(), self.output_path + epoch + 'network.pth')
         print("Saved network")
