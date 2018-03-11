@@ -350,7 +350,7 @@ class MultimodalTrainer(TrainerBuilder):
 
 
             self.optimizer.zero_grad()
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
+            emb_batch1, emb_batch2 = self.network(X_list1, X_list2)
             train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
             if do_training:
                 train_loss_value.backward()
@@ -371,7 +371,7 @@ class MultimodalTrainer(TrainerBuilder):
             else:
                 self.num_batches_dev += 1
 
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
+            emb_batch1, emb_batch2 = self.network(X_list1, X_list2)
             dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
             dev_loss += dev_loss_value.data[0]
 
