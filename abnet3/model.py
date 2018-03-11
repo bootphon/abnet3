@@ -417,7 +417,7 @@ class MultimodalSiameseNetwork(SiameseNetwork):
         self.output_path = output_path
         # Pass forward network functions
 
-        self.activation = activation_functions[activation_layer]
+        self.activation_function = activation_functions[activation_layer]
 
         #Create nets
 
@@ -449,7 +449,7 @@ class MultimodalSiameseNetwork(SiameseNetwork):
         ]
         if self.batch_norm:
             input_layer.append(nn.BatchNorm1d(hidden_dim))
-        input_layer.append(self.activation)
+        input_layer.append(self.activation_function)
         input_emb = nn.Sequential(*input_layer)
 
         # hidden layers
@@ -459,7 +459,7 @@ class MultimodalSiameseNetwork(SiameseNetwork):
             hidden_layers.append(nn.Dropout(p=self.p_dropout))
             if self.batch_norm:
                 hidden_layers.append(nn.BatchNorm1d(hidden_dim))
-            hidden_layers.append(self.activation)
+            hidden_layers.append(self.activation_function)
         hidden_layers = nn.Sequential(*hidden_layers)
 
         # output layer
@@ -468,7 +468,7 @@ class MultimodalSiameseNetwork(SiameseNetwork):
             nn.Dropout(p=p_dropout)]
         if self.batch_norm:
             output_layer.append(nn.BatchNorm1d(output_dim))
-        output_layer.append(self.activation)
+        output_layer.append(self.activation_function)
         output_layer = nn.Sequential(*output_layer)
         return input_layer, hidden_layers, output_layer
 
