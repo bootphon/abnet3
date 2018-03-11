@@ -424,23 +424,30 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         #Create nets
 
         if pre_integration_net_params:
-            self.pre_net1 = self.build_net(*pre_integration_net_params[0], activation)
-            self.pre_net2 = self.build_net(*pre_integration_net_params[1], activation)
+            self.pre_net1_in, self.pre_net1_hidden, self.pre_net1_out = \
+                        self.build_net(*pre_integration_net_params[0], activation)
+
+            self.pre_net2_in, self.pre_net2_hidden, self.pre_net2_out = \
+                        self.build_net(*pre_integration_net_params[1], activation)
+
             self.pre = True
+            self.pre_net1 = [self.pre_net1_in, self.pre_net1_hidden, self.pre_net1_out]
+            self.pre_net2 = [self.pre_net2_in, self.pre_net2_hidden, self.pre_net2_out]
         else:
             self.pre = False
 
 
 
         if post_integration_net_params:
-            self.post_net = self.build_net(*post_integration_net_params, activation)
+            self.post_net_in, self.post_net_hidden, self.post_net_out = \
+                            self.build_net(*post_integration_net_params, activation)
             self.post = True
+            self.post_net = [self.post_net_in, self.post_net_hidden, self.post_net_out]
         else:
             self.post = False
 
         #Init nets
         self.apply(self.init_weight_method)
-        print(self.parameters())
 
     def build_net(self, input_dim, n_hidden, hidden_dim, output_dim, activation):
 
@@ -481,17 +488,24 @@ class MultimodalSiameseNetwork(NetworkBuilder):
                       gain=nn.init.calculate_gain(self.activation_layer))
             layer.bias.data.fill_(0.0)
 
+    def net_forward(self, x, input_layer, hidden_layer, output_layer):
+        output = input_layer(x)
+        output = hidden_layer(x)
+        output = output_layer(x)
+        return output
+
+
     def forward_once(self, x_list):
         """Simple forward pass for one instance x_list, which contains multiple
         inputs
 
         """
         if self.pre:
-            x1 = self.pre_net1(x_list[0])
-            x2 = self.pre_net1(x_list[1])
+            x1 = self.net_forward(x_list[0], *self.pre_net1)
+            x2 = self.net_forward(x_list[1], *self.pre_net2)
         output = self.integration_unit([x1, x2])
         if self.post:
-            output = self.post_net(output)
+            output = self.net_forward(output, *self.post_net)
         return output
 
     def forward(self, input1, input2):
