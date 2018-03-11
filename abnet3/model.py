@@ -364,6 +364,131 @@ class SiameseMultitaskNetwork(NetworkBuilder):
         self.load_state_dict(torch.load(network_path))
 
 
+class MultimodalSiameseNetwork(SiameseNetwork):
+    """Multimodal Siamese neural network Architecture
+
+    Parameters
+    ----------
+    integration_unit: Integration Class
+        Integration unit, which joins the inputs
+    pre_integration_net_params : List of tuples
+        Every tuple refers to one of the modality networks, previous to integration
+        it should have this form:
+            tuple[0] : Int, input dim of said network
+            tuple[1] : Int, number of hidden layers of said network
+            tuple[2] : Int, hidden layers dim of said network
+            tuple[3] : Int, output dim of said network
+        If None, the integration unit will be the first layer
+    post_integration_net_params : Tuple
+        Tuple, indicating the parameters of the after integration network. It
+        should have the same form as the pre integration tuples
+        If None, the integration unit will be the last layer
+    p_dropout: Float
+        Probability to drop a unit during forward training (common to all nets)
+    batch_norm: Bool
+        Add batch normalization layer on the first layer(s)
+    type_init: String
+        Type of weight initialization (common to all nets)
+    activation_layer: String
+        Type of activation layer (common to all nets)
+    output_path: String
+        Path to save network, params
+    """
+    #TODO: add possibility of different activation layers, different dropouts,
+    #      different activations, etc...
+    #TODO: support more than 2 inputs
+
+    def __init__(self, integration_unit,
+                       pre_integration_net_params=None,
+                       post_integration_net_params=None,
+                       p_dropout=0, batch_norm=False,
+                       type_init='xavier_uni', activation_layer=None,
+                       output_path=None):
+        super(MultimodalSiameseNetwork, self).__init__()
+        assert activation_layer in ('relu', 'sigmoid', 'tanh')
+        assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
+        assert not pre_integration_net_params or \
+                len(pre_integration_net_params) == 2, 'Only 2 inputs supported for now'
+
+
+        self.activation_layer = activation_layer
+        self.batch_norm = batch_norm
+        self.type_init = type_init
+        self.p_dropout = p_dropout
+        self.output_path = output_path
+        # Pass forward network functions
+
+        activation = activation_functions[activation_layer]
+
+        #Create nets
+
+        if pre_integration_net_params:
+            self.pre_net1 = self.build_net(*pre_integration_net_params[0])
+            self.pre_net2 = self.build_net(*pre_integration_net_params[1])
+            self.pre = True
+        else:
+            self.pre = False
+
+        self.integration_unit = integration_unit
+
+        if post_integration_net_params:
+            self.post_net = self.build_net(*post_integration_net_params)
+            self.post = True
+        else:
+            self.post = False
+
+        #Init nets
+        self.apply(self.init_weight_method)
+
+    def build_net(self, input_dim, n_hidden, hidden_dim, output_dim):
+
+        # input layer
+        input_layer = [
+            nn.Linear(input_dim, hidden_dim),
+            nn.Dropout(p=self.p_dropout),
+        ]
+        if self.batch_norm:
+            input_layer.append(nn.BatchNorm1d(hidden_dim))
+        input_layer.append(activation)
+        input_emb = nn.Sequential(*input_layer)
+
+        # hidden layers
+        hidden_layers = []
+        for idx in range(n_hidden):
+            hidden_layers.append(nn.Linear(hidden_dim, hidden_dim))
+            hidden_layers.append(nn.Dropout(p=self.p_dropout))
+            if self.batch_norm:
+                hidden_layers.append(nn.BatchNorm1d(hidden_dim))
+            hidden_layers.append(activation)
+        hidden_layers = nn.Sequential(*hidden_layers)
+
+        # output layer
+        output_layer = [
+            nn.Linear(hidden_dim, output_dim),
+            nn.Dropout(p=p_dropout)]
+        if self.batch_norm:
+            output_layer.append(nn.BatchNorm1d(output_dim))
+        output_layer.append(activation)
+        output_layer = nn.Sequential(*output_layer)
+        return input_layer, hidden_layers, output_layer
+
+
+
+    def forward_once(self, x_list):
+        """Simple forward pass for one instance x_list, which contains multiple
+        inputs
+
+        """
+        if self.pre:
+            x1 = self.pre_net1(x_list[0])
+            x2 = self.pre_net1(x_list[1])
+        output = self.integration_unit([x1, x2])
+        if self.post:
+            output = self.post_net(output)
+        return output
+
+
+
 if __name__ == '__main__':
     sia = SiameseNetwork(input_dim=3, num_hidden_layers=2, hidden_dim=10,
                          output_dim=19, p_dropout=0.1,
