@@ -254,7 +254,7 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
 
     def integration_method(self, i1, i2):
         self.weight_value = self.compute_attention_weight(i1, i2)
-        self.weight_complement = 1 - self.a_value
+        self.weight_complement = 1 - self.weight_value
         return super(BiWeightedLearntSum, self).integration_method(i1, i2)
 
 class BiWeightedFixedCat(IntegrationUnitBuilder):
@@ -317,5 +317,5 @@ class BiWeightedLearntCat(BiWeightedFixedCat):
 
     def integration_method(self, i1, i2):
         self.weight_vector = self.compute_attention_weight(i1, i2)
-        self.weight_complement = torch.add(torch.mul(weight_vector, -1), 1)
+        self.weight_complement = torch.add(torch.mul(self.weight_vector, -1), 1)
         return super(BiWeightedLearntCat, self).integration_method(i1, i2)
