@@ -415,6 +415,7 @@ class MultimodalSiameseNetwork(SiameseNetwork):
         self.type_init = type_init
         self.p_dropout = p_dropout
         self.output_path = output_path
+        self.integration_unit = integration_unit
         # Pass forward network functions
 
         activation = activation_functions[activation_layer]
@@ -428,7 +429,7 @@ class MultimodalSiameseNetwork(SiameseNetwork):
         else:
             self.pre = False
 
-        self.integration_unit = integration_unit
+
 
         if post_integration_net_params:
             self.post_net = self.build_net(*post_integration_net_params, activation)
