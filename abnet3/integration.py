@@ -196,31 +196,33 @@ class BiWeightedFixedSum(IntegrationUnitBuilder):
     def __init__(self, a_value = 0.5, *args, **kwargs):
         super(BiWeightedFixedSum, self).__init__(*args, **kwargs)
 
-        assert a_value >= 0, "a_value must be possitive"
+        assert a_value >= 0, "a_value must be possitive or 0"
         assert a_value <= 1, "a_value must be less or equal than 1"
         self.a_value = a_value
         self.a_complement = 1 - a_value
 
-    def integration_method(self, x_list):
-        v1_weighted = torch.mul(x_list[0], self.a_value)
-        v2_weighted = torch.mul(x_list[1], self.a_complement)
+    def integration_method(self, i1, i2):
+        v1_weighted = torch.mul(i1, self.a_value)
+        v2_weighted = torch.mul(i2, self.a_complement)
 
         return torch.add(v1_weighted, v2_weighted)
 
 
 
     def forward(self, x1_list, x2_list, y):
-        X1_batch = self.integration_method(x1_list)
-        X2_batch = self.integration_method(x2_list)
+        X1_batch = self.integration_method(*x1_list)
+        X2_batch = self.integration_method(*x2_list)
         return X1_batch, X2_batch, y
 
 
-class BiWeightedSumIntegration(IntegrationUnitBuilder):
+class BiWeightedLearntSum(BiWeightedFixedSum):
     """
-    Specify parameters and description
+    Sums two vectors of the same dimension, using a weight and it's compliment.
+    Said weight is learnt, using a linear projection of the input vectors
     """
 
-    def __init__(self, activation_type, init_type='xavier_uni', *args, **kwargs):
+    def __init__(self, input_dim, activation_type, init_type='xavier_uni',
+                       *args, **kwargs):
         super(BiWeightedIntegration, self).__init__(*args, **kwargs)
         assert activation_type in ('relu', 'sigmoid', 'tanh')
         assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
@@ -228,10 +230,9 @@ class BiWeightedSumIntegration(IntegrationUnitBuilder):
         self.activation = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
-        self.padding_size = 0
-        self.shorter_input = None
-        self.linear1 = None
-        self.linear2 = None
+        self.linear1 = self.construct_linear_projection(input_dim, 1)
+        self.linear2 = self.construct_linear_projection(input_dim, 1)
+        self.apply(self.init_weight_method)
 
     def init_weight_method(self, layer):
         if isinstance(layer, nn.Linear):
@@ -245,67 +246,14 @@ class BiWeightedSumIntegration(IntegrationUnitBuilder):
                             self.activation]
         return nn.Sequential(*projection_layer)
 
-    def bootstrap(self, bootstrap_batch):
-        dim1 = bootstrap_batch[0][0][0].size()[0]
-        dim2 = bootstrap_batch[0][1][0].size()[0]
-        attention_vector_dim = max(dim1, dim2)
 
-
-        self.linear1 = self.construct_linear_projection(dim1, attention_vector_dim)
-        self.linear2 = self.construct_linear_projection(dim2, attention_vector_dim)
-        self.apply(self.init_weight_method)
-
-        self.padding_size = abs(dim1 - dim2)
-        if dim1 < dim2:
-            self.shorter_input = 0
-        elif dim2 < dim1:
-            self.shorter_input = 1
-
-
-    def compute_attention_vector(self, i1, i2):
+    def compute_attention_weight(self, i1, i2):
         linear1_output = self.linear1(i1)
         linear2_output = self.linear2(i2)
 
         return torch.add(linear1_output, linear2_output)
 
-    def pad_shorter(self, i):
-        padding = Variable(torch.zeros(self.padding_size))
-        if self.cuda_bool:
-            padding = padding.cuda()
-        i = torch.cat([i, padding], 0)
-        return i
-
     def integration_method(self, i1, i2):
-        attention_vector = self.compute_attention_vector(i1, i2)
-        attention_complement = torch.add(torch.mul(attention_vector, -1), 1) # (1 - attention)
-
-        #TODO: use padding pytorch function
-        if self.shorter_input == 0:
-            i1 = self.pad_shorter(i1)
-        elif self.shorter_input == 1:
-            i2 = self.pad_shorter(i2)
-
-        term1 = torch.mul(attention_vector, i1)
-        term2 = torch.mul(attention_complement, i2)
-
-        return torch.add(term1, term2)
-
-
-    def forward(self, x1_list, x2_list, y, embed=False, *args, **kwargs):
-        num_pairs = len(x1_list[0])
-        x1_zipped = list(zip(*x1_list))
-        x2_zipped = list(zip(*x2_list))
-
-        x1_to_cat = []
-        x2_to_cat = []
-
-        for i in range(num_pairs):
-            X1 = self.integration_method(*x1_zipped[i])
-            X2 = self.integration_method(*x2_zipped[i])
-
-            x1_to_cat.append(X1)
-            x2_to_cat.append(X2)
-
-        X1_batch = torch.stack(x1_to_cat, 0)
-        X2_batch = torch.stack(x2_to_cat, 0)
-        return X1_batch, X2_batch, y
+        self.a_value = compute_attention_weight(i1, i2)
+        self.a_complement = 1 - self.a_value
+        return super(BiWeightedIntegration, self).integration_method(i1, i2)
