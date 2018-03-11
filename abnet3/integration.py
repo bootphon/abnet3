@@ -51,10 +51,10 @@ class IntegrationUnitBuilder(nn.Module):
         """
 
     def save(self, epoch=''):
-        torch.save(self.state_dict(), self.output_path + epoch + '.pth')
+        torch.save(self.state_dict(), self.output_path + epoch + 'integration.pth')
 
-    def load(self, integration_path=None):
-        self.load_state_dict(torch.load(integration_path))
+    def load(self, path=None):
+        self.load_state_dict(torch.load(path+'integration.pth'))
 
 
 

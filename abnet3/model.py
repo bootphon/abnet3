@@ -439,6 +439,7 @@ class MultimodalSiameseNetwork(SiameseNetwork):
 
         #Init nets
         self.apply(self.init_weight_method)
+        print(self.parameters())
 
     def build_net(self, input_dim, n_hidden, hidden_dim, output_dim):
 
@@ -486,6 +487,18 @@ class MultimodalSiameseNetwork(SiameseNetwork):
         if self.post:
             output = self.post_net(output)
         return output
+
+    def save_network(self, epoch=''):
+        torch.save(self.state_dict(), self.output_path + epoch + 'network.pth')
+        print("Saved network")
+        self.integration_unit.save()
+        print("Saved integration unit")
+
+    def load_network(self, path=None):
+        self.load_state_dict(torch.load(+'network.pth'))
+        print("Done loading network")
+        self.integration_unit.load(path)
+        print("Done loading integration unit")
 
 
 

@@ -321,122 +321,10 @@ class MultimodalTrainer(TrainerBuilder):
     """Multimodal Trainer class for ABnet3
 
     """
-    def __init__(self, integration_unit, network=None, loss=None,
-                 num_epochs=200, patience=20,
-                 optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
-                 seed=0, dataloader=None, log_dir=None,
-                 feature_generator=None):
+    def __init__(self, *args, **kwargs):
 
-        self.network = network
-        assert type(self.network) == abnet3.model.SiameseNetwork
-
-        self.loss = loss
-        self.num_epochs = num_epochs
-        self.patience = patience
-        self.lr = lr
-        self.momentum = momentum
-        self.best_epoch = 0
-        self.seed = seed
-        self.cuda = cuda
-        self.statistics_training = {}
-        self.dataloader = dataloader
+        super(MultimodalTrainer, self).__init__(*args, **kwargs)
         assert type(self.dataloader) == abnet3.dataloader.MultimodalDataLoader
-
-        self.feature_generator = feature_generator
-        self.integration_unit = integration_unit
-        
-        if cuda:
-            self.loss.cuda()
-            self.network.cuda()
-            self.integration_unit.cuda()
-
-        if log_dir is None:
-            self.log_dir = Path('./runs/%s' % time.strftime('%m-%d-%Hh%M-%S'))
-        else:
-            self.log_dir = Path(log_dir) / ('%s' % time.strftime('%m-%d-%Hh%M-%S'))
-
-        assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
-                                  'RMSprop', 'LBFGS')
-
-
-        optimizer_parameters = list(self.network.parameters()) + \
-                           list(self.integration_unit.parameters())
-
-        if optimizer_type == 'sgd':
-            self.optimizer = optim.SGD(optimizer_parameters,
-                                       lr=self.lr, momentum=self.momentum)
-        if optimizer_type == 'adadelta':
-            self.optimizer = optim.Adadelta(optimizer_parameters,
-                                            lr=self.lr)
-        if optimizer_type == 'adam':
-            self.optimizer = optim.Adam(optimizer_parameters,
-                                        lr=self.lr)
-        if optimizer_type == 'adagrad':
-            self.optimizer = optim.Adagrad(optimizer_parameters,
-                                           lr=self.lr)
-        if optimizer_type == 'RMSprop':
-            self.optimizer = optim.RMSprop(optimizer_parameters,
-                                           lr=self.lr)
-        if optimizer_type == 'LBFGS':
-            self.optimizer = optim.LBFGS(optimizer_parameters,
-                                         lr=self.lr)
-
-    def train(self):
-        """Train method to train the model
-
-        """
-        self.patience_dev = 0
-        self.best_dev = None
-
-        self.train_losses = []
-        self.dev_losses = []
-        self.num_batches_train = 0
-        self.num_batches_dev = 0
-
-        self.network.eval()
-        self.network.save_network()
-
-        train_writer = SummaryWriter(log_dir=str(self.log_dir / 'train_loss'))
-        dev_writer = SummaryWriter(log_dir=str(self.log_dir / 'dev_loss'))
-
-        _ = self.optimize_model(do_training=False)
-        train_writer.add_scalar('loss', self.train_losses[-1], 0)
-        dev_writer.add_scalar('loss', self.dev_losses[-1], 0)
-
-        for key in self.statistics_training.keys():
-            self.statistics_training[key] = 0
-
-        for epoch in range(self.num_epochs):
-            start_time = time.time()
-
-            dev_loss = self.optimize_model(do_training=True)
-
-            # tensorboard logging
-            train_writer.add_scalar('loss', self.train_losses[-1], epoch + 1)
-            dev_writer.add_scalar('loss', self.dev_losses[-1], epoch + 1)
-
-            if self.best_dev is None or dev_loss < self.best_dev:
-                self.best_dev = dev_loss
-                self.patience_dev = 0
-                print('Saving best model so far, ' +
-                      'epoch {}... '.format(epoch+1), end='', flush=True)
-                self.save_state()
-                self.save_whoami()
-                print("Done.")
-                self.best_epoch = epoch
-            else:
-                self.patience_dev += 1
-                if self.patience_dev > self.patience:
-                    print("No improvements after {} iterations, "
-                          "stopping now".format(self.patience))
-                    print('Finished Training')
-                    break
-
-        print('Saving best checkpoint network')
-
-    def save_state(self):
-        self.network.save_network()
-        self.integration_unit.save()
 
     def cuda_all_modes(self, batch_list):
         cuda_on = []
@@ -458,9 +346,7 @@ class MultimodalTrainer(TrainerBuilder):
                 X_list1 = self.cuda_all_modes(X_list1)
                 X_list2 = self.cuda_all_modes(X_list2)
                 y_batch = y_batch.cuda()
-            X_batch1, X_batch2, y_batch = self.integration_unit(X_list1,
-                                                                X_list2,
-                                                                y_batch)
+
 
 
             self.optimizer.zero_grad()
@@ -479,9 +365,6 @@ class MultimodalTrainer(TrainerBuilder):
                 X_list1 = self.cuda_all_modes(X_list1)
                 X_list2 = self.cuda_all_modes(X_list2)
                 y_batch = y_batch.cuda()
-            X_batch1, X_batch2, y_batch = self.integration_unit(X_list1,
-                                                                X_list2,
-                                                                y_batch)
 
             if do_training:
                 pass
