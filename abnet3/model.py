@@ -440,7 +440,7 @@ class MultimodalSiameseNetwork(SiameseNetwork):
         self.apply(self.init_weight_method)
         print(self.parameters())
 
-    def build_net(self, input_dim, n_hidden, hidden_dim, output_dim):
+    def build_net(self, input_dim, n_hidden, hidden_dim, output_dim, activation):
 
         # input layer
         input_layer = [
