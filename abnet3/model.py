@@ -490,8 +490,8 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
     def net_forward(self, x, input_layer, hidden_layer, output_layer):
         output = input_layer(x)
-        output = hidden_layer(x)
-        output = output_layer(x)
+        output = hidden_layer(output)
+        output = output_layer(output)
         return output
 
 
