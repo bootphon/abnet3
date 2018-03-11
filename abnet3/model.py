@@ -364,7 +364,7 @@ class SiameseMultitaskNetwork(NetworkBuilder):
         self.load_state_dict(torch.load(network_path))
 
 
-class MultimodalSiameseNetwork(SiameseNetwork):
+class MultimodalSiameseNetwork(NetworkBuilder):
     """Multimodal Siamese neural network Architecture
 
     Parameters
@@ -403,7 +403,8 @@ class MultimodalSiameseNetwork(SiameseNetwork):
                        post_integration_net_params=None,
                        p_dropout=0, batch_norm=False,
                        type_init='xavier_uni', activation_layer=None,
-                       output_path=None):
+                       output_path=None, *args, **kwargs):
+        super(MultimodalSiameseNetwork, self).__init__(*args, **kwargs)
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
         assert not pre_integration_net_params or \
@@ -473,7 +474,12 @@ class MultimodalSiameseNetwork(SiameseNetwork):
         output_layer = nn.Sequential(*output_layer)
         return input_layer, hidden_layers, output_layer
 
-
+    def init_weight_method(self, layer):
+        if isinstance(layer, nn.Linear):
+            init_func = init_functions[self.type_init]
+            init_func(layer.weight.data,
+                      gain=nn.init.calculate_gain(self.activation_layer))
+            layer.bias.data.fill_(0.0)
 
     def forward_once(self, x_list):
         """Simple forward pass for one instance x_list, which contains multiple
@@ -487,6 +493,16 @@ class MultimodalSiameseNetwork(SiameseNetwork):
         if self.post:
             output = self.post_net(output)
         return output
+
+    def forward(self, input1, input2):
+        """Forward pass through the same network
+
+        https://discuss.pytorch.org/t/how-to-create-model-with-sharing-weight/398/2
+        reason for design of the siamese
+        """
+        output1 = self.forward_once(input1)
+        output2 = self.forward_once(input2)
+        return output1, output2
 
     def save_network(self, epoch=''):
         torch.save(self.state_dict(), self.output_path + epoch + 'network.pth')
