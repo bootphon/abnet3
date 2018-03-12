@@ -56,6 +56,9 @@ class IntegrationUnitBuilder(nn.Module):
     def load(self, path=None):
         self.load_state_dict(torch.load(path+'integration.pth'))
 
+    def __str__(self):
+        return str(self.__class__.__name__)
+
 
 
 class ConcatenationIntegration(IntegrationUnitBuilder):
@@ -207,8 +210,6 @@ class BiWeightedFixedSum(IntegrationUnitBuilder):
 
         return torch.add(v1_weighted, v2_weighted)
 
-
-
     def forward(self, x_list):
         X = self.integration_method(*x_list)
         return X
@@ -226,6 +227,7 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
         assert activation_type in ('sigmoid', 'tanh')
         assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
 
+        self.input_dim = input_dim
         self.activation = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
@@ -256,6 +258,14 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
         self.weight_value = self.compute_attention_weight(i1, i2)
         self.weight_complement = 1 - self.weight_value
         return super(BiWeightedLearntSum, self).integration_method(i1, i2)
+
+    def __str__(self):
+        _str = ""
+        _str += str(self.__class__.__name__)
+        _str += "\n"
+        _str += "Input dim:     {}\n".format(self.input_dim)
+        _str += "Activation:    {}\n".format(self.activation_type)
+        return _str
 
 class BiWeightedFixedCat(IntegrationUnitBuilder):
     """

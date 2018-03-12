@@ -371,17 +371,20 @@ class MultimodalSiameseNetwork(NetworkBuilder):
     ----------
     integration_unit: Integration Class
         Integration unit, which joins the inputs
-    pre_integration_net_params : List of tuples
-        Every tuple refers to one of the modality networks, previous to integration
-        it should have this form:
-            tuple[0] : Int, input dim of said network
-            tuple[1] : Int, number of hidden layers of said network
-            tuple[2] : Int, hidden layers dim of said network
-            tuple[3] : Int, output dim of said network
+    pre_integration_net_params : List of lists
+        Every list refers to one of the modality networks. This lists must contain
+        only integers, and must have len equal or greater than two. Each integer
+        represents an internal representation dimension, except the first one
+        that represents the input dimension and the last one that represents
+        the output dimension. Every one of this representations will be joined
+        by a fully connected linear layer, so for example the list [280, 1000, 39]
+        means that the input of that network is 280, then a linear layer will
+        take that to 1000 dims, and then a final layer will produce a 39 dimension
+        output vector
         If None, the integration unit will be the first layer
-    post_integration_net_params : Tuple
-        Tuple, indicating the parameters of the after integration network. It
-        should have the same form as the pre integration tuples
+    post_integration_net_params : List
+        List, indicating the dimensions of the after integration network. It
+        should have the same form as the pre integration lists
         If None, the integration unit will be the last layer
     p_dropout: Float
         Probability to drop a unit during forward training (common to all nets)
@@ -424,62 +427,39 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         #Create nets
 
         if pre_integration_net_params:
-            self.pre_net1_in, self.pre_net1_hidden, self.pre_net1_out = \
-                        self.build_net(*pre_integration_net_params[0], activation)
-
-            self.pre_net2_in, self.pre_net2_hidden, self.pre_net2_out = \
-                        self.build_net(*pre_integration_net_params[1], activation)
+            self.pre_net1 = self.build_net(pre_integration_net_params[0], activation)
+            self.pre_net2 = self.build_net(pre_integration_net_params[1], activation)
 
             self.pre = True
-            self.pre_net1 = [self.pre_net1_in, self.pre_net1_hidden, self.pre_net1_out]
-            self.pre_net2 = [self.pre_net2_in, self.pre_net2_hidden, self.pre_net2_out]
         else:
             self.pre = False
 
 
 
         if post_integration_net_params:
-            self.post_net_in, self.post_net_hidden, self.post_net_out = \
-                            self.build_net(*post_integration_net_params, activation)
+            self.post_net = self.build_net(post_integration_net_params, activation)
             self.post = True
-            self.post_net = [self.post_net_in, self.post_net_hidden, self.post_net_out]
         else:
             self.post = False
 
         #Init nets
         self.apply(self.init_weight_method)
 
-    def build_net(self, input_dim, n_hidden, hidden_dim, output_dim, activation):
+    def build_net(self, dimensions_list, activation):
 
-        # input layer
-        input_layer = [
-            nn.Linear(input_dim, hidden_dim),
-            nn.Dropout(p=self.p_dropout),
-        ]
-        if self.batch_norm:
-            input_layer.append(nn.BatchNorm1d(hidden_dim))
-        input_layer.append(activation)
-        input_layer = nn.Sequential(*input_layer)
-
-        # hidden layers
-        hidden_layers = []
-        for idx in range(n_hidden):
-            hidden_layers.append(nn.Linear(hidden_dim, hidden_dim))
-            hidden_layers.append(nn.Dropout(p=self.p_dropout))
+        # layers
+        layers = []
+        for idx in range(len(dimensions_list)-1):
+            in_dim = dimensions_list[idx]
+            out_dim = dimensions_list[idx + 1]
+            layers.append(nn.Linear(in_dim, out_dim))
+            layers.append(nn.Dropout(p=self.p_dropout))
             if self.batch_norm:
-                hidden_layers.append(nn.BatchNorm1d(hidden_dim))
-            hidden_layers.append(activation)
-        hidden_layers = nn.Sequential(*hidden_layers)
+                layers.append(nn.BatchNorm1d(out_dim))
+            layers.append(activation)
+        layers = nn.Sequential(*hidden_layers)
 
-        # output layer
-        output_layer = [
-            nn.Linear(hidden_dim, output_dim),
-            nn.Dropout(p=self.p_dropout)]
-        if self.batch_norm:
-            output_layer.append(nn.BatchNorm1d(output_dim))
-        output_layer.append(activation)
-        output_layer = nn.Sequential(*output_layer)
-        return input_layer, hidden_layers, output_layer
+        return layers
 
     def init_weight_method(self, layer):
         if isinstance(layer, nn.Linear):
@@ -488,12 +468,6 @@ class MultimodalSiameseNetwork(NetworkBuilder):
                       gain=nn.init.calculate_gain(self.activation_layer))
             layer.bias.data.fill_(0.0)
 
-    def net_forward(self, x, input_layer, hidden_layer, output_layer):
-        output = input_layer(x)
-        output = hidden_layer(output)
-        output = output_layer(output)
-        return output
-
 
     def forward_once(self, x_list):
         """Simple forward pass for one instance x_list, which contains multiple
@@ -501,11 +475,11 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
         """
         if self.pre:
-            x1 = self.net_forward(x_list[0], *self.pre_net1)
-            x2 = self.net_forward(x_list[1], *self.pre_net2)
+            x1 = self.pre_net1(x_list[0])
+            x2 = self.pre_net2(x_list[1])
         output = self.integration_unit([x1, x2])
         if self.post:
-            output = self.net_forward(output, *self.post_net)
+            output = self.post_net(output)
         return output
 
     def forward(self, input1, input2):
@@ -535,6 +509,26 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         print("Done loading network")
         self.integration_unit.load(path)
         print("Done loading integration unit")
+
+    def architecture_str(self):
+        _str = "Multimodal Siamese Architecture"
+        if self.pre:
+            i = 1
+            for pre_net in (self.pre_net1, self.pre_net2):
+                _str += "\nPre Net {}:\n".format(i)
+                _str += str(pre_net)
+                _str += "\n"
+                i +=1
+
+        _str += "\nIntegration Unit:\n"
+        _str += self.integration_unit
+        if self.post:
+            _str += "\nPost Net:\n"
+            _str += str(self.post_net)
+            _str += "\n"
+
+        return _str
+
 
 
 
