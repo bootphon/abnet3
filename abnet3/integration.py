@@ -231,8 +231,9 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
         self.activation = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
-        self.linear1 = self.construct_linear_projection(input_dim, 1)
-        self.linear2 = self.construct_linear_projection(input_dim, 1)
+        self.linear1 = nn.Sequential([nn.Linear(input_dim, 1)])
+        self.linear2 = nn.Sequential([nn.Linear(input_dim, 1)])
+        self.activation_layer = nn.Sequential(*[self.activation])
         self.apply(self.init_weight_method)
 
     def init_weight_method(self, layer):
@@ -242,17 +243,12 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
                       gain=nn.init.calculate_gain(self.activation_type))
             layer.bias.data.fill_(0.0)
 
-    def construct_linear_projection(self, input_dim, output_dim):
-        projection_layer = [nn.Linear(input_dim, output_dim),
-                            self.activation]
-        return nn.Sequential(*projection_layer)
-
 
     def compute_attention_weight(self, i1, i2):
         linear1_output = self.linear1(i1)
         linear2_output = self.linear2(i2)
-
-        return torch.add(linear1_output, linear2_output)
+        added = torch.add(linear1_output, linear2_output)
+        return self.activation_layer(added)
 
     def integration_method(self, i1, i2):
         self.weight_value = self.compute_attention_weight(i1, i2)
@@ -265,6 +261,9 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
         _str += "\n"
         _str += "Input dim:     {}\n".format(self.input_dim)
         _str += "Activation:    {}\n".format(self.activation_type)
+        _str += "\nLinear 1:      {}\n".format(str(self.linear1))
+        _str += "\nLinear 2:      {}\n".format(str(self.linear2))
+        _str += "\nAct Layer:     {}\n".format(str(self.activation_layer))
         return _str
 
 class BiWeightedFixedCat(IntegrationUnitBuilder):
@@ -273,13 +272,13 @@ class BiWeightedFixedCat(IntegrationUnitBuilder):
     """
 
 
-    def __init__(self, weight_vector=None, *args, **kwargs):
+    def __init__(self, weight_value=None, *args, **kwargs):
         super(BiWeightedFixedCat, self).__init__(*args, **kwargs)
-        self.weight_vector = weight_vector
-        self.weight_complement = torch.add(torch.mul(weight_vector, -1), 1) # (1 - vector)
+        self.weight_value = weight_value
+        self.weight_complement = 1 - weight_value
 
     def integration_method(self, i1, i2):
-        v1_weighted = torch.mul(i1, self.weight_vector)
+        v1_weighted = torch.mul(i1, self.weight_value)
         v2_weighted = torch.mul(i2, self.weight_complement)
         return torch.cat(v1_weighted, v2_weighted)
 
@@ -303,8 +302,8 @@ class BiWeightedLearntCat(BiWeightedFixedCat):
         self.activation = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
-        self.linear1 = self.construct_linear_projection(input_dim, input_dim*2)
-        self.linear2 = self.construct_linear_projection(input_dim, input_dim*2)
+        self.linear1 = self.construct_linear_projection(input_dim, 1)
+        self.linear2 = self.construct_linear_projection(input_dim, 1)
         self.apply(self.init_weight_method)
 
     def init_weight_method(self, layer):
@@ -326,6 +325,6 @@ class BiWeightedLearntCat(BiWeightedFixedCat):
         return torch.add(linear1_output, linear2_output)
 
     def integration_method(self, i1, i2):
-        self.weight_vector = self.compute_attention_weight(i1, i2)
-        self.weight_complement = torch.add(torch.mul(self.weight_vector, -1), 1)
+        self.weight_value = self.compute_attention_weight(i1, i2)
+        self.weight_complement = self.weight_value
         return super(BiWeightedLearntCat, self).integration_method(i1, i2)
