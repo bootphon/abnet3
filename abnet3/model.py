@@ -531,7 +531,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         print("Saved integration unit")
 
     def load_network(self, path=None):
-        self.load_state_dict(torch.load(+'network.pth'))
+        self.load_state_dict(torch.load(path+'network.pth'))
         print("Done loading network")
         self.integration_unit.load(path)
         print("Done loading integration unit")
