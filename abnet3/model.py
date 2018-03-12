@@ -521,7 +521,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
                 i +=1
 
         _str += "\nIntegration Unit:\n"
-        _str += self.integration_unit
+        _str += str(self.integration_unit)
         if self.post:
             _str += "\nPost Net:\n"
             _str += str(self.post_net)
