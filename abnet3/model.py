@@ -457,7 +457,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
             if self.batch_norm:
                 layers.append(nn.BatchNorm1d(out_dim))
             layers.append(activation)
-        layers = nn.Sequential(*hidden_layers)
+        layers = nn.Sequential(*layers)
 
         return layers
 
