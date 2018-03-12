@@ -231,9 +231,9 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
         self.activation = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
-        self.linear1 = nn.Sequential([nn.Linear(input_dim, 1)])
-        self.linear2 = nn.Sequential([nn.Linear(input_dim, 1)])
-        self.activation_layer = nn.Sequential(*[self.activation])
+        self.linear1 = nn.Linear(input_dim, 1)
+        self.linear2 = nn.Linear(input_dim, 1)
+        self.activation_layer = self.activation
         self.apply(self.init_weight_method)
 
     def init_weight_method(self, layer):
