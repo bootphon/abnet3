@@ -14,7 +14,7 @@ import h5py
 import shutil
 import tempfile
 
-from abnet3.utils import read_vad_file
+from abnet3.utils import read_vad_file, read_feats, Features_Accessor
 
 
 class FeaturesGenerator:
@@ -22,14 +22,15 @@ class FeaturesGenerator:
     def __init__(self, files=None, output_path=None,
                  load_mean_variance_path=None,
                  save_mean_variance_path=None,
-                 vad_folder=None,
+                 vad_file=None,
                  n_filters=40, method='fbanks', normalization=True,
                  norm_per_file=False, stack=True,
                  nframes=7, deltas=False, deltasdeltas=False,
+                 norm_per_channel=True,
                  run='once'):
         """
 
-        :param files: list of wav file paths
+        :param files: list of wav file paths, or folder
         :param output_path: Location of the output h5features file
         :param load_mean_variance_path: (optional)
             Should be None, or the path to an existing file.
@@ -42,8 +43,8 @@ class FeaturesGenerator:
             save the mean and variance of the dataset at the given path.
             It can then be used with load_mean_variance_path for another
             dataset.
-        :param vad_folder: (optional)
-            Path to a folder with VAD data. If given, the mean and variance
+        :param vad_file: (optional)
+            Path to a file with VAD data. If given, the mean and variance
             of the dataset will be computed only in non-silent regions
         :param n_filters: number of filters in spectral
         :param method: mfcc or fbanks
@@ -61,7 +62,7 @@ class FeaturesGenerator:
         self.output_path = output_path
         self.load_mean_variance_path = load_mean_variance_path
         self.save_mean_variance_path = save_mean_variance_path
-        self.vad_folder = vad_folder
+        self.vad_file = vad_file
         self.n_filters = n_filters
         self.method = method
         self.normalization = normalization
@@ -70,6 +71,7 @@ class FeaturesGenerator:
         self.deltas = deltas
         self.deltasdeltas = deltasdeltas
         self.norm_per_file = norm_per_file
+        self.norm_per_channel = norm_per_channel
         self.run = run
 
         if self.method not in ['mfcc', 'fbanks']:
@@ -201,7 +203,7 @@ class FeaturesGenerator:
                              features)
 
     def mean_variance_normalisation(self, h5f, mvn_h5f, params=None,
-                                    vad_folder=None):
+                                    vad_file=None):
         """Do mean variance normlization. Optionnaly use a vad.
 
         Parameters:
@@ -210,21 +212,17 @@ class FeaturesGenerator:
         mvn_h5f: str, h5features output name
         params : dict {'mean': mean, 'variance': variance}
         """
+        # normalize either per channel or on the whole spectrum.
+        axis = 0 if self.norm_per_channel else None
 
-        dset = list(h5py.File(h5f).keys())[0]
-        reader = h5features.Reader(h5f)
-        data = reader.read()
-        dict_features = data.dict_features()
+        features_accessor, _, _ = read_feats(h5f)
 
         # VAD
-        if vad_folder is not None:
-            for file, features in dict_features.items():
-                vad_file_path = os.path.join(vad_folder, file)
-                if os.path.exists(vad_file_path):
-                    vad_data = read_vad_file(vad_file_path)
-                    dict_features[file] = self.filter_vad(features, vad_data)
+        if vad_file is not None:
+            vad_data = read_vad_file(vad_file)
+            self.filter_vad_whole_dataset(features_accessor, vad_data)
 
-        features = np.vstack(dict_features.values())
+        features = np.vstack(features_accessor.features.values())
         epsilon = np.finfo(features.dtype).eps
 
         # calculate mean
@@ -232,34 +230,45 @@ class FeaturesGenerator:
             mean = params['mean']
             std = params['variance']
         else:
-            mean = np.mean(features, axis=0)
-            std = np.std(features, axis=0)
-        del features, data  # free memory
+            mean = np.mean(features, axis=axis)
+            std = np.std(features, axis=axis)
+        del features, features_accessor  # free memory
 
         # we reload all the features because we wan't to keep them in the
         # right order to put them back in the h5py file.
+        dset = list(h5py.File(h5f).keys())[0]
         features = h5py.File(h5f)[dset]['features'][:]
         mvn_features = (features - mean) / (std + epsilon)
         shutil.copy(h5f, mvn_h5f)
         h5py.File(mvn_h5f)[dset]['features'][:] = mvn_features
         return mean, std
 
-    def filter_vad(self, features, vad_data):
+    def filter_vad_whole_dataset(self, features_accessor,  vad_data):
         """
         This function will filter the feature
-        :param features:
+        :param features_accessor: feature accessor
         :param vad_data:
-            Should be a list of list of two ints that represent the indexes
-            of start / stop of voice.
+            dictionnary {'file': [[s, e], [s, e], ...]
         :return:
         """
+        for file in vad_data:
+            filtered_features = []
+            for start, end in vad_data[file]:
+                filtered_features.append(features_accessor.get(file,
+                                                               start, end))
+            features_accessor.features[file] = np.concatenate(filtered_features)
+
+    def filter_vad_one_file(self, feature, time, vad_data):
         filtered_features = []
         for start, end in vad_data:
-            filtered_features.append(features[start:end])
-
+            filtered_features.append(Features_Accessor.get_features_between(
+                feature, time, start, end))
         return np.concatenate(filtered_features)
 
-    def mean_var_norm_per_file(self, h5f, mvn_h5f, vad_folder=None):
+    def mean_var_norm_per_file(self, h5f, mvn_h5f, vad_file=None):
+        # normalize either per channel or on the whole spectrum.
+        axis = 0 if self.norm_per_channel else None
+
         dset_name = list(h5py.File(h5f).keys())[0]
         files = h5py.File(h5f)[dset_name]['items']
         reader = h5features.Reader(h5f)
@@ -268,20 +277,20 @@ class FeaturesGenerator:
             data = reader.read(from_item=f)
             items, features, times = (data.items(), data.features()[0],
                                       data.labels()[0])
-
             # VAD
             filtered_features = None
-            if vad_folder is not None:
-                vad_file_path = os.path.join(vad_folder, f)
-                if os.path.exists(vad_file_path):
-                    vad_data = read_vad_file(vad_file_path)
-                    filtered_features = self.filter_vad(features, vad_data)
+            if vad_file is not None:
+                vad_data = read_vad_file(vad_file)
+                if str(f) in vad_data:
+                    filtered_features = self.filter_vad_one_file(
+                        features, times, vad_data[str(f)])
 
             if filtered_features is None:
-                mean, std = np.mean(features, axis=0), np.std(features, axis=0)
+                mean = np.mean(features, axis=axis)
+                std = np.std(features, axis=axis)
             else:
-                mean = np.mean(filtered_features, axis=0)
-                std = np.std(filtered_features, axis=0)
+                mean = np.mean(filtered_features, axis=axis)
+                std = np.std(filtered_features, axis=axis)
             features = (features - mean) / (std + np.finfo(features.dtype).eps)
             h5features.write(mvn_h5f, '/features/', items, [times], [features])
             means_vars.append((f, mean, std))
@@ -322,7 +331,6 @@ class FeaturesGenerator:
         :param output_file: file where mean and variance will be saved
         """
         mean_var = np.vstack((mean, variance))
-        print(output_file)
         np.savetxt(output_file, mean_var)
 
     def load_mean_variance(self, file_path):
@@ -340,11 +348,20 @@ class FeaturesGenerator:
             'fbanks': self.do_fbank
         }
 
+        if type(self.files) == str:
+            if not os.path.isdir(self.files):
+                raise ValueError("files must be a directory or a list of "
+                                 "files")
+            self.files = [os.path.join(self.files, f)
+                          for f in os.listdir(self.files)
+                          if f.endswith('.wav')]
+
         if self.method not in functions:
             raise ValueError("Method %s not authorized." % self.method)
         f = functions[self.method]
 
-        tempdir = tempfile.mkdtemp()
+        tempdir = os.path.join(os.path.dirname(self.output_path), 'tmp')
+        os.makedirs(tempdir, exist_ok=True)
         h5_temp1 = tempdir + '/temp1'
         print("Spectral transforming with %s" % self.method)
         self.h5features_compute(self.files, h5_temp1, featfunc=f)
@@ -354,7 +371,7 @@ class FeaturesGenerator:
             h5_temp2 = tempdir + '/temp2'
             if self.norm_per_file:
                 self.mean_var_norm_per_file(h5_temp1, h5_temp2,
-                                            vad_folder=self.vad_folder)
+                                            vad_file=self.vad_file)
             else:
                 if self.load_mean_variance_path is not None:
                     params = self.load_mean_variance(
@@ -363,7 +380,7 @@ class FeaturesGenerator:
                     params = None
                 mean, variance = self.mean_variance_normalisation(
                     h5_temp1, h5_temp2, params=params,
-                    vad_folder=self.vad_folder
+                    vad_file=self.vad_file
                 )
                 if self.save_mean_variance_path is not None:
                     self.save_mean_variance(

@@ -69,10 +69,13 @@ class GridSearch(object):
         self.parse_yaml_input_file()
         msg_yaml_error = 'Yaml not well formatted : '
         assert self.params['default_params'], msg_yaml_error + 'default_params'
-        assert self.params['grid_params'], msg_yaml_error + 'grid_params'
         assert self.params['default_params']['pathname_experience'], \
             msg_yaml_error + 'pathname_experience'
         default_params = self.params['default_params']
+
+        if 'grid_params' not in self.params:
+            return [default_params]
+
         grid_params = self.params['grid_params']
         grid_experiments = []
         current_exp = copy.deepcopy(default_params)
@@ -86,9 +89,9 @@ class GridSearch(object):
                         current_exp[submodule]['arguments'] = {}
                         current_exp[submodule]['arguments'][param] = value
                     current_exp['pathname_experience'] = os.path.join(
-                        current_exp['pathname_experience'] + now.isoformat(),
+                        current_exp['pathname_experience'], now.isoformat(),
                         param,
-                        value
+                        str(value)
                         )
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
@@ -105,24 +108,29 @@ class GridSearch(object):
         assert single_experiment['model'], 'model properties missing'
         assert single_experiment['loss'], 'loss properties missing'
 
+        os.makedirs(single_experiment['pathname_experience'], exist_ok=True)
+
         features_prop = single_experiment['features']
         features_class = getattr(abnet3.features, features_prop['class'])
         arguments = features_prop['arguments']
+        if 'output_path' not in arguments:
+            arguments['output_path'] = os.path.join(
+                single_experiment['pathname_experience'], 'features')
         features = features_class(**arguments)
 
         sampler_prop = single_experiment['sampler']
         sampler_class = getattr(abnet3.sampler, sampler_prop['class'])
         arguments = sampler_prop['arguments']
-
-        arguments['directory_output'] = os.path.join(
-             single_experiment['pathname_experience'], 'pairs')
+        if 'directory_output' not in arguments:
+            arguments['directory_output'] = os.path.join(
+                 single_experiment['pathname_experience'], 'pairs')
         sampler = sampler_class(**arguments)
 
         model_prop = single_experiment['model']
         model_class = getattr(abnet3.model, model_prop['class'])
         arguments = model_prop['arguments']
         arguments['output_path'] = os.path.join(
-             single_experiment['pathname_experience'], 'network.pth')
+             single_experiment['pathname_experience'], 'network')
         model = model_class(**arguments)
 
         loss_prop = single_experiment['loss']
@@ -156,7 +164,7 @@ class GridSearch(object):
              single_experiment['pathname_experience'],
              'embeddings.h5f')
         arguments['feature_path'] = features.output_path
-        arguments['network_path'] = model.output_path
+        arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
 
         if features.run == 'never':
