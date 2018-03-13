@@ -228,12 +228,11 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
         assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
 
         self.input_dim = input_dim
-        self.activation = activation_functions[activation_type]
+        self.activation_layer = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
         self.linear1 = nn.Linear(input_dim, 1)
         self.linear2 = nn.Linear(input_dim, 1)
-        self.activation_layer = self.activation
         self.apply(self.init_weight_method)
 
     def init_weight_method(self, layer):
@@ -299,11 +298,11 @@ class BiWeightedLearntCat(BiWeightedFixedCat):
         assert activation_type in ('sigmoid', 'tanh')
         assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
 
-        self.activation = activation_functions[activation_type]
+        self.activation_layer = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
-        self.linear1 = self.construct_linear_projection(input_dim, 1)
-        self.linear2 = self.construct_linear_projection(input_dim, 1)
+        self.linear1 = nn.Linear(input_dim, 1)
+        self.linear2 = nn.Linear(input_dim, 1)
         self.apply(self.init_weight_method)
 
     def init_weight_method(self, layer):
@@ -313,16 +312,12 @@ class BiWeightedLearntCat(BiWeightedFixedCat):
                       gain=nn.init.calculate_gain(self.activation_type))
             layer.bias.data.fill_(0.0)
 
-    def construct_linear_projection(self, input_dim, output_dim):
-        projection_layer = [nn.Linear(input_dim, output_dim),
-                            self.activation]
-        return nn.Sequential(*projection_layer)
-
 
     def compute_attention_weight(self, i1, i2):
         linear1_output = self.linear1(i1)
         linear2_output = self.linear2(i2)
-        return torch.add(linear1_output, linear2_output)
+        added = torch.add(linear1_output, linear2_output)
+        return self.activation_layer(added)
 
     def integration_method(self, i1, i2):
         self.weight_value = self.compute_attention_weight(i1, i2)

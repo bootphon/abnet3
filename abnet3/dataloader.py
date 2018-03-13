@@ -640,5 +640,5 @@ class MultimodalDataLoader(FramesDataLoader):
                 X1_list.append(Variable(torch.from_numpy(X1), volatile=not train_mode))
                 X2_list.append(Variable(torch.from_numpy(X2), volatile=not train_mode))
                 y_torch = Variable(torch.from_numpy(y), volatile=not train_mode)
-            print("{}/{}".format(i, final), end="\r")
+            print("{} progress: {:.2f}%".format(mode, i/final), end="\r")
             yield X1_list, X2_list, y_torch
