@@ -190,40 +190,54 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         X1_batch, X2_batch = self.integration_method(x1_list, x2_list, embed)
         return X1_batch, X2_batch, y
 
-class BiWeightedFixedSum(IntegrationUnitBuilder):
+class BiWeightedFixed(IntegrationUnitBuilder):
     """
-    Sums two vectors of the same dimension, using a weight and it's compliment
+    Sums pointwise or concatenates two vectors, using a weight and it's compliment
     """
 
 
-    def __init__(self, weight_value = 0.5, *args, **kwargs):
-        super(BiWeightedFixedSum, self).__init__(*args, **kwargs)
+    def __init__(self, integration_mode="sum", weight_value=0.5, *args, **kwargs):
+        super(BiWeightedFixed, self).__init__(*args, **kwargs)
 
         assert weight_value >= 0, "weight must be possitive or 0"
         assert weight_value <= 1, "weight must be less or equal than 1"
+        assert integration_mode in ("sum", "concat"), "Only sum and concat supported"
         self.weight_value = weight_value
         self.weight_complement = 1 - weight_value
+        self.integration_mode = integration_mode
+        if self.integration_mode == "sum":
+            self.integration_function = torch.add
+        elif self.integration_mode == "concat":
+            self.integration_function = torch.cat
 
     def integration_method(self, i1, i2):
         v1_weighted = torch.mul(i1, self.weight_value)
         v2_weighted = torch.mul(i2, self.weight_complement)
-
-        return torch.add(v1_weighted, v2_weighted)
+        return self.integration_function(v1_weighted, v2_weighted)
 
     def forward(self, x_list):
         X = self.integration_method(*x_list)
         return X
 
+    def __str__(self):
+        _str = ""
+        _str += str(self.__class__.__name__)
+        _str += "\n"
+        _str += "Integration method: {}\n".format(self.integration_mode)
+        _str += "Weight value: {}\n".format(self.weight_value)
+        return _str
 
-class BiWeightedLearntSum(BiWeightedFixedSum):
+
+class BiWeightedLearnt(BiWeightedFixed):
     """
-    Sums two vectors of the same dimension, using a weight and it's compliment.
+    Sums pointwise or concatenates two vectors of the same dimension, using a
+    weight and it's compliment.
     Said weight is learnt, using a linear projection of the input vectors
     """
 
     def __init__(self, input_dim, activation_type, init_type='xavier_uni',
                        *args, **kwargs):
-        super(BiWeightedLearntSum, self).__init__(*args, **kwargs)
+        super(BiWeightedLearnt, self).__init__(*args, **kwargs)
         assert activation_type in ('sigmoid', 'tanh')
         assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
 
@@ -242,7 +256,6 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
                       gain=nn.init.calculate_gain(self.activation_type))
             layer.bias.data.fill_(0.0)
 
-
     def compute_attention_weight(self, i1, i2):
         linear1_output = self.linear1(i1)
         linear2_output = self.linear2(i2)
@@ -258,68 +271,10 @@ class BiWeightedLearntSum(BiWeightedFixedSum):
         _str = ""
         _str += str(self.__class__.__name__)
         _str += "\n"
+        _str += "Integration method: {}\n".format(self.integration_mode)
         _str += "Input dim:     {}\n".format(self.input_dim)
         _str += "Activation:    {}\n".format(self.activation_type)
         _str += "\nLinear 1:      {}\n".format(str(self.linear1))
         _str += "\nLinear 2:      {}\n".format(str(self.linear2))
         _str += "\nAct Layer:     {}\n".format(str(self.activation_layer))
         return _str
-
-class BiWeightedFixedCat(IntegrationUnitBuilder):
-    """
-    Concats two vectors of the same dimension, using a vector weight and it's compliment
-    """
-
-
-    def __init__(self, weight_value=None, *args, **kwargs):
-        super(BiWeightedFixedCat, self).__init__(*args, **kwargs)
-        self.weight_value = weight_value
-        self.weight_complement = 1 - weight_value
-
-    def integration_method(self, i1, i2):
-        v1_weighted = torch.mul(i1, self.weight_value)
-        v2_weighted = torch.mul(i2, self.weight_complement)
-        return torch.cat(v1_weighted, v2_weighted)
-
-    def forward(self, x_list):
-        X = self.integration_method(*x_list)
-        return X
-
-
-class BiWeightedLearntCat(BiWeightedFixedCat):
-    """
-    Concatenates two vectors of the same dimension, using a vector weight and it's compliment.
-    Said weight is learnt, using a linear projection of the input vectors
-    """
-
-    def __init__(self, input_dim, activation_type, init_type='xavier_uni',
-                       *args, **kwargs):
-        super(BiWeightedLearntCat, self).__init__(*args, **kwargs)
-        assert activation_type in ('sigmoid', 'tanh')
-        assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
-
-        self.activation_layer = activation_functions[activation_type]
-        self.activation_type = activation_type
-        self.init_function = init_functions[init_type]
-        self.linear1 = nn.Linear(input_dim, 1)
-        self.linear2 = nn.Linear(input_dim, 1)
-        self.apply(self.init_weight_method)
-
-    def init_weight_method(self, layer):
-        if isinstance(layer, nn.Linear):
-            init_func = self.init_function
-            init_func(layer.weight.data,
-                      gain=nn.init.calculate_gain(self.activation_type))
-            layer.bias.data.fill_(0.0)
-
-
-    def compute_attention_weight(self, i1, i2):
-        linear1_output = self.linear1(i1)
-        linear2_output = self.linear2(i2)
-        added = torch.add(linear1_output, linear2_output)
-        return self.activation_layer(added)
-
-    def integration_method(self, i1, i2):
-        self.weight_value = self.compute_attention_weight(i1, i2)
-        self.weight_complement = self.weight_value
-        return super(BiWeightedLearntCat, self).integration_method(i1, i2)
