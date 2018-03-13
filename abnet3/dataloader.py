@@ -629,6 +629,7 @@ class MultimodalDataLoader(FramesDataLoader):
             self.batch_position += self.max_batches_per_epoch
 
         final = batch_ids[-1]
+        inicial = batch_ids[0]
         for i in batch_ids:
             pairs_batch = frame_pairs[i*self.batch_size:
                                       i*self.batch_size + self.batch_size]
@@ -640,5 +641,5 @@ class MultimodalDataLoader(FramesDataLoader):
                 X1_list.append(Variable(torch.from_numpy(X1), volatile=not train_mode))
                 X2_list.append(Variable(torch.from_numpy(X2), volatile=not train_mode))
                 y_torch = Variable(torch.from_numpy(y), volatile=not train_mode)
-            print("progress: {}%".format(int(i**100/final)), end="\r")
+            print("progress: {}%".format(int((i-inicial)**100/(final-inicial))), end="\r")
             yield X1_list, X2_list, y_torch
