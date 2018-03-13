@@ -235,18 +235,23 @@ class BiWeightedLearnt(BiWeightedFixed):
     Said weight is learnt, using a linear projection of the input vectors
     """
 
-    def __init__(self, input_dim, activation_type, init_type='xavier_uni',
-                       *args, **kwargs):
+    def __init__(self, input_dim1, input_dim2=None, activation_type="sigmoid",
+                       init_type='xavier_uni', *args, **kwargs):
         super(BiWeightedLearnt, self).__init__(*args, **kwargs)
         assert activation_type in ('sigmoid', 'tanh')
         assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
 
-        self.input_dim = input_dim
+        self.input_dim1 = input_dim1
+        self.input_dim2 = input_dim2
         self.activation_layer = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
-        self.linear1 = nn.Linear(input_dim, 1)
-        self.linear2 = nn.Linear(input_dim, 1)
+
+        self.linear1 = nn.Linear(input_dim1, 1)
+        if input_dim2:
+            self.linear2 = nn.Linear(input_dim2, 1)
+        else:
+            self.linear2 = nn.Linear(input_dim1, 1)
         self.apply(self.init_weight_method)
 
     def init_weight_method(self, layer):
@@ -272,7 +277,12 @@ class BiWeightedLearnt(BiWeightedFixed):
         _str += str(self.__class__.__name__)
         _str += "\n"
         _str += "Integration method: {}\n".format(self.integration_mode)
-        _str += "Input dim:     {}\n".format(self.input_dim)
+
+        if self.input_dim2:
+            _str += "Input dims:    ({}, {})\n".format(self.input_dim1,
+                                                       self.input_dim2)
+        else:
+            _str += "Input dims:    ({0}, {0})\n".format(self.input_dim)
         _str += "Activation:    {}\n".format(self.activation_type)
         _str += "\nLinear 1:      {}\n".format(str(self.linear1))
         _str += "\nLinear 2:      {}\n".format(str(self.linear2))
