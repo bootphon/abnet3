@@ -189,6 +189,11 @@ class GridSearch(object):
 
         trainer.train()
         embedder.embed()
+        del features
+        del sampler
+        del model
+        del trainer
+        del embedder
 
     def run(self):
         """Run command to launch the grid search
