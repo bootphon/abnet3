@@ -270,7 +270,7 @@ class BiWeightedLearnt(BiWeightedFixed):
     def integration_method(self, i1, i2):
         self.weight_value = self.compute_attention_weight(i1, i2)
         self.weight_complement = 1 - self.weight_value
-        return super(BiWeightedLearntSum, self).integration_method(i1, i2)
+        return super(BiWeightedLearnt, self).integration_method(i1, i2)
 
     def __str__(self):
         _str = ""
