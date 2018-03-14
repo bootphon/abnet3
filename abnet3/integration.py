@@ -282,7 +282,7 @@ class BiWeightedLearnt(BiWeightedFixed):
             _str += "Input dims:    ({}, {})\n".format(self.input_dim1,
                                                        self.input_dim2)
         else:
-            _str += "Input dims:    ({0}, {0})\n".format(self.input_dim)
+            _str += "Input dims:    ({0}, {0})\n".format(self.input_dim1)
         _str += "Activation:    {}\n".format(self.activation_type)
         _str += "\nLinear 1:      {}\n".format(str(self.linear1))
         _str += "\nLinear 2:      {}\n".format(str(self.linear2))
