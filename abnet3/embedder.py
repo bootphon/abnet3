@@ -130,3 +130,10 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
 
         with h5features.Writer(self.output_path+'.phn') as fh:
             fh.write(data_phn, 'features')
+
+
+def main():
+    pass
+
+if __name__=='__main__':
+    main()

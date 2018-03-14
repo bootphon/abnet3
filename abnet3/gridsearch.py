@@ -204,8 +204,7 @@ class GridSearch(object):
                 )
 
 
-if __name__ == '__main__':
-
+def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("experiments_file", type=str,
                            help="yaml file for the experiments")
@@ -223,3 +222,7 @@ if __name__ == '__main__':
                       num_jobs=args.num_jobs)
     grid.run()
     print("The experiment took {} s ".format(time.time() - t1))
+
+
+if __name__ == '__main__':
+    main()
