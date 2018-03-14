@@ -25,23 +25,27 @@ Build Representation for speech frames based on side information. Composed of di
 
 ### Installation of the package
 
+#### Using conda
+
 To install the ABnet3 package, you can use Anaconda, and either create a conda environment:
 
-    conda create --name abnet3 python=3.6 --file requirements.txt
+    conda create --name abnet3 python=3.6 --file environment.yml
 
 or use a conda environment you already have with python 3 :
-
-    conda install --file requirements.txt
-
-requirement.txt do not install pytorch. You need to install this package using conda. For now, the latest compatible version is pytorch 0.2:
-To install without gpu support
-    conda install -c soumith pytorch=0.2
+    conda env update -f environment.yml
 
 To install with GPU support (replace cuda75 with your version of cuda)
+
     conda install  pytorch=0.2 cuda75 -c pytorch
 
+#### Using pip
 
+- install the version 0.2.0 of pytorch for your hardware (http://pytorch.org/previous-versions/)
+
+- install the pip packages : `pip install -r requirements.txt`
 Once all the necessary packages are installed, simply launch:
+
+#### Run abnet3 installation
 
     python setup.py build && python setup.py install
 
@@ -71,7 +75,8 @@ The default logdir is `./run` in the current directory.
 The package comes with a unit-tests suit. To run it, first install *pytest* on your Python environment:
 
     pip install pytest
-    pytest test
+    pytest test/
+
 #### References
 
     .. [1] Thiolliere, R., Dunbar, E., Synnaeve, G., Versteegh, M., & Dupoux, E.
