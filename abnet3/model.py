@@ -474,9 +474,11 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         inputs
 
         """
+        x1 = x_list[0]
+        x2 = x_list[1]
         if self.pre:
-            x1 = self.pre_net1(x_list[0])
-            x2 = self.pre_net2(x_list[1])
+            x1 = self.pre_net1(x1)
+            x2 = self.pre_net2(x2)
         output = self.integration_unit([x1, x2])
         if self.post:
             output = self.post_net(output)
