@@ -132,26 +132,3 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
 
         with h5features.Writer(self.output_path+'.phn') as fh:
             fh.write(data_phn, 'features')
-
-
-def main():
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument("model_weights", type=str,
-                           help="Path to model weight")
-    argparser.add_argument("feature_path", type=str,
-                           help="Path to h5 feature file")
-    argparser.add_argument("output_embedding", type=str,
-                           help="Path to output embedding")
-
-    args = argparser.parse_args()
-
-    embedder = EmbedderSiamese(
-        network_path=args.model_weights,
-        feature_path=args.feature_path,
-        cuda=torch.cuda.is_available(),
-    )
-
-    embedder.embed()
-
-if __name__=='__main__':
-    main()
