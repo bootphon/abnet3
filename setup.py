@@ -49,14 +49,16 @@ with io.open("requirements.txt", encoding="utf-8") as req_fp:
     install_requires = req_fp.readlines()
 
 setup(
-  name='abnet3',
-  version='0.0.1',
-  packages=['abnet3'],
-  description='ABnet neural network in Pytorch',
-  author='Rachid Riad',
-  license='GPLv3',
-  cmdclass={
-      'install': RequiredPackagedInstall,
-  }
-
+    name='abnet3',
+    version='0.0.1',
+    packages=['abnet3'],
+    description='ABnet neural network in Pytorch',
+    author='Rachid Riad',
+    license='GPLv3',
+    cmdclass={
+        'install': RequiredPackagedInstall,
+    },
+    entry_points={'console_scripts': [
+        'abnet3-gridsearch = abnet3.gridsearch:main',
+    ]}
 )

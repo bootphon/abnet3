@@ -5,12 +5,14 @@ based on neural network.
 
 """
 
-from abnet3.model import *
 import numpy as np
 import torch
 from torch.autograd import Variable
 import h5features
+import argparse
+
 from abnet3.utils import read_feats
+from abnet3.model import *
 
 
 class EmbedderBuilder:
