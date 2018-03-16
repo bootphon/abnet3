@@ -212,18 +212,18 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         self.weight_value = weight_value
         self.weight_complement = 1 - weight_value
         self.integration_mode = integration_mode
-        self.integration_function = self.construct_integration_function(integration_mode)
+        self.integration_function = self.construct_integration_function()
 
     def get_weights(self):
         return self.weight_value
 
-    def construct_integration_function(mode):
+    def construct_integration_function(self):
 
-        if mode == "sum":
+        if self.integration_mode == "sum":
             def integration(i1, i2):
                 return torch.add(i1, i2)
 
-        elif mode == "concat":
+        elif self.integration_mode == "concat":
             def integration(i1, i2):
                 return torch.concat([i1, i2], 1)
 
