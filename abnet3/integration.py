@@ -214,6 +214,9 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         self.integration_mode = integration_mode
         self.integration_function = self.construct_integration_function(integration_mode)
 
+    def get_weights(self):
+        return self.weight_value
+
     def construct_integration_function(mode):
 
         if mode == "sum":

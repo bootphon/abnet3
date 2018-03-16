@@ -11,7 +11,7 @@ from torch.autograd import Variable
 import h5features
 import argparse
 
-from abnet3.utils import read_feats
+from abnet3.utils import read_feats, EmbeddingObserver
 from abnet3.model import *
 
 
@@ -134,16 +134,25 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
             fh.write(data_phn, 'features')
 
 class MultimodalEmbedder(EmbedderBuilder):
-    """Embedder class for multimodal siamese network
-
+    """
+    Embedder class for multimodal siamese network
     """
 
     def __init__(self, *args, **kwargs):
         super(MultimodalEmbedder, self).__init__(*args, **kwargs)
+        self.observers = [] #tuples list, of the form (EmbedderObserver,
+                                                      #function to get the data,
+                                                      #path to be saved)
+
+        if type(self.network.integration_unit) == abnet3.integration.BiWeightedLearnt:
+            print("Placing observer to save learnt attention weights")
+            self.observers.append((EmbeddingObserver(),
+                                   self.network.integration_unit.get_weights,
+                                   self.output_path + "attention_weights.pth"))
 
     def embed(self):
-        """ Embed method to embed features based on a saved network
-
+        """
+        Embed method to embed features based on a saved network
         """
 
         if self.network_path is not None:
@@ -162,20 +171,16 @@ class MultimodalEmbedder(EmbedderBuilder):
                 features_list.append(features.features())
                 check_items = features.items()
                 check_times = features.labels()
-
             if not items:
                 items = check_items
                 #TODO: assert items == check_items, "Items inconsistency found on path {}".format(path)
-
             if not times:
                 times = check_times
                 #TODO: assert times == check_times, "Times inconsistency found on path {}".format(path)
 
-
         print("Done loading input feature file")
 
         zipped_feats = zip(*features_list)
-
         embeddings = []
         for feats in zipped_feats:
             modes_list = []
@@ -190,6 +195,12 @@ class MultimodalEmbedder(EmbedderBuilder):
             emb = emb.cpu()
             embeddings.append(emb.data.numpy())
 
+            for observer_tuple in self.observers:
+                observer_tuple[0].register_response(observer_tuple[1]())
+
         data = h5features.Data(items, times, embeddings, check=True)
         with h5features.Writer(self.output_path) as fh:
             fh.write(data, 'features')
+
+        for observer_tuple in self.observers:
+            observer_tuple[0].save(observer_tuple[2], items, times)

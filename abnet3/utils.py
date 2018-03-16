@@ -272,3 +272,31 @@ def progress(max_number, every=0.1, title=""):
             print("Progress: {:.1f}% of process {}".format(next_progress*100, title))
             next_progress = (current // every) * every + every
     return print_progress
+
+class EmbeddingObserver(object):
+    '''
+    Observer pattern implementation for the embedding phase. Can be used to
+    store and save stages of the model's intern response to the features being
+    embedded. It saves the states on the features group with the same items and
+    times that were used to save the embeddings embeddings for analysis.
+    '''
+
+    def __init__(self):
+        self.intern_responses = []
+
+    def register_response(self, response):
+        response = response.cpu()
+        self.intern_responses.append(response.data.numpy())
+
+    def save(self, path, items, times):
+        '''
+        Save the internal responses
+
+        :param path:    path to save the internal responses
+        :param items:   same items used to save the embeddings
+        :param times:   same times used to save embeddings
+
+        '''
+        data = h5features.Data(items, times, self.intern_responses, check=True)
+        with h5features.Writer(path) as fh:
+            fh.write(data, 'features')
