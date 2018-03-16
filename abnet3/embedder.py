@@ -13,6 +13,7 @@ import argparse
 
 from abnet3.utils import read_feats, EmbeddingObserver
 from abnet3.model import *
+from abnet3.integration import BiWeightedLearnt
 
 
 class EmbedderBuilder:
@@ -144,7 +145,7 @@ class MultimodalEmbedder(EmbedderBuilder):
                                                       #function to get the data,
                                                       #path to be saved)
 
-        if type(self.network.integration_unit) == abnet3.integration.BiWeightedLearnt:
+        if type(self.network.integration_unit) == BiWeightedLearnt:
             print("Placing observer to save learnt attention weights")
             self.observers.append((EmbeddingObserver(),
                                    self.network.integration_unit.get_weights,
