@@ -69,10 +69,13 @@ class GridSearch(object):
         self.parse_yaml_input_file()
         msg_yaml_error = 'Yaml not well formatted : '
         assert self.params['default_params'], msg_yaml_error + 'default_params'
-        assert self.params['grid_params'], msg_yaml_error + 'grid_params'
         assert self.params['default_params']['pathname_experience'], \
             msg_yaml_error + 'pathname_experience'
         default_params = self.params['default_params']
+
+        if 'grid_params' not in self.params:
+            return [default_params]
+
         grid_params = self.params['grid_params']
         grid_experiments = []
         current_exp = copy.deepcopy(default_params)
@@ -201,8 +204,7 @@ class GridSearch(object):
                 )
 
 
-if __name__ == '__main__':
-
+def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("experiments_file", type=str,
                            help="yaml file for the experiments")
@@ -220,3 +222,7 @@ if __name__ == '__main__':
                       num_jobs=args.num_jobs)
     grid.run()
     print("The experiment took {} s ".format(time.time() - t1))
+
+
+if __name__ == '__main__':
+    main()
