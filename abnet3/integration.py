@@ -23,6 +23,11 @@ class IntegrationUnitBuilder(nn.Module):
 
     """
     Base class for integration units
+
+    :param output_path: String, path to save the integration unit
+
+    :param cuda_bool:   Boolean, wether cuda should be used (True) or not (False),
+                        default is False
     """
 
     def __init__(self, output_path="", cuda_bool=False, *args, **kwargs):
@@ -130,7 +135,6 @@ class MultitaskIntegration(IntegrationUnitBuilder):
     def __init__(self, representation_modes, feed_modes, dimensions, batch_size,
                  *args, **kwargs):
         super(MultitaskIntegration, self).__init__(*args, **kwargs)
-
         self.rep_modes = self.bootstrap(representation_modes, dimensions)
         self.feed_modes = feed_modes
         self.batch_size = batch_size
@@ -159,14 +163,12 @@ class MultitaskIntegration(IntegrationUnitBuilder):
             size = self.batch_size
         for i in np.random.random_integers(0, len(self.feed_modes) - 1,
                                             size = size):
-
             feed_mode = self.feed_modes[i]
             mask1.append(self.rep_modes[feed_mode[0]])
             mask2.append(self.rep_modes[feed_mode[1]])
 
         mask1 = Variable(torch.Tensor(mask1))
         mask2 = Variable(torch.Tensor(mask2))
-
         if self.cuda_bool:
             mask1 = mask1.cuda()
             mask2 = mask2.cuda()
@@ -178,9 +180,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 
         x1_cat = torch.cat(x1_list, 1)
         x2_cat = torch.cat(x2_list, 1)
-
         mask1, mask2 = self.get_batch_masks(embed)
-
         X1_batch = torch.mul(mask1, x1_cat)
         X2_batch = torch.mul(mask2, x2_cat)
 
@@ -193,14 +193,21 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 class BiWeightedFixed(IntegrationUnitBuilder):
     """
     Sums pointwise or concatenates two vectors, using a weight and it's compliment
+
+    :param integration_mode:    ("sum"|"concat")
+                                Integration function, wether the weighted inputs
+                                are summed or concatenated
+    :param weight_value:        scalar, between 0 and 1
+                                Fixed weight value used for the first input (with
+                                respect of the order the paths were provided to
+                                the dataloader).
     """
 
 
     def __init__(self, integration_mode="sum", weight_value=0.5, *args, **kwargs):
         super(BiWeightedFixed, self).__init__(*args, **kwargs)
-
-        assert weight_value >= 0, "weight must be possitive or 0"
-        assert weight_value <= 1, "weight must be less or equal than 1"
+        assert weight_value >= 0, "weight must be greater or equal to 0"
+        assert weight_value <= 1, "weight must be less or equal to 1"
         assert integration_mode in ("sum", "concat"), "Only sum and concat supported"
         self.weight_value = weight_value
         self.weight_complement = 1 - weight_value
@@ -230,9 +237,26 @@ class BiWeightedFixed(IntegrationUnitBuilder):
 
 class BiWeightedLearnt(BiWeightedFixed):
     """
-    Sums pointwise or concatenates two vectors of the same dimension, using a
-    weight and it's compliment.
-    Said weight is learnt, using a linear projection of the input vectors
+    Sums pointwise or concatenates two vectors, using a weight and it's compliment.
+    Said weight is learnt, using a linear projection for each of the input vectors,
+    summing them and finally puting it through an avtivation layer
+
+    :param input_dim1:      dimension of the first linear projection, should coincide
+                            with the dimension of the first input (with respect
+                            of the order the paths were provided to the dataloader)
+
+    :param input_dim2:      dimension of the second linear projection, should coincide
+                            with the dimension of the second input. If both inputs have
+                            the same dimension, this could be omitted and input_dim1
+                            will be used for both projections
+
+    :param activation_type: ('sigmoid'|'tanh'),
+                            activation type of the activation layer that the summed
+                            linear projections go through before being returned,
+                            default is Sigmoid
+
+    :param init_type:       ('xavier_uni'|'xavier_normal'|'orthogonal'),
+                            type of weight initialization, default is 'xavier_uni'
     """
 
     def __init__(self, input_dim1, input_dim2=None, activation_type="sigmoid",
