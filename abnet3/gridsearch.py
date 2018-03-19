@@ -232,6 +232,13 @@ def main():
                                 "already trained")
 
     args = argparser.parse_args()
+
+    if args.date is not None:
+        answer = input('Warning: using --date argument can overwrite '
+                       'some files. Continue ? [y/n]')
+        if not answer or answer[0].lower() != 'y':
+            print("Exiting")
+            exit(1)
     if torch.cuda.is_available():
         torch.cuda.set_device(args.gpu_id)
     t1 = time.time()
@@ -239,7 +246,7 @@ def main():
     grid = GridSearch(input_file=args.experiments_file,
                       gpu_ids=args.gpu_id,
                       num_jobs=args.num_jobs,
-                      date_field=args.date,
+                      date=args.date,
                       embed_only=args.embed_only)
 
     grid.run()
