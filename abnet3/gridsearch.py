@@ -41,12 +41,16 @@ class GridSearch(object):
 
     """
     def __init__(self, input_file=None,
-                 num_jobs=1, gpu_ids=None):
+                 num_jobs=1, gpu_ids=None,
+                 date=None,
+                 embed_only=False):
         self.input_file = input_file
         self.num_jobs = num_jobs
         self.gpu_ids = gpu_ids
         self.sampler_run = False
         self.features_run = False
+        self.date = date
+        self.embed_only = embed_only
 
     def whoami(self):
         raise NotImplementedError('Unimplemented whoami for class:',
@@ -79,7 +83,11 @@ class GridSearch(object):
         grid_params = self.params['grid_params']
         grid_experiments = []
         current_exp = copy.deepcopy(default_params)
-        now = datetime.datetime.now()
+        now = datetime.datetime.now().isoformat()
+
+        if self.date is not None:
+            now = self.date
+
         for submodule, submodule_params in grid_params.items():
             for param, values in submodule_params['arguments'].items():
                 for value in values:
@@ -89,7 +97,7 @@ class GridSearch(object):
                         current_exp[submodule]['arguments'] = {}
                         current_exp[submodule]['arguments'][param] = value
                     current_exp['pathname_experience'] = os.path.join(
-                        current_exp['pathname_experience'], now.isoformat(),
+                        current_exp['pathname_experience'], now,
                         param,
                         str(value)
                         )
@@ -160,12 +168,17 @@ class GridSearch(object):
         embedder_class = getattr(abnet3.embedder, embedder_prop['class'])
         arguments = embedder_prop['arguments']
         arguments['network'] = model
-        arguments['output_path'] = os.path.join(
-             single_experiment['pathname_experience'],
-             'embeddings.h5f')
+        if 'output_path' not in arguments:
+            arguments['output_path'] = os.path.join(
+                 single_experiment['pathname_experience'],
+                 'embeddings.h5f')
         arguments['feature_path'] = features.output_path
         arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
+
+        if self.embed_only:
+            embedder.embed()
+            return
 
         if features.run == 'never':
             pass
@@ -198,7 +211,7 @@ class GridSearch(object):
         print('Start the grid search ...')
         for index in range(len(grid_experiments)):
             pathname_exp = grid_experiments[index]['pathname_experience']
-            exp_name = 'Starting exp {} : {}'.format(index, pathname_exp)
+            print('Starting exp {} : {}'.format(index, pathname_exp))
             self.run_single_experiment(
                 single_experiment=grid_experiments[index]
                 )
@@ -212,6 +225,12 @@ def main():
                            help="Gpu id")
     argparser.add_argument("--num_jobs", type=int, default=1,
                            help="Not implemented yet")
+    argparser.add_argument("-d", "--date", type=str,
+                           help="Date to use to save the experiment")
+    argparser.add_argument("--embed-only", action='store_true',
+                           help="Run only the embedding (if the network is"
+                                "already trained")
+
     args = argparser.parse_args()
     if torch.cuda.is_available():
         torch.cuda.set_device(args.gpu_id)
@@ -219,7 +238,10 @@ def main():
     print("Start experiment")
     grid = GridSearch(input_file=args.experiments_file,
                       gpu_ids=args.gpu_id,
-                      num_jobs=args.num_jobs)
+                      num_jobs=args.num_jobs,
+                      date_field=args.date,
+                      embed_only=args.embed_only)
+
     grid.run()
     print("The experiment took {} s ".format(time.time() - t1))
 
