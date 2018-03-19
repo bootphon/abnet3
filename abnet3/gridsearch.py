@@ -83,6 +83,11 @@ class GridSearch(object):
         for submodule, submodule_params in grid_params.items():
             for param, values in submodule_params['arguments'].items():
                 for value in values:
+                    if type(values) is dict:
+                        name = value
+                        value = values[name]
+                    else:
+                        name = value
                     try:
                         current_exp[submodule]['arguments'][param] = value
                     except Exception as e:
@@ -91,7 +96,7 @@ class GridSearch(object):
                     current_exp['pathname_experience'] = os.path.join(
                         current_exp['pathname_experience'], now.isoformat(),
                         param,
-                        str(value)
+                        str(name)
                         )
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
