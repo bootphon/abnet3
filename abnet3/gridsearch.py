@@ -96,7 +96,7 @@ class GridSearch(object):
                     current_exp['pathname_experience'] = os.path.join(
                         current_exp['pathname_experience'], now.isoformat(),
                         param,
-                        str(name)
+                        str(name).replace("/", ".").lstrip('.')
                         )
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
