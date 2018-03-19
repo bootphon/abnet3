@@ -1,4 +1,4 @@
-import numpy as np
+etimport numpy as np
 import torch
 from torch.autograd import Variable
 import os
@@ -47,7 +47,7 @@ class OriginalDataLoader(DataLoader):
     """
 
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
-                 seed=None, batch_size=8):
+                 seed=None, batch_size=8, tcl=0.0, train_files=None):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -55,6 +55,10 @@ class OriginalDataLoader(DataLoader):
         :param features_path: path to feature file
         :param int num_max_minibatches: number of batches in each epoch
         :param int seed: for randomness
+        :param tcl: temporal coherence loss percentage (0 <= tcl < 1)
+        :param train_files: path to file listing the training wav items.
+            This is used for temporal coherence loss. If None, all files will
+            be considered.
         """
         self.pairs_path = pairs_path
         self.features_path = features_path
@@ -62,6 +66,8 @@ class OriginalDataLoader(DataLoader):
         self.seed = seed
         self.num_max_minibatches = num_max_minibatches
         self.batch_size = batch_size
+        self.tcl = tcl # temporal coherence loss
+        self.train_files = train_files
         self.features = None
         self.pairs = {'train': None, 'dev': None}
 
@@ -259,6 +265,21 @@ class OriginalDataLoader(DataLoader):
             X_batch2 = Variable(X2, volatile=not train_mode)
             y_batch = Variable(Y, volatile=not train_mode)
             yield X_batch1, X_batch2, y_batch
+
+    def get_random_pair_close_phonemes(self):
+
+        self.features
+
+    def temporal_coherence_loss(self, num_phonemes_in_batch):
+        num_phonemes_to_add = int(num_phonemes_in_batch * self.tcl)
+
+        num_pairs_same = num_phonemes_to_add // 2
+        num_pairs_diff = num_phonemes_to_add // 2
+
+        for i in range(num_pairs_same):
+
+
+
 
 
 class FramesDataLoader(OriginalDataLoader):
