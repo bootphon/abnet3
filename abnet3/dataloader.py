@@ -3,10 +3,11 @@ import torch
 from torch.autograd import Variable
 import os
 from collections import defaultdict
+import random
 
 from abnet3.utils import get_dtw_alignment, \
     Parse_Dataset, read_pairs, read_feats, \
-    read_spkid_file, read_dataset, group_pairs
+    read_spkid_file, read_dataset, group_pairs, Features_Accessor
 
 """
 This file contains several dataloaders.
@@ -47,7 +48,7 @@ class OriginalDataLoader(DataLoader):
     """
 
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
-                 seed=None, batch_size=8):
+                 seed=None, batch_size=8, tcl=0.0, train_files=None):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -55,14 +56,22 @@ class OriginalDataLoader(DataLoader):
         :param features_path: path to feature file
         :param int num_max_minibatches: number of batches in each epoch
         :param int seed: for randomness
+        :param tcl: temporal coherence loss percentage (0 <= tcl < 1)
+        :param train_files: path to file listing the training wav items.
+            This is used for temporal coherence loss. If None, all files will
+            be considered.
         """
+        assert 0 <= tcl < 1
+
         self.pairs_path = pairs_path
         self.features_path = features_path
         self.statistics_training = defaultdict(int)
         self.seed = seed
         self.num_max_minibatches = num_max_minibatches
         self.batch_size = batch_size
-        self.features = None
+        self.tcl = tcl  # temporal coherence loss
+        self.train_files = train_files
+        self.features = None  # type: Features_Accessor
         self.pairs = {'train': None, 'dev': None}
 
     def __getstate__(self):
@@ -253,13 +262,61 @@ class OriginalDataLoader(DataLoader):
             selected_batches = np.random.permutation(range(num_batches))
         for batch_id in selected_batches:
             grouped_pairs = group_pairs(batches[batch_id])
-            batch_els = self.load_frames_from_pairs(grouped_pairs)
-            X1, X2, Y = map(torch.from_numpy, batch_els)
+            X1, X2, Y = self.load_frames_from_pairs(grouped_pairs)
+
+
+            # add Temporal coherence loss
+            if self.tcl > 0:
+                num_pairs = len(y_batch)
+                num_pairs_to_add = int((self.tcl * num_pairs) / (1 - self.tcl))
+                X1_tcl, X2_tcl, Y_tcl = self.temporal_coherence_loss(num_pairs_to_add)
+                X1 = np.vstack((X1, X1_tcl))
+                X2 = np.vstack((X2, X2_tcl))
+                Y = np.concatenate((Y, Y_tcl))
+
+            X1, X2, Y = map(torch.from_numpy, [X1, X2, Y])
             X_batch1 = Variable(X1, volatile=not train_mode)
             X_batch2 = Variable(X2, volatile=not train_mode)
             y_batch = Variable(Y, volatile=not train_mode)
             yield X_batch1, X_batch2, y_batch
 
+    def temporal_coherence_loss(self, num_phonemes_in_batch):
+        num_phonemes_to_add = int(num_phonemes_in_batch * self.tcl)
+
+        num_pairs_same = num_phonemes_to_add // 2
+        num_pairs_diff = num_phonemes_to_add // 2
+
+        X1, X2, Y = [], [], []
+        for i in range(num_pairs_same):
+            files = self.features.features.items()
+            f = random.choice(files)
+            # pick random time in file and pick two frames 6 frames appart
+            file_features = self.features.features.dict_features()[f]
+            t = random.choice(range(len(file_features) - 6))
+            t2 = t + 5
+            X1.append(file_features[t])
+            X2.append(file_features[t2])
+        Y += [1] * num_pairs_same
+
+        i = 0
+        while i < num_pairs_diff:
+            files = self.features.features.items()
+            f1 = random.choice(files)
+            f2 = random.choice(files)
+            f1_feats = self.features.features.dict_features()[f1]
+            f2_feats = self.features.features.dict_features()[f2]
+            # pick random time in file1 and random time in file2
+            t = random.choice(range(len(f1_feats)))
+            t2 = random.choice(range(len(f2_feats)))
+            # check that we have not chosen the same file and same time
+            if f1_feats != f2_feats or (
+                    f1_feats == f2_feats and abs(t - t2) > 50):
+                i += 1
+                X1.append(f1_feats[t])
+                X2.append(f2_feats[t2])
+        Y += [-1] * num_pairs_same
+
+        return np.vstack(X1), np.vstack(X2), np.array(Y)
 
 class FramesDataLoader(OriginalDataLoader):
     """
