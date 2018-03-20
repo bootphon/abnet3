@@ -181,6 +181,12 @@ class GridSearch(object):
         arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
 
+        # save yaml of single experiment
+        with open(os.path.join(
+                single_experiment['pathname_experience'], 'exp.yaml'), 'w'
+        ) as outfile:
+            yaml.dump(single_experiment, outfile, default_flow_style=False)
+
         if self.embed_only:
             embedder.embed()
             return
