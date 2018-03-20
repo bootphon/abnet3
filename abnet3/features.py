@@ -26,7 +26,7 @@ class FeaturesGenerator:
                  n_filters=40, method='fbanks', normalization=True,
                  norm_per_file=False, stack=True,
                  nframes=7, deltas=False, deltasdeltas=False,
-                 norm_per_channel=True,
+                 norm_per_channel=False,
                  run='once'):
         """
 
