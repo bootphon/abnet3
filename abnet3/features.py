@@ -24,9 +24,9 @@ class FeaturesGenerator:
                  save_mean_variance_path=None,
                  vad_file=None,
                  n_filters=40, method='fbanks', normalization=True,
-                 norm_per_file=False, stack=True,
+                 norm_per_file=True, stack=True,
                  nframes=7, deltas=False, deltasdeltas=False,
-                 norm_per_channel=True,
+                 norm_per_channel=False,
                  run='once'):
         """
 
