@@ -231,7 +231,9 @@ class SamplerCluster(SamplerBuilder):
         # check that no token is present twice in the list
         nb_unique_tokens = \
             len(np.unique([a+"--"+str(b)+"--"+str(c) for a, b, c in tokens]))
-        assert len(tokens) == nb_unique_tokens
+        if len(tokens) != nb_unique_tokens:
+            print("Warning : Your dataset has %s duplicates" %
+                  (len(tokens) - nb_unique_tokens))
         tokens_type = [i for i, c in enumerate(clusters) for f in c]
         tokens_speaker = [get_spkid_from_fid[f[0]] for f in tokens]
         types = [len(c) for c in clusters]
