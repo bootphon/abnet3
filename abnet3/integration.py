@@ -244,7 +244,7 @@ class BiWeightedLearnt(BiWeightedFixed):
     """
     Sums pointwise or concatenates two vectors, using a weight and it's compliment.
     Said weight is learnt, using a linear projection for each of the input vectors,
-    summing them and finally puting it through an avtivation layer
+    summing them and finally puting it through an activation layer
 
     :param input_dim1:      dimension of the first linear projection, should coincide
                             with the dimension of the first input (with respect
@@ -300,6 +300,52 @@ class BiWeightedLearnt(BiWeightedFixed):
         self.weight_value = self.compute_attention_weight(i1, i2)
         self.weight_complement = 1 - self.weight_value
         return super(BiWeightedLearnt, self).integration_method(i1, i2)
+
+    def __str__(self):
+        _str = ""
+        _str += str(self.__class__.__name__)
+        _str += "\n"
+        _str += "Integration method: {}\n".format(self.integration_mode)
+
+        if self.input_dim2:
+            _str += "Input dims:    ({}, {})\n".format(self.input_dim1,
+                                                       self.input_dim2)
+        else:
+            _str += "Input dims:    ({0}, {0})\n".format(self.input_dim1)
+        _str += "Activation:    {}\n".format(self.activation_type)
+        _str += "\nLinear 1:      {}\n".format(str(self.linear1))
+        _str += "\nLinear 2:      {}\n".format(str(self.linear2))
+        _str += "\nAct Layer:     {}\n".format(str(self.activation_layer))
+        return _str
+
+class DeepBiWeighted(BiWeightedLearnt):
+    """
+    Sums pointwise or concatenates two vectors, using a weight and it's compliment.
+    Said weight is learnt, using a deep neural network for each of the input vectors,
+    summing them and finally puting it through an activation layer
+
+
+    """
+
+    def __init__(self, net_params, *args, **kwargs):
+        super(DeepBiWeightedLearnt, self).__init__(*args, **kwargs)
+        self.linear1 = self.build_net(net_params[0], self.activation_layer)
+        self.linear2 = self.build_net(net_params[1], self.activation_layer)
+        self.apply(self.init_weight_method)
+
+    def build_net(self, dimensions_list, activation):
+        layers = []
+        for idx in range(len(dimensions_list)-1):
+            in_dim = dimensions_list[idx]
+            out_dim = dimensions_list[idx + 1]
+            layers.append(nn.Linear(in_dim, out_dim))
+            layers.append(nn.Dropout(p=self.p_dropout))
+            if idx != len(dimensions_list)-2:
+                layers.append(activation) #on the last layer, the activation is
+                                          #applied after the sum of both networks
+
+        layers = nn.Sequential(*layers)
+        return layers
 
     def __str__(self):
         _str = ""
