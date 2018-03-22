@@ -313,8 +313,8 @@ class BiWeightedLearnt(BiWeightedFixed):
         else:
             _str += "Input dims:    ({0}, {0})\n".format(self.input_dim1)
         _str += "Activation:    {}\n".format(self.activation_type)
-        _str += "\nLinear 1:      {}\n".format(str(self.linear1))
-        _str += "\nLinear 2:      {}\n".format(str(self.linear2))
+        _str += "\nLinear 1:\n{}\n".format(str(self.linear1))
+        _str += "\nLinear 2:\n{}\n".format(str(self.linear2))
         _str += "\nAct Layer:     {}\n".format(str(self.activation_layer))
         return _str
 
@@ -346,20 +346,3 @@ class DeepBiWeighted(BiWeightedLearnt):
 
         layers = nn.Sequential(*layers)
         return layers
-
-    def __str__(self):
-        _str = ""
-        _str += str(self.__class__.__name__)
-        _str += "\n"
-        _str += "Integration method: {}\n".format(self.integration_mode)
-
-        if self.input_dim2:
-            _str += "Input dims:    ({}, {})\n".format(self.input_dim1,
-                                                       self.input_dim2)
-        else:
-            _str += "Input dims:    ({0}, {0})\n".format(self.input_dim1)
-        _str += "Activation:    {}\n".format(self.activation_type)
-        _str += "\nLinear 1:      {}\n".format(str(self.linear1))
-        _str += "\nLinear 2:      {}\n".format(str(self.linear2))
-        _str += "\nAct Layer:     {}\n".format(str(self.activation_layer))
-        return _str
