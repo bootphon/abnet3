@@ -326,9 +326,10 @@ class DeepBiWeighted(BiWeightedLearnt):
 
 
     """
-
     def __init__(self, net_params, *args, **kwargs):
-        super(DeepBiWeightedLearnt, self).__init__(*args, **kwargs)
+        super(DeepBiWeighted, self).__init__(input_dim1 = net_params[0][0],
+                                             input_dim2 = net_params[1][0],
+                                             *args, **kwargs)
         self.linear1 = self.build_net(net_params[0], self.activation_layer)
         self.linear2 = self.build_net(net_params[1], self.activation_layer)
         self.apply(self.init_weight_method)
