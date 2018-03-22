@@ -340,7 +340,6 @@ class DeepBiWeighted(BiWeightedLearnt):
             in_dim = dimensions_list[idx]
             out_dim = dimensions_list[idx + 1]
             layers.append(nn.Linear(in_dim, out_dim))
-            layers.append(nn.Dropout(p=self.p_dropout))
             if idx != len(dimensions_list)-2:
                 layers.append(activation) #on the last layer, the activation is
                                           #applied after the sum of both networks
