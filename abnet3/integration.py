@@ -239,6 +239,23 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         _str += "Weight value: {}\n".format(self.weight_value)
         return _str
 
+class BiWeightedScalarLearnt(IntegrationUnitBuilder):
+    """
+
+    """
+
+
+    def __init__(self, *args, **kwargs):
+        super(BiWeightedScalarLearnt, self).__init__(*args, **kwargs)
+        self.weight_value = nn.Parameter(torch.rand(1))
+        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+
+    def integration_method(self, i1, i2):
+        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+        return super(BiWeightedScalarLearnt, self).integration_method(i1, i2)
+
+
+
 
 class BiWeightedLearnt(BiWeightedFixed):
     """
