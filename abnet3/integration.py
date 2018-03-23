@@ -276,7 +276,7 @@ class BiWeightedLearnt(BiWeightedFixed):
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
 
-        self.weight_value = Variable(torch.rand(1))
+        self.weight_value = Variable(torch.rand(1), requires_autograd = True)
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
 
         self.linear1 = nn.Linear(input_dim1, 1)
