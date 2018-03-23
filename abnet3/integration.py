@@ -239,7 +239,7 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         _str += "Weight value: {}\n".format(self.weight_value)
         return _str
 
-class BiWeightedScalarLearnt(IntegrationUnitBuilder):
+class BiWeightedScalarLearnt(BiWeightedFixed):
     """
 
     """
