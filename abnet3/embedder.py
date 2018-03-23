@@ -200,7 +200,7 @@ class MultimodalEmbedder(EmbedderBuilder):
                 observer_tuple[0].register_response(observer_tuple[1]())
 
         data = h5features.Data(items, times, embeddings, check=True)
-        with h5features.Writer(self.output_path) as fh:
+        with h5features.Writer(self.output_path + "embedding.features") as fh:
             fh.write(data, 'features')
 
         for observer_tuple in self.observers:
