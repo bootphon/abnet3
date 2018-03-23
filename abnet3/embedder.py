@@ -149,7 +149,7 @@ class MultimodalEmbedder(EmbedderBuilder):
             print("Placing observer to save learnt attention weights")
             self.observers.append((EmbeddingObserver(),
                                    self.network.integration_unit.get_weights,
-                                   self.output_path + "attention_weights.pth"))
+                                   self.output_path + "attention_weights.features"))
 
     def embed(self):
         """
@@ -200,7 +200,7 @@ class MultimodalEmbedder(EmbedderBuilder):
                 observer_tuple[0].register_response(observer_tuple[1]())
 
         data = h5features.Data(items, times, embeddings, check=True)
-        with h5features.Writer(self.output_path + "embedding.features") as fh:
+        with h5features.Writer(self.output_path + "embedded.features") as fh:
             fh.write(data, 'features')
 
         for observer_tuple in self.observers:
