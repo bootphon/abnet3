@@ -349,5 +349,3 @@ class DeepBiWeighted(BiWeightedLearnt):
 
         layers = nn.Sequential(*layers)
         return layers
-
-class HeadstartWrapper?
