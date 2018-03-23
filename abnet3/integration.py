@@ -276,6 +276,9 @@ class BiWeightedLearnt(BiWeightedFixed):
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
 
+        self.weight_value = Variable(torch.rand(1))
+        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+
         self.linear1 = nn.Linear(input_dim1, 1)
         if input_dim2:
             self.linear2 = nn.Linear(input_dim2, 1)
@@ -298,7 +301,7 @@ class BiWeightedLearnt(BiWeightedFixed):
 
     def integration_method(self, i1, i2):
         self.weight_value = self.compute_attention_weight(i1, i2)
-        self.weight_complement = 1 - self.weight_value
+        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
         return super(BiWeightedLearnt, self).integration_method(i1, i2)
 
     def __str__(self):
@@ -346,3 +349,5 @@ class DeepBiWeighted(BiWeightedLearnt):
 
         layers = nn.Sequential(*layers)
         return layers
+
+class HeadstartWrapper?
