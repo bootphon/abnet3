@@ -145,7 +145,7 @@ class MultimodalEmbedder(EmbedderBuilder):
                                                       #function to get the data,
                                                       #path to be saved)
 
-        if type(self.network.integration_unit) == BiWeightedLearnt:
+        if isinstance(self.network.integration_unit, BiWeightedLearnt):
             print("Placing observer to save learnt attention weights")
             self.observers.append((EmbeddingObserver(),
                                    self.network.integration_unit.get_weights,
