@@ -49,7 +49,7 @@ class TestFeatures:
                          items, times,
                          features)
 
-        features_generator = FeaturesGenerator()
+        features_generator = FeaturesGenerator(norm_per_channel=True)
         h5f_mean_var = str(tempdir / 'h5-normalized.features')
         mean, variance = features_generator.mean_variance_normalisation(
             h5f, h5f_mean_var)
@@ -166,7 +166,8 @@ class TestFeatures:
 
         h5f_mean_var = str(tempdir / 'h5-normalized.features')
         features_generator = FeaturesGenerator(normalization=True,
-                                               norm_per_file=True)
+                                               norm_per_file=True,
+                                               norm_per_channel=True)
         mean, var = features_generator.mean_variance_normalisation(
             h5f, h5f_mean_var, vad_file=vad_file)
 
@@ -232,7 +233,8 @@ class TestFeatures:
 
         h5f_mean_var = str(tempdir / 'h5-normalized.features')
         features_generator = FeaturesGenerator(normalization=True,
-                                               norm_per_file=True)
+                                               norm_per_file=True,
+                                               norm_per_channel=True)
         meansvars = features_generator.mean_var_norm_per_file(
             h5f, h5f_mean_var, vad_file=str(vad_path))
 
