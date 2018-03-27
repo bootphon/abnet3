@@ -263,14 +263,10 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
             if self.headstart == 0:
                 print("Headstart ended")
         else:
+            self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
             v1_weighted = torch.mul(i1, self.weight_value)
             v2_weighted = torch.mul(i2, self.weight_complement)
         return self.integration_function(v1_weighted, v2_weighted)
-
-    def integration_method(self, i1, i2):
-        if not self.headstart:
-            self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
-        return self.integration_method(i1, i2)
 
 
 
