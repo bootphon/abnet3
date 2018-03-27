@@ -244,24 +244,31 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
     """
 
 
-    def __init__(self, headstart=None, headstart_weight=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(BiWeightedScalarLearnt, self).__init__(*args, **kwargs)
         self.weight_value = nn.Parameter(torch.rand(1))
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
-        self.headstart = headstart
-        if self.headstart:
-            self.headstart_weight = Variable(torch.Tensor([headstart_weight]))
-            self.headstart_complement = torch.add(torch.mul(self.headstart_weight, -1), 1)
-            self.weight_value.data[0] = headstart_weight
-            self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+        self.headstart = False
+
+    def set_headstart_weight(self, headstart_weight):
+        self.headstart = True
+        self.headstart_weight = Variable(torch.Tensor([headstart_weight]))
+        self.headstart_complement = torch.add(torch.mul(self.headstart_weight, -1), 1)
+
+        if self.weight_value.is_cuda:
+            self.headstart_weight = self.headstart_weight.cuda()
+            self.headstart_complement = self.headstart_complement.cuda()
+
+        self.weight_value.data[0] = headstart_weight
+        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+
+    def start_training(self):
+        self.headstart = False
 
     def integration_method(self, i1, i2):
         if self.headstart:
             v1_weighted = torch.mul(i1, self.headstart_weight)
             v2_weighted = torch.mul(i2, self.headstart_complement)
-            self.headstart -= 1
-            if self.headstart == 0:
-                print("Headstart ended")
         else:
             self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
             v1_weighted = torch.mul(i1, self.weight_value)

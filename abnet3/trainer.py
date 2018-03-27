@@ -15,6 +15,7 @@ from abnet3.model import *
 from abnet3.loss import *
 from abnet3.sampler import *
 from abnet3.utils import *
+from abnet3.integration import *
 from abnet3.dataloader import DataLoader, FramesDataLoader, MultiTaskDataLoader
 import numpy as np
 import torch
@@ -321,10 +322,15 @@ class MultimodalTrainer(TrainerBuilder):
     """Multimodal Trainer class for ABnet3
 
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, headstart=None, headstart_weight=None, *args, **kwargs):
 
         super(MultimodalTrainer, self).__init__(*args, **kwargs)
         assert type(self.dataloader) == abnet3.dataloader.MultimodalDataLoader
+
+        if headstart:
+            assert isinstance(self.network.integration_unit, BiWeightedScalarLearnt)
+            self.headstart = headstart
+            self.network.integration_unit.set_headstart_weight(headstart_weight)
 
     def cuda_all_modes(self, batch_list):
         cuda_on = []
@@ -340,6 +346,10 @@ class MultimodalTrainer(TrainerBuilder):
         train_loss = 0.0
         dev_loss = 0.0
         self.network.train()
+
+        if self.headstart == 0:
+            self.network.integration_unit.start_training()
+            print("Headstart ended")
 
         for X_list1, X_list2, y_batch in self.dataloader.batch_iterator(train_mode=True):
             if self.cuda:
@@ -381,6 +391,10 @@ class MultimodalTrainer(TrainerBuilder):
         normalized_dev_loss = dev_loss/self.num_batches_dev
 
         self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
+
+        if self.headstart > -1:
+            self.headstart -= 1
+
         return dev_loss
 
 
