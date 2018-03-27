@@ -241,17 +241,35 @@ class BiWeightedFixed(IntegrationUnitBuilder):
 
 class BiWeightedScalarLearnt(BiWeightedFixed):
     """
-
     """
 
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, headstart=None, headstart_weight=None, *args, **kwargs):
         super(BiWeightedScalarLearnt, self).__init__(*args, **kwargs)
         self.weight_value = nn.Parameter(torch.rand(1))
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+        self.headstart = headstart
+        if self.headstart:
+            self.headstart_weight = headstart_weight
+            self.headstart_complement = 1 - headstart_weight
+            self.weight_value.data[0] = headstart_weight
+            self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
 
     def integration_method(self, i1, i2):
-        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+        if self.headstart:
+            v1_weighted = torch.mul(i1, self.headstart_weight)
+            v2_weighted = torch.mul(i2, self.headstart_complement)
+            self.headstart -= 1
+            if self.headstart == 0:
+                print("Headstart ended")
+        else:
+            v1_weighted = torch.mul(i1, self.weight_value)
+            v2_weighted = torch.mul(i2, self.weight_complement)
+        return self.integration_function(v1_weighted, v2_weighted)
+
+    def integration_method(self, i1, i2):
+        if not self.headstart:
+            self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
         return super(BiWeightedScalarLearnt, self).integration_method(i1, i2)
 
 
