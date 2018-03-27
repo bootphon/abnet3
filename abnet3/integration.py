@@ -270,7 +270,7 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
     def integration_method(self, i1, i2):
         if not self.headstart:
             self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
-        return super(BiWeightedScalarLearnt, self).integration_method(i1, i2)
+        return self.integration_method(i1, i2)
 
 
 
