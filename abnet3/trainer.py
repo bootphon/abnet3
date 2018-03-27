@@ -321,8 +321,24 @@ class TrainerSiameseMultitask(TrainerBuilder):
 class MultimodalTrainer(TrainerBuilder):
     """Multimodal Trainer class for ABnet3
 
+    :param headstart:   Only available when using BiWeightedScalarLearnt and
+                        BiWeightedDeepLearnt. This gives the abnet a headstart
+                        over the attention training. It should be a tuple of
+                        the form:
+
+                        tuple[0]:   int, how many epochs to wait before begin
+                                    training the attention model
+                        tuple[1]:   bool, wether after the attention model starts
+                                    the network keeps training (True) or it stops
+                                    (False)
+                        tuple[2]:   float in [0, 1], the weight used as attention
+                                    weight during the headstart
+
+                        if None, both network and attention model start training
+                        at the same time
+
     """
-    def __init__(self, headstart=None, headstart_weight=None, *args, **kwargs):
+    def __init__(self, headstart=None, *args, **kwargs):
 
         super(MultimodalTrainer, self).__init__(*args, **kwargs)
         assert type(self.dataloader) == abnet3.dataloader.MultimodalDataLoader
@@ -330,9 +346,10 @@ class MultimodalTrainer(TrainerBuilder):
         if headstart:
             assert type(self.network.integration_unit) in \
                                     (BiWeightedScalarLearnt, BiWeightedDeepLearnt)
-            self.headstart = headstart
-            self.network.integration_unit.set_headstart_weight(headstart,
-                                                               headstart_weight)
+            self.headstart_epochs = headstart[0]
+            self.parallel_after_headstart = headstart[1]
+            self.network.integration_unit.set_headstart_weight(headstart[0],
+                                                               headstart[2])
 
     def cuda_all_modes(self, batch_list):
         cuda_on = []
@@ -349,7 +366,7 @@ class MultimodalTrainer(TrainerBuilder):
         dev_loss = 0.0
         self.network.train()
 
-        if self.headstart == 0:
+        if self.headstart_epochs == 0:
             self.network.integration_unit.start_training()
             print("Headstart ended")
 
@@ -394,8 +411,8 @@ class MultimodalTrainer(TrainerBuilder):
 
         self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
 
-        if self.headstart > -1:
-            self.headstart -= 1
+        if self.headstart_epochs > -1:
+            self.headstart_epochs -= 1
 
         return dev_loss
 
