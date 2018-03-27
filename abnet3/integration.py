@@ -250,8 +250,8 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
         self.headstart = headstart
         if self.headstart:
-            self.headstart_weight = headstart_weight
-            self.headstart_complement = 1 - headstart_weight
+            self.headstart_weight = Variable(torch.Tensor([headstart_weight]))
+            self.headstart_complement = torch.add(torch.mul(self.headstart_weight, -1), 1)
             self.weight_value.data[0] = headstart_weight
             self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
 
