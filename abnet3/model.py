@@ -472,10 +472,10 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         if self.attention_lr:
             network_params = []
             if self.pre:
-                network_params += list(self.pre1.parameters())
-                network_params += list(self.pre2.parameters())
+                network_params += list(self.pre_net1.parameters())
+                network_params += list(self.pre_net2.parameters())
             if self.post:
-                network_params += list(self.post.parameters())
+                network_params += list(self.post_net.parameters())
 
             return [{'params': network_params},
                     {'params': self.integration_unit.parameters(),
