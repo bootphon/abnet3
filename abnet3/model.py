@@ -404,6 +404,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
     def __init__(self, integration_unit,
                        pre_integration_net_params=None,
                        post_integration_net_params=None,
+                       attention_lr = None,
                        p_dropout=0, batch_norm=False,
                        type_init='xavier_uni', activation_layer=None,
                        output_path=None, *args, **kwargs):
@@ -420,6 +421,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         self.p_dropout = p_dropout
         self.output_path = output_path
         self.integration_unit = integration_unit
+        self.attention_lr = attention_lr
         # Pass forward network functions
 
         activation = activation_functions[activation_layer]
@@ -433,8 +435,6 @@ class MultimodalSiameseNetwork(NetworkBuilder):
             self.pre = True
         else:
             self.pre = False
-
-
 
         if post_integration_net_params:
             self.post_net = self.build_net(post_integration_net_params, activation)
@@ -467,6 +467,22 @@ class MultimodalSiameseNetwork(NetworkBuilder):
             init_func(layer.weight.data,
                       gain=nn.init.calculate_gain(self.activation_layer))
             layer.bias.data.fill_(0.0)
+
+    def parameters(self):
+        if self.attention_lr:
+            network_params = []
+            if self.pre:
+                network_params += list(self.pre1.parameters())
+                network_params += list(self.pre2.parameters())
+            if self.post:
+                network_params += list(self.post.parameters())
+
+            return [{'params': network_params},
+                    {'params': self.integration_unit.parameters(),
+                                                        'lr': self.attention_lr}
+                    ]
+        else:
+            return super(MultimodalSiameseNetwork, self).parameters()
 
 
     def forward_once(self, x_list):
