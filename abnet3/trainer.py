@@ -328,9 +328,11 @@ class MultimodalTrainer(TrainerBuilder):
         assert type(self.dataloader) == abnet3.dataloader.MultimodalDataLoader
 
         if headstart:
-            assert isinstance(self.network.integration_unit, BiWeightedScalarLearnt)
+            assert type(self.network.integration_unit) in \
+                                    (BiWeightedScalarLearnt, BiWeightedDeepLearnt)
             self.headstart = headstart
-            self.network.integration_unit.set_headstart_weight(headstart_weight)
+            self.network.integration_unit.set_headstart_weight(headstart,
+                                                               headstart_weight)
 
     def cuda_all_modes(self, batch_list):
         cuda_on = []

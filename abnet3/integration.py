@@ -239,19 +239,21 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         _str += "Weight value: {}\n".format(self.weight_value)
         return _str
 
+
 class BiWeightedScalarLearnt(BiWeightedFixed):
     """
+    Sums pointwise or concatenates two vectors, using a weight and it's compliment.
+    Said weight is learnt
     """
-
 
     def __init__(self, *args, **kwargs):
         super(BiWeightedScalarLearnt, self).__init__(*args, **kwargs)
         self.weight_value = nn.Parameter(torch.rand(1))
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
-        self.headstart = False
+        self.headstart = None
 
-    def set_headstart_weight(self, headstart_weight):
-        self.headstart = True
+    def set_headstart_weight(self, headstart, headstart_weight):
+        self.headstart = headstart
         self.headstart_weight = Variable(torch.Tensor([headstart_weight]))
         self.headstart_complement = torch.add(torch.mul(self.headstart_weight, -1), 1)
 
@@ -263,7 +265,7 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
 
     def start_training(self):
-        self.headstart = False
+        self.headstart = None
 
     def integration_method(self, i1, i2):
         if self.headstart:
@@ -275,23 +277,36 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
             v2_weighted = torch.mul(i2, self.weight_complement)
         return self.integration_function(v1_weighted, v2_weighted)
 
+    def __str__(self):
+        _str = ""
+        _str += str(self.__class__.__name__)
+        _str += "\n"
+        _str += "Integration method: {}\n".format(self.integration_mode)
+        if self.headstart:
+            _str += "Headstart, training starts after {} epochs".format(self.headstart)
+            _str += "Headstart weight value: {}\n".format(self.weight_value)
+        else:
+            _str += "Starting weight value: {}\n".format(self.weight_value)
+        return _str
 
 
-
-class BiWeightedLearnt(BiWeightedFixed):
+class BiWeightedDeepLearnt(BiWeightedFixed):
     """
     Sums pointwise or concatenates two vectors, using a weight and it's compliment.
-    Said weight is learnt, using a linear projection for each of the input vectors,
+    Said weight is learnt, using a neural network for each of the input vectors,
     summing them and finally puting it through an activation layer
 
-    :param input_dim1:      dimension of the first linear projection, should coincide
-                            with the dimension of the first input (with respect
-                            of the order the paths were provided to the dataloader)
-
-    :param input_dim2:      dimension of the second linear projection, should coincide
-                            with the dimension of the second input. If both inputs have
-                            the same dimension, this could be omitted and input_dim1
-                            will be used for both projections
+    :param net_params:      List, indicating the network architecture. It must contain
+                            only integers, and must have len equal or greater than
+                            two. Each integer represents an internal representation
+                            dimension, except the first one that represents the
+                            input dimension and the last one that represents
+                            the output dimension. Every one of this representations
+                            will be joined by a fully connected linear layer, so
+                            for example the list [280, 1000, 39] means that the
+                            input of the network is 280, then a linear layer will
+                            take that to 1000 dims, and then a final layer will
+                            produce a 39 dimension output vector.
 
     :param activation_type: ('sigmoid'|'tanh'),
                             activation type of the activation layer that the summed
@@ -302,27 +317,37 @@ class BiWeightedLearnt(BiWeightedFixed):
                             type of weight initialization, default is 'xavier_uni'
     """
 
-    def __init__(self, input_dim1, input_dim2=None, activation_type="sigmoid",
+    def __init__(self, net_params, activation_type="sigmoid",
                        init_type='xavier_uni', *args, **kwargs):
         super(BiWeightedLearnt, self).__init__(*args, **kwargs)
         assert activation_type in ('sigmoid', 'tanh')
         assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
 
-        self.input_dim1 = input_dim1
-        self.input_dim2 = input_dim2
+        self.input_dim1 = net_params[0][0]
+        self.input_dim2 = net_params[1][0]
         self.activation_layer = activation_functions[activation_type]
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
 
-        self.weight_value = Variable(torch.rand(1), requires_grad = True)
+        self.weight_value = Variable(torch.rand(1))
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
 
-        self.linear1 = nn.Linear(input_dim1, 1)
-        if input_dim2:
-            self.linear2 = nn.Linear(input_dim2, 1)
-        else:
-            self.linear2 = nn.Linear(input_dim1, 1)
+        self.linear1 = self.build_net(net_params[0], self.activation_layer)
+        self.linear2 = self.build_net(net_params[1], self.activation_layer)
         self.apply(self.init_weight_method)
+
+    def build_net(self, dimensions_list, activation):
+        layers = []
+        for idx in range(len(dimensions_list)-1):
+            in_dim = dimensions_list[idx]
+            out_dim = dimensions_list[idx + 1]
+            layers.append(nn.Linear(in_dim, out_dim))
+            if idx != len(dimensions_list)-2:
+                layers.append(activation) #on the last layer, the activation is
+                                          #applied after the sum of both networks
+
+        layers = nn.Sequential(*layers)
+        return layers
 
     def init_weight_method(self, layer):
         if isinstance(layer, nn.Linear):
@@ -358,32 +383,3 @@ class BiWeightedLearnt(BiWeightedFixed):
         _str += "\nLinear 2:\n{}\n".format(str(self.linear2))
         _str += "\nAct Layer:     {}\n".format(str(self.activation_layer))
         return _str
-
-class DeepBiWeighted(BiWeightedLearnt):
-    """
-    Sums pointwise or concatenates two vectors, using a weight and it's compliment.
-    Said weight is learnt, using a deep neural network for each of the input vectors,
-    summing them and finally puting it through an activation layer
-
-
-    """
-    def __init__(self, net_params, *args, **kwargs):
-        super(DeepBiWeighted, self).__init__(input_dim1 = net_params[0][0],
-                                             input_dim2 = net_params[1][0],
-                                             *args, **kwargs)
-        self.linear1 = self.build_net(net_params[0], self.activation_layer)
-        self.linear2 = self.build_net(net_params[1], self.activation_layer)
-        self.apply(self.init_weight_method)
-
-    def build_net(self, dimensions_list, activation):
-        layers = []
-        for idx in range(len(dimensions_list)-1):
-            in_dim = dimensions_list[idx]
-            out_dim = dimensions_list[idx + 1]
-            layers.append(nn.Linear(in_dim, out_dim))
-            if idx != len(dimensions_list)-2:
-                layers.append(activation) #on the last layer, the activation is
-                                          #applied after the sum of both networks
-
-        layers = nn.Sequential(*layers)
-        return layers
