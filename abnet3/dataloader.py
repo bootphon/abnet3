@@ -76,7 +76,7 @@ class OriginalDataLoader(DataLoader):
         self.features = None  # type: Features_Accessor
         self.shuffle_between_epochs = shuffle_between_epochs
         self.tcl = tcl  # temporal coherence loss
-        self.train_files: set = None
+        self.train_files = None # type: set
         self.pairs = {'train': None, 'dev': None}  # type: dict[str, list]
 
     def __getstate__(self):
