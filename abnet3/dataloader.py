@@ -265,25 +265,36 @@ class OriginalDataLoader(DataLoader):
             selected_batches = np.random.permutation(range(num_batches))
         for batch_id in selected_batches:
             grouped_pairs = group_pairs(batches[batch_id])
-            X1, X2, Y = self.load_frames_from_pairs(grouped_pairs)
-
+            batch = self.load_frames_from_pairs(grouped_pairs)
 
             # add Temporal coherence loss
             if self.tcl > 0:
-                num_pairs = len(Y)
-                num_pairs_to_add = int((self.tcl * num_pairs) / (1 - self.tcl))
-                X1_tcl, X2_tcl, Y_tcl = self.temporal_coherence_loss(num_pairs_to_add)
-                X1 = np.vstack((X1, X1_tcl))
-                X2 = np.vstack((X2, X2_tcl))
-                Y = np.concatenate((Y, Y_tcl))
+                batch = self.add_tcl_to_batch(batch)
 
+            X1, X2, Y = batch
             X1, X2, Y = map(torch.from_numpy, [X1, X2, Y])
             X_batch1 = Variable(X1, volatile=not train_mode)
             X_batch2 = Variable(X2, volatile=not train_mode)
             y_batch = Variable(Y, volatile=not train_mode)
             yield X_batch1, X_batch2, y_batch
 
+    def add_tcl_to_batch(self, batch):
+        X1, X2, Y = batch
+        num_pairs = len(Y)
+        num_pairs_to_add = int((self.tcl * num_pairs) / (1 - self.tcl))
+        X1_tcl, X2_tcl, Y_tcl = self.temporal_coherence_loss(num_pairs_to_add)
+        X1 = np.vstack((X1, X1_tcl))
+        X2 = np.vstack((X2, X2_tcl))
+        Y = np.concatenate((Y, Y_tcl))
+        return X1, X2, Y
+
     def temporal_coherence_loss(self, num_phonemes_in_batch):
+        """
+        As described in
+            Dupoux, E., & Synnaeve, G. (2016).
+            A Temporal Coherence Loss Function for
+            Learning Unsupervised Acoustic Embeddings. SLTU.
+        """
         num_frames_to_add = int(num_phonemes_in_batch * self.tcl)
         X1, X2, Y = [], [], []
         for i in range(num_frames_to_add):
