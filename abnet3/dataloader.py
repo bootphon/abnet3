@@ -1,4 +1,4 @@
-import numpy as np
+etimport numpy as np
 import torch
 from torch.autograd import Variable
 import os
