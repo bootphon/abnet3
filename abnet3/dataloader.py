@@ -47,11 +47,11 @@ class OriginalDataLoader(DataLoader):
 
     """
 
-    TCL_DISTANCE_SAME = [1]
+    TCL_DISTANCE_SAME = [1]  # see Synnaeve paper about Temporal Coherence Loss
     TCL_DISTANCES_DIFF = [15, 20, 25, 30]
 
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
-                 seed=None, batch_size=8, tcl=0.0, train_files=None):
+                 seed=None, batch_size=8, tcl=0.0, tcl_train_files=None):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -60,7 +60,7 @@ class OriginalDataLoader(DataLoader):
         :param int num_max_minibatches: number of batches in each epoch
         :param int seed: for randomness
         :param tcl: temporal coherence loss percentage (0 <= tcl < 1)
-        :param train_files: path to file listing the training wav items.
+        :param tcl_train_files: path to file listing the training wav items.
             This is used for temporal coherence loss. If None, all files will
             be considered.
         """
@@ -73,7 +73,7 @@ class OriginalDataLoader(DataLoader):
         self.num_max_minibatches = num_max_minibatches
         self.batch_size = batch_size
         self.tcl = tcl  # temporal coherence loss
-        self.train_files = train_files
+        self.tcl_train_files = tcl_train_files
         self.features = None  # type: Features_Accessor
         self.pairs = {'train': None, 'dev': None}
 
@@ -270,7 +270,7 @@ class OriginalDataLoader(DataLoader):
 
             # add Temporal coherence loss
             if self.tcl > 0:
-                num_pairs = len(y_batch)
+                num_pairs = len(Y)
                 num_pairs_to_add = int((self.tcl * num_pairs) / (1 - self.tcl))
                 X1_tcl, X2_tcl, Y_tcl = self.temporal_coherence_loss(num_pairs_to_add)
                 X1 = np.vstack((X1, X1_tcl))
@@ -285,14 +285,15 @@ class OriginalDataLoader(DataLoader):
 
     def temporal_coherence_loss(self, num_phonemes_in_batch):
         num_frames_to_add = int(num_phonemes_in_batch * self.tcl)
-
         X1, X2, Y = [], [], []
         for i in range(num_frames_to_add):
-            files = self.features.features.items()
+            files = list(self.features.features.keys())
+            if self.tcl_train_files is not None:
+                files = self.tcl_train_files
             f = random.choice(files)
             # pick random time in file
-            file_features = self.features.features.dict_features()[f]
-            t = random.choice(range(len(file_features) - 6))
+            file_features = self.features.features[f]
+            t = random.choice(range(len(file_features) - max(self.TCL_DISTANCES_DIFF)))
             # "same" pairs
             for delta in self.TCL_DISTANCE_SAME:
                 X1.append(file_features[t])
