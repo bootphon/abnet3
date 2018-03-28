@@ -52,7 +52,7 @@ class OriginalDataLoader(DataLoader):
 
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
                  seed=None, batch_size=8, shuffle_between_epochs=False,
-                 tcl=0.0, tcl_train_files=None):
+                 tcl=0.0):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -76,8 +76,8 @@ class OriginalDataLoader(DataLoader):
         self.features = None  # type: Features_Accessor
         self.shuffle_between_epochs = shuffle_between_epochs
         self.tcl = tcl  # temporal coherence loss
-        self.tcl_train_files = tcl_train_files
-        self.pairs = {'train': None, 'dev': None}
+        self.train_files: set = None
+        self.pairs = {'train': None, 'dev': None}  # type: dict[str, list]
 
     def __getstate__(self):
         """used for pickle
@@ -135,6 +135,10 @@ class OriginalDataLoader(DataLoader):
         if self.pairs['dev'] is None:
             dev_dir = os.path.join(self.pairs_path, 'dev_pairs/dataset')
             self.pairs['dev'] = read_dataset(dev_dir)
+
+        # analyse which are the train files
+        self.train_files = list({pair[0] for pair in self.pairs['train']} |
+                                {pair[3] for pair in self.pairs['train']})
 
     def get_token_feats(self, pairs):
         token_feats = {}
@@ -303,8 +307,8 @@ class OriginalDataLoader(DataLoader):
         X1, X2, Y = [], [], []
         for i in range(num_frames_to_add):
             files = list(self.features.features.keys())
-            if self.tcl_train_files is not None:
-                files = self.tcl_train_files
+            if self.train_files is not None:
+                files = self.train_files
             f = random.choice(files)
             # pick random time in file
             file_features = self.features.features[f]
@@ -319,24 +323,6 @@ class OriginalDataLoader(DataLoader):
                 X1.append(file_features[t])
                 X2.append(file_features[t + delta])
                 Y.append(-1)
-
-        # i = 0
-        # while i < num_pairs_diff:
-        #     files = self.features.features.items()
-        #     f1 = random.choice(files)
-        #     f2 = random.choice(files)
-        #     f1_feats = self.features.features.dict_features()[f1]
-        #     f2_feats = self.features.features.dict_features()[f2]
-        #     # pick random time in file1 and random time in file2
-        #     t = random.choice(range(len(f1_feats)))
-        #     t2 = random.choice(range(len(f2_feats)))
-        #     # check that we have not chosen the same file and same time
-        #     if f1_feats != f2_feats or (
-        #             f1_feats == f2_feats and abs(t - t2) > 50):
-        #         i += 1
-        #         X1.append(f1_feats[t])
-        #         X2.append(f2_feats[t2])
-        # Y += [-1] * num_pairs_same
 
         return np.vstack(X1), np.vstack(X2), np.array(Y)
 
