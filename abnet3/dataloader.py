@@ -51,7 +51,8 @@ class OriginalDataLoader(DataLoader):
     TCL_DISTANCES_DIFF = [15, 20, 25, 30]
 
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
-                 seed=None, batch_size=8, tcl=0.0, tcl_train_files=None):
+                 seed=None, batch_size=8, shuffle_between_epochs=False,
+                 tcl=0.0, tcl_train_files=None):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -72,9 +73,10 @@ class OriginalDataLoader(DataLoader):
         self.seed = seed
         self.num_max_minibatches = num_max_minibatches
         self.batch_size = batch_size
+        self.features = None  # type: Features_Accessor
+        self.shuffle_between_epochs = shuffle_between_epochs
         self.tcl = tcl  # temporal coherence loss
         self.tcl_train_files = tcl_train_files
-        self.features = None  # type: Features_Accessor
         self.pairs = {'train': None, 'dev': None}
 
     def __getstate__(self):
@@ -249,7 +251,9 @@ class OriginalDataLoader(DataLoader):
         pairs = self.pairs[mode]
         num_pairs = len(pairs)
 
-        # TODO : shuffle the pairs before creating batches
+        if self.shuffle_between_epochs:
+            random.shuffle(pairs)
+
         # make batches
         sliced_indexes = range(0, num_pairs, self.batch_size)
         batches = [pairs[idx:idx + self.batch_size] for idx in sliced_indexes]
