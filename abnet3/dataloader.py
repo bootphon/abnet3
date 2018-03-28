@@ -3,6 +3,7 @@ import torch
 from torch.autograd import Variable
 import os
 from collections import defaultdict
+import random
 
 from abnet3.utils import get_dtw_alignment, \
     Parse_Dataset, read_pairs, read_feats, \
@@ -47,7 +48,7 @@ class OriginalDataLoader(DataLoader):
     """
 
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
-                 seed=None, batch_size=8):
+                 seed=None, batch_size=8, shuffle_between_epochs=False):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -63,6 +64,7 @@ class OriginalDataLoader(DataLoader):
         self.num_max_minibatches = num_max_minibatches
         self.batch_size = batch_size
         self.features = None
+        self.shuffle_between_epochs = shuffle_between_epochs
         self.pairs = {'train': None, 'dev': None}
 
     def __getstate__(self):
@@ -237,7 +239,9 @@ class OriginalDataLoader(DataLoader):
         pairs = self.pairs[mode]
         num_pairs = len(pairs)
 
-        # TODO : shuffle the pairs before creating batches
+        if self.shuffle_between_epochs:
+            random.shuffle(pairs)
+
         # make batches
         sliced_indexes = range(0, num_pairs, self.batch_size)
         batches = [pairs[idx:idx + self.batch_size] for idx in sliced_indexes]
