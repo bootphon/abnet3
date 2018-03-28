@@ -296,16 +296,16 @@ class OriginalDataLoader(DataLoader):
         Y = np.concatenate((Y, Y_tcl))
         return X1, X2, Y
 
-    def temporal_coherence_loss(self, num_phonemes_in_batch):
+    def temporal_coherence_loss(self, num_pairs):
         """
         As described in
             Dupoux, E., & Synnaeve, G. (2016).
             A Temporal Coherence Loss Function for
             Learning Unsupervised Acoustic Embeddings. SLTU.
         """
-        num_frames_to_add = int(num_phonemes_in_batch * self.tcl)
         X1, X2, Y = [], [], []
-        for i in range(num_frames_to_add):
+        pairs_per_iteration = len(self.TCL_DISTANCES_DIFF) + len(self.TCL_DISTANCE_SAME)
+        for i in range(round(num_pairs /pairs_per_iteration)):
             files = list(self.features.features.keys())
             if self.train_files is not None:
                 files = self.train_files
