@@ -266,12 +266,9 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         return self.integration_function(v1_weighted, v2_weighted)
 
     def cuda(self):
-        print("Calling integration unit cuda")
         super(BiWeightedScalarLearnt, self).cuda()
-        self.weight_value.cuda()
-        print("Cuda called on weight")
-        print(self.weight_value)
-        self.weight_complement.cuda()
+        self.weight_value = self.weight_value.cuda()
+        self.weight_complement = self.weight_complement.cuda()
 
     def __str__(self):
         _str = ""
