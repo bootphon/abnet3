@@ -265,6 +265,11 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         v2_weighted = torch.mul(i2, self.weight_complement)
         return self.integration_function(v1_weighted, v2_weighted)
 
+    def cuda(self):
+        super(BiWeightedScalarLearnt, self).cuda()
+        self.weight_value.cuda()
+        self.weight_complement.cuda()
+
     def __str__(self):
         _str = ""
         _str += str(self.__class__.__name__)
@@ -364,6 +369,11 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
             self.weight_value = self.compute_attention_weight(i1, i2)
             self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
         return super(BiWeightedLearnt, self).integration_method(i1, i2)
+
+    def cuda(self):
+        super(BiWeightedScalarLearnt, self).cuda()
+        self.weight_value.cuda()
+        self.weight_complement.cuda()
 
     def __str__(self):
         _str = ""
