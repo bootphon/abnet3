@@ -337,22 +337,23 @@ class TemporalCoherenceDataLoader(OriginalDataLoader):
     """
 
     def __init__(self, pairs_path, features_path, batch_size=500,
+                 test_words_batch_size=8,
                  num_max_minibatches=1000):
         super().__init__(pairs_path, features_path,
-                         num_max_minibatches=num_max_minibatches)
+                         num_max_minibatches=num_max_minibatches,
+                         batch_size=test_words_batch_size)
         self.batch_size = batch_size
 
     def batch_iterator(self, train_mode=True):
-
         self.load_data()
-
         if train_mode:
-            batch = self.temporal_coherence_loss(num_pairs=self.batch_size)
-            X1, X2, Y = map(torch.from_numpy, batch)
-            X1 = Variable(X1, volatile=not train_mode)
-            X2 = Variable(X2, volatile=not train_mode)
-            Y = Variable(Y, volatile=not train_mode)
-            yield X1, X2, Y
+            for _ in range(self.num_max_minibatches):
+                batch = self.temporal_coherence_loss(num_pairs=self.batch_size)
+                X1, X2, Y = map(torch.from_numpy, batch)
+                X1 = Variable(X1, volatile=not train_mode)
+                X2 = Variable(X2, volatile=not train_mode)
+                Y = Variable(Y, volatile=not train_mode)
+                yield X1, X2, Y
         else:
             yield from super(TemporalCoherenceDataLoader, self).batch_iterator(train_mode)
 
