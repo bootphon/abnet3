@@ -352,6 +352,9 @@ class MultimodalTrainer(TrainerBuilder):
         else:
             self.network.integration_unit.start_training()
 
+        if self.cuda:
+            self.network.integration_unit.cuda()
+
     def cuda_all_modes(self, batch_list):
         cuda_on = []
         for mode in batch_list:
