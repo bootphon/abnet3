@@ -428,9 +428,10 @@ class MultiTaskDataLoader(OriginalDataLoader):
     This dataloader is optimized for the multitask siamese network
     """
 
-    def __init__(self, pairs_path, features_path, fid2spk_file=None):
+    def __init__(self, pairs_path, features_path, fid2spk_file=None,
+                 **kwargs):
 
-        super().__init__(pairs_path, features_path)
+        super().__init__(pairs_path, features_path, **kwargs)
         self.fid2spk_file = fid2spk_file
 
     def batch_iterator(self, train_mode=True):
@@ -438,18 +439,22 @@ class MultiTaskDataLoader(OriginalDataLoader):
         Returns batches of the form (X1, X2, y_spk, y_phn)
 
         """
+        # load features
+        self.load_data()
 
         if train_mode:
-            batch_dir = os.path.join(self.pairs_path,
-                                     'train_pairs')
+            mode = 'train'
         else:
-            batch_dir = os.path.join(self.pairs_path,
-                                     'dev_pairs')
-        batches = Parse_Dataset(batch_dir)
+            mode = 'dev'
+        pairs = self.pairs[mode]
+        num_pairs = len(pairs)
+
+        # TODO : shuffle the pairs before creating batches
+        # make batches
+        sliced_indexes = range(0, num_pairs, self.batch_size)
+        batches = [pairs[idx:idx + self.batch_size] for idx in sliced_indexes]
         num_batches = len(batches)
 
-        # read all features
-        self.load_data()
         fid2spk = read_spkid_file(self.fid2spk_file)
 
         if self.num_max_minibatches < num_batches:
@@ -461,7 +466,7 @@ class MultiTaskDataLoader(OriginalDataLoader):
                   " iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
-            pairs = read_pairs(batches[idx])
+            pairs = group_pairs(batches[idx])
             batch_els = self.load_frames_from_pairs(
                 pairs,
                 fid2spk=fid2spk)
