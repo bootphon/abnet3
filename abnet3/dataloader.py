@@ -327,7 +327,14 @@ class OriginalDataLoader(DataLoader):
         return np.vstack(X1), np.vstack(X2), np.array(Y)
 
 
-class TCLDataLoader(OriginalDataLoader):
+class TemporalCoherenceDataLoader(OriginalDataLoader):
+    """
+    This dataloader will load only temporal coherence pairs
+    Which means for positive pairs : pairs that are close
+    to one another, and for negative pairs, that are far.
+    It won't use the sampled dataset for training, but
+    it will use it for evaluation and early stopping.
+    """
 
     def __init__(self, pairs_path, features_path, batch_size=500,
                  num_max_minibatches=1000):
@@ -347,7 +354,7 @@ class TCLDataLoader(OriginalDataLoader):
             Y = Variable(Y, volatile=not train_mode)
             yield X1, X2, Y
         else:
-            yield from super(TCLDataLoader, self).batch_iterator(train_mode)
+            yield from super(TemporalCoherenceDataLoader, self).batch_iterator(train_mode)
 
 
 class FramesDataLoader(OriginalDataLoader):
