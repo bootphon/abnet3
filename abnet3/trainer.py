@@ -368,7 +368,12 @@ class MultimodalTrainer(TrainerBuilder):
 
         if self.headstart_epochs == 0:
             self.network.integration_unit.start_training()
+            for p in self.network.parameters():
+                p.requires_grad = False
+            for p in self.network.integration_unit.parameters():
+                p.requires_grad = True
             print("Headstart ended")
+
 
         for X_list1, X_list2, y_batch in self.dataloader.batch_iterator(train_mode=True):
             if self.cuda:
