@@ -75,6 +75,18 @@ class NetworkBuilder(nn.Module):
         raise NotImplementedError('Unimplemented plot_network for class:',
                                   self.__class__.__name__)
 
+class GradReverse(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, x):
+        return x.view_as(x)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        return grad_output.neg()
+
+def grad_reverse(x):
+    return GradReverse.apply(x)
 
 class SiameseNetwork(NetworkBuilder):
     """Siamese neural network Architecture
@@ -153,6 +165,26 @@ class SiameseNetwork(NetworkBuilder):
         self.output_layer = nn.Sequential(*output_layer)
         self.output_path = output_path
         self.apply(self.init_weight_method)
+
+        # adversarial layer
+        adversarial_classifier = [
+
+            nn.Linear(2*output_dim, 100),
+            nn.ReLU(),
+            nn.Linear(100, 50),
+            nn.ReLU(),
+            nn.Linear(50, 1),
+            nn.Sigmoid()
+        ]
+
+        self.adversarial_classifier = nn.Sequential(*adversarial_classifier)
+
+    def run_adversarial_classifier(self, embedding1, embedding2):
+        # concatenate each pair in the batch
+        input = torch.cat((embedding1, embedding2), dim=1)
+        input = grad_reverse(input)
+        output = self.adversarial_classifier(input)
+        return output  # between 0 and 1.
 
     def init_weight_method(self, layer):
         if isinstance(layer, nn.Linear):

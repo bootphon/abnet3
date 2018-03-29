@@ -242,6 +242,34 @@ class TrainerSiamese(TrainerBuilder):
         return dev_loss
 
 
+class TrainerSiameseAdversarialLoss(TrainerSiamese):
+    """
+    You need to use the multitask dataloader with this trainer.
+    It will use a loss that will be a combination of
+    - the usuall siamese loss
+    - an adversarial loss on speaker discriminability
+        The classifier will try to discriminate speakers, but the abnet3
+        network will try to do the reverse task.
+    """
+
+    def give_batch_to_network(self, batch):
+        X_batch1, X_batch2, y_spk_batch, y_phn_batch = batch
+        y_spk_batch = y_spk_batch.type(torch.FloatTensor)[:, None]
+        if self.cuda:
+            X_batch1 = X_batch1.cuda()
+            X_batch2 = X_batch2.cuda()
+            y_spk_batch = y_spk_batch.cuda()
+            y_phn_batch = y_phn_batch.cuda()
+        emb1_batch, emb2_batch = self.network(X_batch1, X_batch2)
+        train_loss_value = self.loss(emb1_batch, emb2_batch, y_phn_batch)
+
+        # adversarial loss
+        y_spk_predictions = self.network.run_adversarial_classifier(
+            emb1_batch, emb2_batch)
+        adversarial_loss = nn.BCELoss()(y_spk_predictions, y_spk_batch)
+        return train_loss_value
+
+
 class TrainerSiameseMultitask(TrainerSiamese):
     """Siamese Trainer class for ABnet3 for multi task phn and spk
 
