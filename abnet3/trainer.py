@@ -348,7 +348,8 @@ class MultimodalTrainer(TrainerBuilder):
                                     (BiWeightedScalarLearnt, BiWeightedDeepLearnt)
             self.headstart_epochs = headstart[0]
             self.parallel_after_headstart = headstart[1]
-            self.network.integration_unit.set_headstart_weight(headstart[2])
+            self.network.integration_unit.set_headstart_weight(headstart[2],
+                                                               self.cuda)
         else:
             self.network.integration_unit.start_training()
 

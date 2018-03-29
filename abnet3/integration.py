@@ -251,22 +251,20 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         self.weight_value = Variable(torch.rand(1))
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
 
-    def set_headstart_weight(self, headstart_weight):
-        was_cuda = self.weight_value.is_cuda
+    def set_headstart_weight(self, headstart_weight, cuda):
         self.weight_value = Variable(torch.Tensor([headstart_weight]),
                                                             requires_grad = False)
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
-        if was_cuda:
+        if cuda:
             self.weight_value.cuda()
             self.weight_complement.cuda()
 
-    def start_training(self):
-        was_cuda = self.weight_value.is_cuda
+    def start_training(self, cuda):
         self.weight_value = Variable(torch.Tensor([self.weight_value.data[0]]),
                                                             requires_grad = True)
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
 
-        if was_cuda:
+        if cuda:
             self.weight_value.cuda()
             self.weight_complement.cuda()
 
