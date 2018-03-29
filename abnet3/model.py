@@ -484,6 +484,10 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         else:
             return super(MultimodalSiameseNetwork, self).parameters()
 
+    def freeze_training(self):
+        for p in super(MultimodalSiameseNetwork, self).parameters():
+            p.requires_grad = False
+
 
     def forward_once(self, x_list):
         """Simple forward pass for one instance x_list, which contains multiple

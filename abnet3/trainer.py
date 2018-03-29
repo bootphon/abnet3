@@ -328,7 +328,7 @@ class MultimodalTrainer(TrainerBuilder):
 
                         tuple[0]:   int, how many epochs to wait before begin
                                     training the attention model
-                        tuple[1]:   bool, wether after the attention model starts
+                        tuple[1]:   bool, whether after the attention model starts
                                     the network keeps training (True) or it stops
                                     (False)
                         tuple[2]:   float in [0, 1], the weight used as attention
@@ -348,8 +348,9 @@ class MultimodalTrainer(TrainerBuilder):
                                     (BiWeightedScalarLearnt, BiWeightedDeepLearnt)
             self.headstart_epochs = headstart[0]
             self.parallel_after_headstart = headstart[1]
-            self.network.integration_unit.set_headstart_weight(headstart[0],
-                                                               headstart[2])
+            self.network.integration_unit.set_headstart_weight(headstart[2])
+        else:
+            self.network.integration_unit.start_training()
 
     def cuda_all_modes(self, batch_list):
         cuda_on = []
@@ -367,11 +368,9 @@ class MultimodalTrainer(TrainerBuilder):
         self.network.train()
 
         if self.headstart_epochs == 0:
+            if not self.parallel_after_headstart:
+                self.network.freeze_training()
             self.network.integration_unit.start_training()
-            for p in self.network.parameters():
-                p.requires_grad = False
-            for p in self.network.integration_unit.parameters():
-                p.requires_grad = True
             print("Headstart ended")
 
 
