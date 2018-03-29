@@ -202,6 +202,11 @@ class TrainerSiamese(TrainerBuilder):
         assert type(self.network) == abnet3.model.SiameseNetwork
 
     def give_batch_to_network(self, batch):
+        """
+        This function takes a batch given by the dataloader,
+        feeds it to the network, and returns the loss to
+        optimize.
+        """
         X_batch1, X_batch2, y_batch = batch
         if self.cuda:
             X_batch1 = X_batch1.cuda()
