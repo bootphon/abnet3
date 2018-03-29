@@ -283,7 +283,7 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         _str += "\n"
         _str += "Integration method: {}\n".format(self.integration_mode)
         if self.headstart:
-            _str += "Headstart, training starts after {} epochs".format(self.headstart)
+            _str += "Headstart, training starts after {} epochs\n".format(self.headstart)
             _str += "Headstart weight value: {}\n".format(self.weight_value)
         else:
             _str += "Starting weight value: {}\n".format(self.weight_value)
