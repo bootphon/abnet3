@@ -488,10 +488,6 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         for p in super(MultimodalSiameseNetwork, self).parameters():
             p.requires_grad = False
 
-    def cuda(self):
-        super(MultimodalSiameseNetwork, self).cuda()
-        self.integration_unit.cuda()
-
 
     def forward_once(self, x_list):
         """Simple forward pass for one instance x_list, which contains multiple

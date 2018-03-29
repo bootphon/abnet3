@@ -265,10 +265,6 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         v2_weighted = torch.mul(i2, self.weight_complement)
         return self.integration_function(v1_weighted, v2_weighted)
 
-    def cuda(self):
-        super(BiWeightedScalarLearnt, self).cuda()
-        self.weight_value = self.weight_value.cuda()
-        self.weight_complement = self.weight_complement.cuda()
 
     def __str__(self):
         _str = ""
