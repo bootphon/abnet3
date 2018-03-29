@@ -121,6 +121,8 @@ class TrainerBuilder:
 
         self.train_losses = []
         self.dev_losses = []
+        self.num_batches_train = 0
+        self.num_batches_dev = 0
 
         self.network.eval()
         self.network.save_network()
