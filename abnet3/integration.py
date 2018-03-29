@@ -252,6 +252,7 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
 
     def set_headstart_weight(self, headstart_weight):
+        self.weight_value.data[0] = headstart_weight
         self.weight_value.requires_grad = False
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
 
