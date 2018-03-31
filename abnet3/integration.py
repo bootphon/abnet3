@@ -347,12 +347,12 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         self.weight_value = Variable(torch.Tensor([headstart_weight]))
         self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
         self.freezed = True
-        for p in self.parameters:
+        for p in self.parameters():
             p.requires_grad = False
 
     def start_training(self):
         self.freezed = False
-        for p in self.parameters:
+        for p in self.parameters():
             p.requires_grad = True
 
     def compute_attention_weight(self, i1, i2):
