@@ -361,11 +361,18 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         added = torch.add(linear1_output, linear2_output)
         return self.activation_layer(added)
 
-    def integration_method(self, i1, i2):
+    def integration_method(self, i1, i2, di1, di2):
         if not self.freezed:
-            self.weight_value = self.compute_attention_weight(i1, i2)
+            if di1:
+                self.weight_value = self.compute_attention_weight(di1, di2)
+            else:
+                self.weight_value = self.compute_attention_weight(i1, i2)
             self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
         return super(BiWeightedLearnt, self).integration_method(i1, i2)
+
+    def forward(self, i1, i2, di1=None, di2=None):
+        X = self.integration_method(i1, i2, di1, di2)
+        return X
 
     def cuda(self):
         super(BiWeightedScalarLearnt, self).cuda()
