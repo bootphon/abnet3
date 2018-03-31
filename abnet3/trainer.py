@@ -349,8 +349,10 @@ class MultimodalTrainer(TrainerBuilder):
             self.headstart_epochs = headstart[0]
             self.parallel_after_headstart = headstart[1]
             self.network.integration_unit.set_headstart_weight(headstart[2])
+            self.headstart = True
         else:
             self.network.integration_unit.start_training()
+            self.headstart = False
 
     def cuda_all_modes(self, batch_list):
         cuda_on = []
@@ -367,7 +369,7 @@ class MultimodalTrainer(TrainerBuilder):
         dev_loss = 0.0
         self.network.train()
 
-        if self.headstart_epochs == 0:
+        if self.headstart and self.headstart_epochs == 0:
             if not self.parallel_after_headstart:
                 self.network.freeze_training()
             self.network.integration_unit.start_training()
@@ -415,7 +417,7 @@ class MultimodalTrainer(TrainerBuilder):
 
         self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
 
-        if self.headstart_epochs > -1:
+        if self.headstart and self.headstart_epochs > -1:
             self.headstart_epochs -= 1
 
         return dev_loss
