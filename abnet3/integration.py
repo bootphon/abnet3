@@ -363,7 +363,7 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
 
     def integration_method(self, i1, i2, di1, di2):
         if not self.freezed:
-            if di1:
+            if di1==None:
                 self.weight_value = self.compute_attention_weight(di1, di2)
             else:
                 self.weight_value = self.compute_attention_weight(i1, i2)
