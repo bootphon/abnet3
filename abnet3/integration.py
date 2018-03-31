@@ -305,7 +305,7 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
 
     def __init__(self, net_params, activation_type="sigmoid",
                        init_type='xavier_uni', *args, **kwargs):
-        super(BiWeightedLearnt, self).__init__(*args, **kwargs)
+        super(BiWeightedDeepLearnt, self).__init__(*args, **kwargs)
         assert activation_type in ('sigmoid', 'tanh')
         assert init_type in ('xavier_uni', 'xavier_normal', 'orthogonal')
 
@@ -368,16 +368,11 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
             else:
                 self.weight_value = self.compute_attention_weight(i1, i2)
             self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
-        return super(BiWeightedLearnt, self).integration_method(i1, i2)
+        return super(BiWeightedDeepLearnt, self).integration_method(i1, i2)
 
     def forward(self, i1, i2, di1=None, di2=None):
         X = self.integration_method(i1, i2, di1, di2)
         return X
-
-    def cuda(self):
-        super(BiWeightedScalarLearnt, self).cuda()
-        self.weight_value.cuda()
-        self.weight_complement.cuda()
 
     def __str__(self):
         _str = ""
