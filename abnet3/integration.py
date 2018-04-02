@@ -390,3 +390,26 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         _str += "\nLinear 2:\n{}\n".format(str(self.linear2))
         _str += "\nAct Layer:     {}\n".format(str(self.activation_layer))
         return _str
+
+
+class BiWeightedPreTrained(BiWeightedDeepLearnt):
+
+    def __init__(self, net_1, net_2, net_path1, net_path2, *args, **kwargs):
+        super(BiWeightedPreTrained, self).__init__(*args, **kwargs)
+
+        self.pretrained_1 = net_1
+        self.prepath_1 = net_path1
+        self.pretrained_1.load_network(self.prepath_1)
+
+        self.pretrained_2 = net_2
+        self.prepath_2 = net_path2
+        self.pretrained_2.load_network(self.prepath_2)
+
+        if self.cuda_bool:
+            self.pretrained_1.cuda()
+            self.pretrained_2.cuda()
+
+    def integration_method(self, i1, i2, di1, di2):
+        di1 = self.pretrained_1(i1)
+        di2 = self.pretrained_2(i2)
+        return super(BiWeightedPreTrained, self).integration_method(i1, i2, di1, di2)
