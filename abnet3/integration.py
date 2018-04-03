@@ -410,8 +410,8 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
             self.pretrained_2.cuda()
 
     def integration_method(self, i1, i2, di1, di2):
-        di1, _ = self.pretrained_1.input_emb(di1, di1)
-        di1, _ = self.pretrained_1.hidden_layers(di1, di1)
-        di2, _ = self.pretrained_2.input_emb(di2, di2)
-        di2, _ = self.pretrained_2.hidden_layers(di2, di2)
+        di1, _ = self.pretrained_1.input_emb(di1)
+        di1, _ = self.pretrained_1.hidden_layers(di1)
+        di2, _ = self.pretrained_2.input_emb(di2)
+        di2, _ = self.pretrained_2.hidden_layers(di2)
         return super(BiWeightedPreTrained, self).integration_method(i1, i2, di1, di2)
