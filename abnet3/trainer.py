@@ -267,7 +267,7 @@ class TrainerSiameseAdversarialLoss(TrainerSiamese):
         y_spk_predictions = self.network.run_adversarial_classifier(
             emb1_batch, emb2_batch)
         adversarial_loss = nn.BCELoss()(y_spk_predictions, y_spk_batch)
-        return train_loss_value
+        return train_loss_value + adversarial_loss
 
 
 class TrainerSiameseMultitask(TrainerSiamese):
