@@ -190,6 +190,16 @@ class TrainerBuilder:
         print("  training loss:\t\t{:.6f}".format(train_loss))
         print("  dev loss:\t\t\t{:.6f}".format(dev_loss))
 
+    def pretty_print_dict_losses(self, name, total_loss,  dict_losses):
+        """Print train and dev loss during training
+
+        """
+        name = "{} loss:".format(name)
+        print("  {: <15}\t{:.6f}".format(name, total_loss))
+        for l in dict_losses:
+            n = "{}:".format(l)
+            print("    {: <15}\t{:.6f}".format(n, dict_losses[l]))
+
 
 class TrainerSiamese(TrainerBuilder):
     """Siamese Trainer class for ABnet3
@@ -252,6 +262,51 @@ class TrainerSiameseAdversarialLoss(TrainerSiamese):
         network will try to do the reverse task.
     """
 
+    def optimize_model(self, do_training=True):
+        """
+        Optimization model step for the Siamese network.
+        """
+
+        train_losses = defaultdict(int)
+        dev_losses = defaultdict(int)
+        total_train_loss = 0.0
+        total_dev_loss = 0.0
+        num_batches_train = 0
+        num_batches_dev = 0
+        self.network.train()
+        for minibatch in self.dataloader.batch_iterator(train_mode=True):
+            losses = self.give_batch_to_network(minibatch)
+            train_loss_value = sum(losses.values())  # we sum all the losses
+            self.optimizer.zero_grad()
+            if do_training:
+                train_loss_value.backward()
+                self.optimizer.step()
+            num_batches_train += 1
+            for l in losses:
+                train_losses[l] += losses[l].data[0]
+            total_train_loss += train_loss_value.data[0]
+
+        self.network.eval()
+        for minibatch in self.dataloader.batch_iterator(train_mode=False):
+            num_batches_dev += 1
+            losses = self.give_batch_to_network(minibatch)
+            for l in losses:
+                dev_losses[l] += losses[l].data[0]
+            total_dev_loss += sum(losses.values()).data[0]
+
+        normalized_train_loss = total_train_loss/num_batches_train
+        normalized_dev_loss = total_dev_loss/num_batches_dev
+        self.train_losses.append(normalized_train_loss)
+        self.dev_losses.append(normalized_dev_loss)
+        for l in train_losses:
+            train_losses[l] /= num_batches_train
+        for l in dev_losses:
+            dev_losses[l] /= num_batches_train
+
+        self.pretty_print_dict_losses("training", normalized_train_loss, train_losses)
+        self.pretty_print_dict_losses("dev", normalized_dev_loss, dev_losses)
+        return total_dev_loss
+
     def give_batch_to_network(self, batch):
         X_batch1, X_batch2, y_spk_batch, y_phn_batch = batch
         y_spk_batch = y_spk_batch.type(torch.FloatTensor)[:, None]
@@ -266,8 +321,8 @@ class TrainerSiameseAdversarialLoss(TrainerSiamese):
         # adversarial loss
         y_spk_predictions = self.network.run_adversarial_classifier(
             emb1_batch, emb2_batch)
-        adversarial_loss = nn.BCELoss()(y_spk_predictions, y_spk_batch)
-        return train_loss_value + adversarial_loss
+        adversarial_loss = nn.BCELoss(size_average=self.loss.avg)(y_spk_predictions, y_spk_batch)
+        return {'default': train_loss_value, 'adversarial': adversarial_loss}
 
 
 class TrainerSiameseMultitask(TrainerSiamese):
