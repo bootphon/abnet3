@@ -77,7 +77,11 @@ class NetworkBuilder(nn.Module):
 
 
 class GradReverse(torch.autograd.Function):
-
+    """
+    This layer is used to create an adversarial loss.
+    The loss that flows back through this layer will then be
+    maximized instead of minimized.
+    """
     @staticmethod
     def forward(ctx, x):
         return x.view_as(x)

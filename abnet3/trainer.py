@@ -305,7 +305,7 @@ class TrainerSiameseAdversarialLoss(TrainerSiamese):
 
         self.pretty_print_dict_losses("training", normalized_train_loss, train_losses)
         self.pretty_print_dict_losses("dev", normalized_dev_loss, dev_losses)
-        return total_dev_loss
+        return dev_losses['default']
 
     def give_batch_to_network(self, batch):
         X_batch1, X_batch2, y_spk_batch, y_phn_batch = batch
