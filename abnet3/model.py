@@ -397,14 +397,11 @@ class MultimodalSiameseNetwork(NetworkBuilder):
     output_path: String
         Path to save network, params
     """
-    #TODO: add possibility of different activation layers, different dropouts,
-    #      different activations, etc...
-    #TODO: support more than 2 inputs
 
-    def __init__(self, integration_unit,
+    def __init__(self, integration_unit=None,
                        pre_integration_net_params=None,
                        post_integration_net_params=None,
-                       attention_lr = None,
+                       attention_lr=None,
                        p_dropout=0, batch_norm=False,
                        type_init='xavier_uni', activation_layer=None,
                        output_path=None, *args, **kwargs):
