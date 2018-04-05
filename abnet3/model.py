@@ -499,7 +499,8 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         if self.pre:
             x1 = self.pre_net1(r1)
             x2 = self.pre_net2(r2)
-            output = self.integration_unit(x1, x2, r1, r2)
+            output = self.integration_unit(x1, x2)
+            #output = self.integration_unit(x1, x2, r1, r2)
         else:
             output = self.integration_unit(r1, r2)
         if self.post:
