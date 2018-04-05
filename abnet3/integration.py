@@ -227,8 +227,8 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         v2_weighted = torch.mul(i2, self.weight_complement)
         return self.integration_function(v1_weighted, v2_weighted)
 
-    def forward(self, x_list):
-        X = self.integration_method(*x_list)
+    def forward(self, x1, x2):
+        X = self.integration_method(x1, x2)
         return X
 
     def __str__(self):
