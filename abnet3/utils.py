@@ -14,6 +14,7 @@ import h5features
 from dtw import DTW
 import scipy
 from collections import defaultdict
+import torch.nn as nn
 
 def get_var_name(**variable):
     return list(variable.keys())[0]
@@ -231,7 +232,7 @@ def cast_features(features, target_type=np.float32):
 
 def read_vad_file(path):
     """
-    Read vad file of the form 
+    Read vad file of the form
     https://github.com/bootphon/Zerospeech2015/blob/master/english_vad.txt
     returns a dictionnary of the form {file: [[s1, e1], [s2, e2], ...]}
     """
@@ -300,3 +301,32 @@ class EmbeddingObserver(object):
         data = h5features.Data(items, times, self.intern_responses, check=True)
         with h5features.Writer(path) as fh:
             fh.write(data, 'features')
+
+class SequentialPartialSave(nn.Sequential):
+    '''
+    add description
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super(SequentialPartialSave, self).__init__(*args, **kwargs)
+        self.partial_results = self.create_partial_dict()
+
+    def create_partial_dict(self):
+        partial_dict = {}
+        for i in range(len(self.layers)):
+            partial_dict[i] = 0
+        return partial_dict
+
+    def get_partial_result(self, index):
+        return self.partial_results[index]
+
+    def forward(self, input):
+        i = 0
+        
+        for module in self._modules.values():
+            self.partial_results[i] = input
+            input = module(input)
+            i += 1
+
+        self.partial_results[i] = input
+        return input

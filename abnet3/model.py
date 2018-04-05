@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
+from utils import SequentialPartialSave
 # from graphviz import Digraph
 
 activation_functions = {'relu': nn.ReLU(),
@@ -402,6 +403,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
                        pre_integration_net_params=None,
                        post_integration_net_params=None,
                        attention_lr=None,
+                       asynchronous_integration_index=None,
                        p_dropout=0, batch_norm=False,
                        type_init='xavier_uni', activation_layer=None,
                        output_path=None, *args, **kwargs):
@@ -411,7 +413,22 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         assert not pre_integration_net_params or \
                 len(pre_integration_net_params) == 2, 'Only 2 inputs supported for now'
         assert integration unit is not None, 'If only using one input, use original SiameseNetwork'
-        
+
+        assert asynchronous_attention_index >= 0,
+                    '''
+                    asynchronous attention index must be greater than 0
+                    '''
+        assert asynchronous_attention_index <= len(pre_integration_net_params[0]),
+                    '''
+                    asynchronous attention index must be less or equal than the
+                    pre-integration network length
+                    '''
+
+        assert not asynchronous_attention_index or pre_integration_net_params,
+                    '''
+                    If asynchronous attention index provided, then there must
+                    exist pre integration networks
+                    '''
 
 
         self.activation_layer = activation_layer
@@ -421,22 +438,28 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         self.output_path = output_path
         self.integration_unit = integration_unit
         self.attention_lr = attention_lr
-        # Pass forward network functions
+        self.asynchronous_attention_index = asynchronous_attention_index
 
+        # Pass forward network functions
         activation = activation_functions[activation_layer]
 
         #Create nets
-
         if pre_integration_net_params:
-            self.pre_net1 = self.build_net(pre_integration_net_params[0], activation)
-            self.pre_net2 = self.build_net(pre_integration_net_params[1], activation)
+            self.pre_net1 = SequentialPartialSave(*self.build_net(
+                                                    pre_integration_net_params[0],
+                                                    activation))
+
+            self.pre_net2 = SequentialPartialSave(*self.build_net(
+                                                    pre_integration_net_params[1],
+                                                    activation))
 
             self.pre = True
         else:
             self.pre = False
 
         if post_integration_net_params:
-            self.post_net = self.build_net(post_integration_net_params, activation)
+            self.post_net = nn.Sequential(*self.build_net(post_integration_net_params,
+                                                          activation))
             self.post = True
         else:
             self.post = False
@@ -456,7 +479,6 @@ class MultimodalSiameseNetwork(NetworkBuilder):
             if self.batch_norm:
                 layers.append(nn.BatchNorm1d(out_dim))
             layers.append(activation)
-        layers = nn.Sequential(*layers)
 
         return layers
 
@@ -493,15 +515,23 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         inputs
 
         """
-        r1 = x_list[0]
-        r2 = x_list[1]
+        x1 = x_list[0]
+        x2 = x_list[1]
         if self.pre:
-            x1 = self.pre_net1(r1)
-            x2 = self.pre_net2(r2)
-            output = self.integration_unit(x1, x2)
-            #output = self.integration_unit(x1, x2, r1, r2)
+            x1 = self.pre_net1(x1)
+            x2 = self.pre_net2(x2)
+
+        if self.asynchronous_attention_index:
+            attention_index1 = self.pre_net1.get_partial_result(
+                                                self.asynchronous_attention_index
+                                                )
+            attention_index2 = self.pre_net2.get_partial_result(
+                                                self.asynchronous_attention_index
+                                                )
+            output = self.integration_unit(x1, x2, attention_index1, attention_index2)
         else:
-            output = self.integration_unit(r1, r2)
+            output = self.integration_unit(x1, x2)
+
         if self.post:
             output = self.post_net(output)
         return output

@@ -385,10 +385,10 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
 
     def integration_method(self, i1, i2, di1, di2):
         if not self.freezed:
-            #if di1==None:
-            self.weight = self.compute_attention_weight(di1, di2)
-            #else:
-            #    self.weight = self.compute_attention_weight(i1, i2)
+            if isinstance(di1, Variable):
+                self.weight = self.compute_attention_weight(di1, di2)
+            else:
+                self.weight = self.compute_attention_weight(i1, i2)
             self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
         return super(BiWeightedDeepLearnt, self).integration_method(i1, i2)
 
