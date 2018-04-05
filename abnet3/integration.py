@@ -209,12 +209,12 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         assert weight_value >= 0, "weight must be greater or equal to 0"
         assert weight_value <= 1, "weight must be less or equal to 1"
         assert integration_mode in ("sum", "concat"), "Only sum and concat supported"
-        self.weight_value = weight_value
-        self.weight_complement = 1 - weight_value
+        self.weight = weight_value
+        self.weight_complement = 1 - self.weight
         self.integration_mode = integration_mode
 
     def get_weights(self):
-        return self.weight_value
+        return self.weight
 
     def integration_function(self, i1, i2):
         if self.integration_mode == "sum":
@@ -223,7 +223,7 @@ class BiWeightedFixed(IntegrationUnitBuilder):
             return torch.cat([i1, i2], 1)
 
     def integration_method(self, i1, i2):
-        v1_weighted = torch.mul(i1, self.weight_value)
+        v1_weighted = torch.mul(i1, self.weight)
         v2_weighted = torch.mul(i2, self.weight_complement)
         return self.integration_function(v1_weighted, v2_weighted)
 
@@ -236,7 +236,7 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         _str += str(self.__class__.__name__)
         _str += "\n"
         _str += "Integration method: {}\n".format(self.integration_mode)
-        _str += "Weight value: {}\n".format(self.weight_value)
+        _str += "Weight value: {}\n".format(self.weight)
         return _str
 
 
@@ -248,21 +248,21 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
 
     def __init__(self, *args, **kwargs):
         super(BiWeightedScalarLearnt, self).__init__(*args, **kwargs)
-        self.weight_value = nn.Parameter(torch.rand(1))
-        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+        self.weight = nn.Parameter(torch.rand(1))
+        self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
 
     def set_headstart_weight(self, headstart_weight):
-        self.weight_value.data[0] = headstart_weight
-        self.weight_value.requires_grad = False
-        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+        self.weight.data[0] = headstart_weight
+        self.weight.requires_grad = False
+        self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
 
     def start_training(self):
-        self.weight_value.requires_grad = True
-        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+        self.weight.requires_grad = True
+        self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
 
     def integration_method(self, i1, i2):
-        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
-        v1_weighted = torch.mul(i1, self.weight_value)
+        self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
+        v1_weighted = torch.mul(i1, self.weight)
         v2_weighted = torch.mul(i2, self.weight_complement)
         return self.integration_function(v1_weighted, v2_weighted)
 
@@ -272,7 +272,7 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         _str += str(self.__class__.__name__)
         _str += "\n"
         _str += "Integration method: {}\n".format(self.integration_mode)
-        _str += "Weight value: {}\n".format(self.weight_value)
+        _str += "Weight value: {}\n".format(self.weight)
         return _str
 
 
@@ -316,8 +316,8 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         self.init_function = init_functions[init_type]
         self.freezed = False
 
-        self.weight_value = Variable(torch.rand(1))
-        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+        self.weight = Variable(torch.rand(1))
+        self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
 
         self.linear1 = self.build_net(net_params[0], self.activation_layer)
         self.linear2 = self.build_net(net_params[1], self.activation_layer)
@@ -344,8 +344,8 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
             layer.bias.data.fill_(0.0)
 
     def set_headstart_weight(self, headstart_weight):
-        self.weight_value = Variable(torch.Tensor([headstart_weight]))
-        self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+        self.weight = Variable(torch.Tensor([headstart_weight]))
+        self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
         self.freezed = True
         for p in self.parameters():
             p.requires_grad = False
@@ -364,10 +364,10 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
     def integration_method(self, i1, i2, di1, di2):
         if not self.freezed:
             #if di1==None:
-            self.weight_value = self.compute_attention_weight(di1, di2)
+            self.weight = self.compute_attention_weight(di1, di2)
             #else:
-            #    self.weight_value = self.compute_attention_weight(i1, i2)
-            self.weight_complement = torch.add(torch.mul(self.weight_value, -1), 1)
+            #    self.weight = self.compute_attention_weight(i1, i2)
+            self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
         return super(BiWeightedDeepLearnt, self).integration_method(i1, i2)
 
     def forward(self, i1, i2, di1=None, di2=None):
