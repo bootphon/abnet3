@@ -106,6 +106,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
                                     and a 0 means that said modality will be zeroed
                                     out. Finally, the features, zeroed out or not,
                                     are concatenated.
+
     :param feed_modes:              list of feed modes. A feed mode is a 2 dimensional
                                     tuple-like object, on which each element
                                     corresponds to one branch of the siamese network.
@@ -113,7 +114,13 @@ class MultitaskIntegration(IntegrationUnitBuilder):
                                     the index of a representation mode from the
                                     representation_modes parameter. This tuple
                                     represents pairs of representation modes that
-                                    will be used for the training.
+                                    will be used for the training. If the string
+                                    'many2many' is passed, all possible combinations
+                                    of representation modes will be used, and if
+                                    the string 'one2one' is passed, only pairs with
+                                    the same rep mode on each side will be used.
+                                    All feed modes have the same probability to
+                                    be chosen.
 
     :param dimensions:              list of modality dimensions, meaning the length
                                     of one vector of each modality (in the order
@@ -125,32 +132,48 @@ class MultitaskIntegration(IntegrationUnitBuilder):
                                     that the first modality should be used and the
                                     second one should be zeroed out.
 
-                                    Given the  representation modes [(1, 0), (0, 1)],
-                                    the feed mode (0, 1) means that for the first
-                                    branch of  the siamese network the representation
-                                    mode (1, 0) will be used, and for the second branch,
-                                    the representation mode (0, 1) will be used.
+                                    Given the representation modes:
+                                    [rep_tuple_1, rep_tuple_2], the feed mode
+                                    (0, 1) means that for the first branch of  the
+                                    siamese network the representation mode with
+                                    index 0 will be used: rep_tuple_1, and
+                                    for the second branch, the representation mode
+                                    with index 1 will be used: rep_tuple_2.
     """
 
     def __init__(self, representation_modes, feed_modes, dimensions, batch_size,
                  *args, **kwargs):
         super(MultitaskIntegration, self).__init__(*args, **kwargs)
-        self.rep_modes = self.bootstrap(representation_modes, dimensions)
+        self.rep_modes = []
         self.feed_modes = feed_modes
         self.batch_size = batch_size
 
-    def bootstrap(self,representation_modes, dimensions_list):
+        self.bootstrap(representation_modes, dimensions)
+
+
+    def bootstrap(self, representation_modes, dimensions_list):
         """Constructs necessary elements for integration
         """
 
         print("Expanding masks for multitask integration")
-        expanded_rep_modes = []
         for rep_mode in representation_modes:
             expanded = []
             for binary, dimension in zip(rep_mode, dimensions_list):
                 expanded += [binary] * dimension
-            expanded_rep_modes.append(expanded)
-        return expanded_rep_modes
+            self.rep_modes.append(expanded)
+
+        if self.feed_modes == "many2many":
+            print("Creating feed modes, many2many")
+            self.feed_modes = []
+            for i range(len(self.rep_modes)):
+                for j in range(len(self.rep_modes)):
+                    self.feed_modes.append((i, j))
+        elif self.feed_modes == "one2one":
+            print("Creating feed modes, one2one")
+            self.feed_modes = []
+            for i range(len(self.rep_modes)):
+                self.feed_modes.append((i, i))
+
 
 
     def get_batch_masks(self, embed):
