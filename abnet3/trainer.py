@@ -202,58 +202,55 @@ class TrainerSiamese(TrainerBuilder):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseNetwork
 
+    def give_batch_to_network(self, batch):
+        """
+        This function takes a batch given by the dataloader,
+        feeds it to the network, and returns the loss to
+        optimize.
+        """
+        X_batch1, X_batch2, y_batch = batch
+        if self.cuda:
+            X_batch1 = X_batch1.cuda()
+            X_batch2 = X_batch2.cuda()
+            y_batch = y_batch.cuda()
+        emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
+        train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+        return train_loss_value
+
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network.
 
         """
         train_loss = 0.0
         dev_loss = 0.0
+        num_batches_train = 0
+        num_batches_dev = 0
         self.network.train()
-
         for minibatch in self.dataloader.batch_iterator(train_mode=True):
-            X_batch1, X_batch2, y_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_batch = y_batch.cuda()
-
+            train_loss_value = self.give_batch_to_network(minibatch)
             self.optimizer.zero_grad()
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
             if do_training:
                 train_loss_value.backward()
                 self.optimizer.step()
-            else:
-                self.num_batches_train += 1
+            num_batches_train += 1
             train_loss += train_loss_value.data[0]
 
         self.network.eval()
         for minibatch in self.dataloader.batch_iterator(train_mode=False):
-            X_batch1, X_batch2, y_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_batch = y_batch.cuda()
-
-            if do_training:
-                pass
-            else:
-                self.num_batches_dev += 1
-
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+            num_batches_dev += 1
+            dev_loss_value = self.give_batch_to_network(minibatch)
             dev_loss += dev_loss_value.data[0]
 
-        self.train_losses.append(train_loss/self.num_batches_train)
-        self.dev_losses.append(dev_loss/self.num_batches_dev)
-        normalized_train_loss = train_loss/self.num_batches_train
-        normalized_dev_loss = dev_loss/self.num_batches_dev
+        self.train_losses.append(train_loss/num_batches_train)
+        self.dev_losses.append(dev_loss/num_batches_dev)
+        normalized_train_loss = train_loss/num_batches_train
+        normalized_dev_loss = dev_loss/num_batches_dev
 
         self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
         return dev_loss
 
 
-class TrainerSiameseMultitask(TrainerBuilder):
+class TrainerSiameseMultitask(TrainerSiamese):
     """Siamese Trainer class for ABnet3 for multi task phn and spk
 
     """
@@ -261,62 +258,19 @@ class TrainerSiameseMultitask(TrainerBuilder):
         super(TrainerSiameseMultitask, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseMultitaskNetwork
 
-    def optimize_model(self, do_training=True):
-        """Optimization model step for the Siamese network with multitask.
-
-        """
-        train_loss = 0.0
-        dev_loss = 0.0
-        self.network.train()
-        for minibatch in self.dataloader.batch_iterator(train_mode=True):
-            X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_spk_batch = y_spk_batch.cuda()
-                y_phn_batch = y_phn_batch.cuda()
-
-            self.optimizer.zero_grad()
-            emb = self.network(X_batch1, X_batch2)
-            emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
-            train_loss_value = self.loss(emb_spk1, emb_phn1,
-                                         emb_spk2, emb_phn2,
-                                         y_spk_batch, y_phn_batch)
-            if do_training:
-                train_loss_value.backward()
-                self.optimizer.step()
-            else:
-                self.num_batches_train += 1
-            train_loss += train_loss_value.data[0]
-
-        self.network.eval()
-        for minibatch in self.dataloader.batch_iterator(train_mode=False):
-            X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_spk_batch = y_spk_batch.cuda()
-                y_phn_batch = y_phn_batch.cuda()
-
-            if do_training:
-                pass
-            else:
-                self.num_batches_dev += 1
-
-            emb = self.network(X_batch1, X_batch2)
-            emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
-            dev_loss_value = self.loss(emb_spk1, emb_phn1,
-                                       emb_spk2, emb_phn2,
-                                       y_spk_batch, y_phn_batch)
-            dev_loss += dev_loss_value.data[0]
-
-        self.train_losses.append(train_loss/self.num_batches_train)
-        self.dev_losses.append(dev_loss/self.num_batches_dev)
-        normalized_train_loss = train_loss/self.num_batches_train
-        normalized_dev_loss = dev_loss/self.num_batches_dev
-
-        self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
-        return dev_loss
+    def give_batch_to_network(self, batch):
+        X_batch1, X_batch2, y_spk_batch, y_phn_batch = batch
+        if self.cuda:
+            X_batch1 = X_batch1.cuda()
+            X_batch2 = X_batch2.cuda()
+            y_spk_batch = y_spk_batch.cuda()
+            y_phn_batch = y_phn_batch.cuda()
+        emb = self.network(X_batch1, X_batch2)
+        emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
+        train_loss_value = self.loss(emb_spk1, emb_phn1,
+                                     emb_spk2, emb_phn2,
+                                     y_spk_batch, y_phn_batch)
+        return train_loss_value
 
 class MultimodalTrainer(TrainerBuilder):
     """Multimodal Trainer class for ABnet3
