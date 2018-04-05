@@ -505,7 +505,6 @@ class MultimodalDataLoader(FramesDataLoader):
         self.alignment_dict = {} #dict of the form {(f1, s1, e1, f2, s1, e2): (path1, path)}
 
         #TODO: label different modes for later analysis
-        #TODO: better and more ways to do alignment, not only by 1 mode
 
 
     def __getstate__(self):

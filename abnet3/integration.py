@@ -138,7 +138,6 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         self.rep_modes = self.bootstrap(representation_modes, dimensions)
         self.feed_modes = feed_modes
         self.batch_size = batch_size
-        #TODO: different probabilities per method
 
     def bootstrap(self,representation_modes, dimensions_list):
         """Constructs necessary elements for integration
