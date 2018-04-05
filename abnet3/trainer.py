@@ -305,7 +305,9 @@ class MultimodalTrainer(TrainerBuilder):
             self.network.integration_unit.set_headstart_weight(headstart[2])
             self.headstart = True
         else:
-            self.network.integration_unit.start_training()
+            if type(self.network.integration_unit) in \
+                                    (BiWeightedScalarLearnt, BiWeightedDeepLearnt)
+                self.network.integration_unit.start_training()
             self.headstart = False
 
     def cuda_all_modes(self, batch_list):
