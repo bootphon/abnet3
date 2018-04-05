@@ -138,6 +138,8 @@ class TrainerBuilder:
         for epoch in range(self.num_epochs):
             start_time = time.time()
 
+            print("Epoch %s" % (epoch+1))
+
             dev_loss = self.optimize_model(do_training=True)
 
             # tensorboard logging
@@ -262,6 +264,16 @@ class TrainerSiameseAdversarialLoss(TrainerSiamese):
         network will try to do the reverse task.
     """
 
+    def __init__(self, *args,
+                 default_loss_weight=0.5,
+                 **kwargs):
+        """
+        :param float default_loss_weight: weight for default loss
+            adversarial loss will be 1 - weight
+        """
+        self.default_loss_weight = default_loss_weight
+        super().__init__(*args, **kwargs)
+
     def optimize_model(self, do_training=True):
         """
         Optimization model step for the Siamese network.
@@ -276,7 +288,8 @@ class TrainerSiameseAdversarialLoss(TrainerSiamese):
         self.network.train()
         for minibatch in self.dataloader.batch_iterator(train_mode=True):
             losses = self.give_batch_to_network(minibatch)
-            train_loss_value = sum(losses.values())  # we sum all the losses
+            train_loss_value = (self.default_loss_weight * losses['default'] +
+                                (1 - self.default_loss_weight) * losses['adversarial'])
             self.optimizer.zero_grad()
             if do_training:
                 train_loss_value.backward()
