@@ -306,7 +306,7 @@ class MultimodalTrainer(TrainerBuilder):
             self.headstart = True
         else:
             if type(self.network.integration_unit) in \
-                                    (BiWeightedScalarLearnt, BiWeightedDeepLearnt)
+                                    (BiWeightedScalarLearnt, BiWeightedDeepLearnt):
                 self.network.integration_unit.start_training()
             self.headstart = False
 
