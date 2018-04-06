@@ -147,7 +147,7 @@ class MultimodalEmbedder(EmbedderBuilder):
 
         if isinstance(self.network.integration_unit, BiWeightedDeepLearnt):
             print("Placing observer to save learnt attention weights")
-            self.observers.append((EmbeddingObserver(),
+            self.observers.append(EmbeddingObserver(
                                    self.network.integration_unit.get_weights,
                                    self.output_path + "attention_weights.features"))
 
@@ -196,12 +196,14 @@ class MultimodalEmbedder(EmbedderBuilder):
             emb = emb.cpu()
             embeddings.append(emb.data.numpy())
 
-            for observer_tuple in self.observers:
-                observer_tuple[0].register_response(observer_tuple[1]())
+            #Register activity on observer
+            for observer in self.observers:
+                observer.register_status()
 
         data = h5features.Data(items, times, embeddings, check=True)
         with h5features.Writer(self.output_path + "embedded.features") as fh:
             fh.write(data, 'features')
 
-        for observer_tuple in self.observers:
-            observer_tuple[0].save(observer_tuple[2], items, times)
+        #Save observer registers
+        for observer in self.observers:
+            observer.save(items, times)

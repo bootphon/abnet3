@@ -282,14 +282,17 @@ class EmbeddingObserver(object):
     times that were used to save the embeddings embeddings for analysis.
     '''
 
-    def __init__(self):
+    def __init__(self, status_getter, path):
+        self.status_getter = status_getter
+        self.path = path
         self.intern_responses = []
 
-    def register_response(self, response):
+    def register_status(self):
+        response = self.status_getter()
         response = response.cpu()
         self.intern_responses.append(response.data.numpy())
 
-    def save(self, path, items, times):
+    def save(self, items, times):
         '''
         Save the internal responses
 
@@ -299,7 +302,7 @@ class EmbeddingObserver(object):
 
         '''
         data = h5features.Data(items, times, self.intern_responses, check=True)
-        with h5features.Writer(path) as fh:
+        with h5features.Writer(self.path) as fh:
             fh.write(data, 'features')
 
 class SequentialPartialSave(nn.Sequential):
@@ -322,7 +325,7 @@ class SequentialPartialSave(nn.Sequential):
 
     def forward(self, input):
         i = 0
-        
+
         for module in self._modules.values():
             self.partial_results[i] = input
             input = module(input)
