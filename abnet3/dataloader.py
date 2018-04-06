@@ -53,7 +53,7 @@ class OriginalDataLoader(DataLoader):
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
                  seed=None, batch_size=8, shuffle_between_epochs=False,
                  align_different_words=False,
-                tcl = 0.0):
+                 tcl=0.0):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -65,7 +65,6 @@ class OriginalDataLoader(DataLoader):
             If true, different words will be aligned along the diagonal.
             If false, the longest word will be truncated to match the length
             of the smallest word.
-
         :param tcl: temporal coherence loss percentage (0 <= tcl < 1)
         :param tcl_train_files: path to file listing the training wav items.
             This is used for temporal coherence loss. If None, all files will
