@@ -90,6 +90,9 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
         X2_batch = self.integration_method(x2_list)
         return X1_batch, X2_batch, y
 
+    def __str__(self):
+        return str(self.__class__.__name__)
+
 class MultitaskIntegration(IntegrationUnitBuilder):
     """
     Receives list of features from different modalities and joins them, zeroing
@@ -147,9 +150,9 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         self.rep_modes = []
         self.feed_modes = feed_modes
         self.batch_size = batch_size
+        self.unexpanded_rep_modes = representation_modes
 
         self.bootstrap(representation_modes, dimensions)
-
 
     def bootstrap(self, representation_modes, dimensions_list):
         """Constructs necessary elements for integration
@@ -165,16 +168,15 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         if self.feed_modes == "many2many":
             print("Creating feed modes, many2many")
             self.feed_modes = []
-            for i range(len(self.rep_modes)):
+            for i in range(len(self.rep_modes)):
                 for j in range(len(self.rep_modes)):
                     self.feed_modes.append((i, j))
+
         elif self.feed_modes == "one2one":
             print("Creating feed modes, one2one")
             self.feed_modes = []
-            for i range(len(self.rep_modes)):
+            for i in range(len(self.rep_modes)):
                 self.feed_modes.append((i, i))
-
-
 
     def get_batch_masks(self, embed):
         mask1 = []
@@ -199,7 +201,6 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 
 
     def integration_method(self, x1_list, x2_list, embed):
-
         x1_cat = torch.cat(x1_list, 1)
         x2_cat = torch.cat(x2_list, 1)
         mask1, mask2 = self.get_batch_masks(embed)
@@ -211,6 +212,14 @@ class MultitaskIntegration(IntegrationUnitBuilder):
     def forward(self, x1_list, x2_list, y, embed=False, *args, **kwargs):
         X1_batch, X2_batch = self.integration_method(x1_list, x2_list, embed)
         return X1_batch, X2_batch, y
+
+    def __str__(self):
+        _str = ""
+        _str += str(self.__class__.__name__)
+        _str += "\n"
+        _str += "Representation modes: {}\n".format(self.unexpanded_rep_modes)
+        _str += "Feed modes: {}\n".format(self.feed_modes)
+        return _str
 
 class BiWeightedFixed(IntegrationUnitBuilder):
     """
@@ -466,3 +475,9 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
         di1 = self.pretrained_1(di1)
         di2 = self.pretrained_2(di2)
         return super(BiWeightedPreTrained, self).integration_method(i1, i2, di1, di2)
+
+    def __str__(self):
+        _str = super(BiWeightedPreTrained, self).__str__()
+        _str += "\nPre-trained 1:\n{}\n".format(str(self.pretrained_1))
+        _str += "\nPre-trained 2:\n{}\n".format(str(self.pretrained_2))
+        return _str
