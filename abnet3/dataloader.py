@@ -196,12 +196,9 @@ class OriginalDataLoader(DataLoader):
                 # here we align the different words according to diagonal
                 min_word = min((feat1, feat2), key=len)
                 max_word = max((feat1, feat2), key=len)
-                print(len(min_word))
-                print(len(max_word))
                 mapping = np.linspace(0, len(min_word) - 1,
                                       num=len(max_word))
                 mapping = np.rint(mapping).astype(int)  # round to nearest integer
-                print(mapping)
                 min_word_mapped = min_word[mapping, :]
                 word1 = max_word
                 word2 = min_word_mapped
