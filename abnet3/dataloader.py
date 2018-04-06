@@ -57,6 +57,10 @@ class OriginalDataLoader(DataLoader):
         :param features_path: path to feature file
         :param int num_max_minibatches: number of batches in each epoch
         :param int seed: for randomness
+        :param bool align_different_words:
+            If true, different words will be aligned along the diagonal.
+            If false, the longest word will be truncated to match the length
+            of the smallest word.
         """
         self.pairs_path = pairs_path
         self.features_path = features_path
