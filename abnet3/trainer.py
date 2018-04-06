@@ -249,6 +249,26 @@ class TrainerSiamese(TrainerBuilder):
         return dev_loss
 
 
+class TrainerMultiLayers(TrainerSiamese):
+
+    def __init__(self, *args, layer_weights=None, **kwargs):
+        super(TrainerMultiLayers, self).__init__(*args, **kwargs)
+        self.layer_weights = layer_weights
+
+    def give_batch_to_network(self, batch):
+        X_batch1, X_batch2, y_batch = batch
+        if self.cuda:
+            X_batch1 = X_batch1.cuda()
+            X_batch2 = X_batch2.cuda()
+            y_batch = y_batch.cuda()
+        outputs1, outputs2 = self.network(X_batch1, X_batch2)
+        losses = []
+        for (output1, output2) in zip(outputs1, outputs2):
+            losses.append(self.loss(output1, output2, y_batch))
+        return sum(losses)
+
+
+
 class TrainerSiameseMultitask(TrainerSiamese):
     """Siamese Trainer class for ABnet3 for multi task phn and spk
 
