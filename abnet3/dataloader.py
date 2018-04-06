@@ -48,7 +48,8 @@ class OriginalDataLoader(DataLoader):
     """
 
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
-                 seed=None, batch_size=8, shuffle_between_epochs=False):
+                 seed=None, batch_size=8, shuffle_between_epochs=False,
+                 align_different_words=False):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -56,6 +57,10 @@ class OriginalDataLoader(DataLoader):
         :param features_path: path to feature file
         :param int num_max_minibatches: number of batches in each epoch
         :param int seed: for randomness
+        :param bool align_different_words:
+            If true, different words will be aligned along the diagonal.
+            If false, the longest word will be truncated to match the length
+            of the smallest word.
         """
         self.pairs_path = pairs_path
         self.features_path = features_path
@@ -65,6 +70,7 @@ class OriginalDataLoader(DataLoader):
         self.batch_size = batch_size
         self.features = None
         self.shuffle_between_epochs = shuffle_between_epochs
+        self.align_different_words = align_different_words
         self.pairs = {'train': None, 'dev': None}
 
     def __getstate__(self):
@@ -185,8 +191,22 @@ class OriginalDataLoader(DataLoader):
             feat2 = token_feats[f2, s2, e2]
             n1 = feat1.shape[0]
             n2 = feat2.shape[0]
-            X1.append(feat1[:min(n1, n2), :])
-            X2.append(feat2[:min(n1, n2), :])
+
+            if self.align_different_words:
+                # here we align the different words according to diagonal
+                min_word = min((feat1, feat2), key=len)
+                max_word = max((feat1, feat2), key=len)
+                mapping = np.linspace(0, len(min_word) - 1,
+                                      num=len(max_word))
+                mapping = np.rint(mapping).astype(int)  # round to nearest integer
+                min_word_mapped = min_word[mapping, :]
+                word1 = max_word
+                word2 = min_word_mapped
+            else:
+                word1 = feat1[:min(n1, n2), :]
+                word2 = feat2[:min(n1, n2), :]
+            X1.append(word1)
+            X2.append(word2)
             y_phn.append(-1 * np.ones(min(n1, n2)))
 
             self.statistics_training['DiffType'] += 1
