@@ -345,7 +345,7 @@ class SamplerCluster(SamplerBuilder):
             def spk_samp_func(x): return np.log(1+x)
 
         print_progress = progress(len(W_spk_types.keys()),
-                                  every=0.01,
+                                  every=0.1,
                                   title="Generate speaker probas")
         i = 0
         for (spk, type_idx) in W_spk_types.keys():
