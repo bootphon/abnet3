@@ -52,7 +52,8 @@ class OriginalDataLoader(DataLoader):
 
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
                  seed=None, batch_size=8, shuffle_between_epochs=False,
-                 tcl=0.0):
+                 align_different_words=False,
+                tcl = 0.0):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -60,6 +61,11 @@ class OriginalDataLoader(DataLoader):
         :param features_path: path to feature file
         :param int num_max_minibatches: number of batches in each epoch
         :param int seed: for randomness
+        :param bool align_different_words:
+            If true, different words will be aligned along the diagonal.
+            If false, the longest word will be truncated to match the length
+            of the smallest word.
+
         :param tcl: temporal coherence loss percentage (0 <= tcl < 1)
         :param tcl_train_files: path to file listing the training wav items.
             This is used for temporal coherence loss. If None, all files will
@@ -75,6 +81,7 @@ class OriginalDataLoader(DataLoader):
         self.batch_size = batch_size
         self.features = None  # type: Features_Accessor
         self.shuffle_between_epochs = shuffle_between_epochs
+        self.align_different_words = align_different_words
         self.tcl = tcl  # temporal coherence loss
         self.train_files = None # type: set
         self.pairs = {'train': None, 'dev': None}  # type: dict[str, list]
@@ -201,8 +208,22 @@ class OriginalDataLoader(DataLoader):
             feat2 = token_feats[f2, s2, e2]
             n1 = feat1.shape[0]
             n2 = feat2.shape[0]
-            X1.append(feat1[:min(n1, n2), :])
-            X2.append(feat2[:min(n1, n2), :])
+
+            if self.align_different_words:
+                # here we align the different words according to diagonal
+                min_word = min((feat1, feat2), key=len)
+                max_word = max((feat1, feat2), key=len)
+                mapping = np.linspace(0, len(min_word) - 1,
+                                      num=len(max_word))
+                mapping = np.rint(mapping).astype(int)  # round to nearest integer
+                min_word_mapped = min_word[mapping, :]
+                word1 = max_word
+                word2 = min_word_mapped
+            else:
+                word1 = feat1[:min(n1, n2), :]
+                word2 = feat2[:min(n1, n2), :]
+            X1.append(word1)
+            X2.append(word2)
             y_phn.append(-1 * np.ones(min(n1, n2)))
 
             self.statistics_training['DiffType'] += 1
@@ -525,9 +546,10 @@ class MultiTaskDataLoader(OriginalDataLoader):
     This dataloader is optimized for the multitask siamese network
     """
 
-    def __init__(self, pairs_path, features_path, fid2spk_file=None):
+    def __init__(self, pairs_path, features_path, fid2spk_file=None,
+                 **kwargs):
 
-        super().__init__(pairs_path, features_path)
+        super().__init__(pairs_path, features_path, **kwargs)
         self.fid2spk_file = fid2spk_file
 
     def batch_iterator(self, train_mode=True):
@@ -535,18 +557,22 @@ class MultiTaskDataLoader(OriginalDataLoader):
         Returns batches of the form (X1, X2, y_spk, y_phn)
 
         """
+        # load features
+        self.load_data()
 
         if train_mode:
-            batch_dir = os.path.join(self.pairs_path,
-                                     'train_pairs')
+            mode = 'train'
         else:
-            batch_dir = os.path.join(self.pairs_path,
-                                     'dev_pairs')
-        batches = Parse_Dataset(batch_dir)
+            mode = 'dev'
+        pairs = self.pairs[mode]
+        num_pairs = len(pairs)
+
+        # TODO : shuffle the pairs before creating batches
+        # make batches
+        sliced_indexes = range(0, num_pairs, self.batch_size)
+        batches = [pairs[idx:idx + self.batch_size] for idx in sliced_indexes]
         num_batches = len(batches)
 
-        # read all features
-        self.load_data()
         fid2spk = read_spkid_file(self.fid2spk_file)
 
         if self.num_max_minibatches < num_batches:
@@ -558,7 +584,7 @@ class MultiTaskDataLoader(OriginalDataLoader):
                   " iterating over all the batches")
             selected_batches = np.random.permutation(range(num_batches))
         for idx in selected_batches:
-            pairs = read_pairs(batches[idx])
+            pairs = group_pairs(batches[idx])
             batch_els = self.load_frames_from_pairs(
                 pairs,
                 fid2spk=fid2spk)

@@ -64,7 +64,7 @@ class GridSearch(object):
             try:
                 self.params = yaml.load(stream)
             except yaml.YAMLError as exc:
-                print(exc)
+                raise
 
     def build_grid_experiments(self):
         """Extract the list of experiments to build the
