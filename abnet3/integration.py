@@ -281,6 +281,7 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         super(BiWeightedScalarLearnt, self).__init__(*args, **kwargs)
         self.weight = nn.Parameter(torch.rand(1))
         self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
+        self.start_training()
 
     def set_headstart_weight(self, headstart_weight):
         self.weight.data[0] = headstart_weight
@@ -353,6 +354,7 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         self.linear1 = self.build_net(net_params[0], self.activation_layer)
         self.linear2 = self.build_net(net_params[1], self.activation_layer)
         self.apply(self.init_weight_method)
+        self.start_training()
 
     def build_net(self, dimensions_list, activation):
         layers = []
