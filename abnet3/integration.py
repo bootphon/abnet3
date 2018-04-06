@@ -416,24 +416,53 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
 
 class BiWeightedPreTrained(BiWeightedDeepLearnt):
 
-    def __init__(self, net_1, net_2, net_path1, net_path2, *args, **kwargs):
+    def __init__(self, net_1, net_2, net_path1, net_path2,
+                       trim_net1_start=None, trim_net1_end=None,
+                       trim_net2_start=None, trim_net2_end=None,
+                       *args, **kwargs):
         super(BiWeightedPreTrained, self).__init__(*args, **kwargs)
 
-        self.pretrained_1 = net_1
-        self.prepath_1 = net_path1
-        self.pretrained_1.load_network(self.prepath_1)
+        self.pretrained_1 = self.__load_network(net_1, net_path1, trim_net1_start,
+                                                    trim_net1_end, "pre-trained 1")
 
-        self.pretrained_2 = net_2
-        self.prepath_2 = net_path2
-        self.pretrained_2.load_network(self.prepath_2)
+        self.pretrained_2 = self.__load_network(net_2, net_path2, trim_net2_start,
+                                                    trim_net2_end, "pre-trained 2")
 
         if self.cuda_bool:
             self.pretrained_1.cuda()
             self.pretrained_2.cuda()
 
+    @staticmethod
+    def __load_network(network, path, trim_start, trim_end, title = "network"):
+        network.load_network(path)
+        if trim_start or trim_send:
+            network = self.__trim_network(network,
+                                        trim_start,
+                                        trim_end)
+            print("Trimmed {}, new structure:".format(title))
+            print(network)
+        else:
+            network = nn.Sequential(*list(network.children()))
+        return network
+
+    @staticmethod
+    def __trim_network(network, start_idx, end_idx):
+        child = list(network.children())
+
+        if start_idx:
+            assert start_idx > 0 and start_idx < end_idx
+        else:
+            start_idx = 0
+
+        if end_idx:
+            assert end_idx > start_idx and end_idx < len(child)
+        else:
+            end_idx = len(child)
+
+        return nn.Sequential(*child[start_idx:end_idx])
+
+
     def integration_method(self, i1, i2, di1, di2):
-        di1 = self.pretrained_1.input_emb(di1)
-        di1 = self.pretrained_1.hidden_layers(di1)
-        di2 = self.pretrained_2.input_emb(di2)
-        di2 = self.pretrained_2.hidden_layers(di2)
+        di1 = self.pretrained_1(di1)
+        di2 = self.pretrained_2(di2)
         return super(BiWeightedPreTrained, self).integration_method(i1, i2, di1, di2)
