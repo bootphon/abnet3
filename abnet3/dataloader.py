@@ -496,7 +496,7 @@ class MultimodalDataLoader(FramesDataLoader):
         :param features_paths: list of paths from multiple inputs, this turns the
                                OriginalDataLoader features_path parameter into a
                                list. The features corresponfing to the first path
-                               will be the ones on which the dtw paths are computed
+                               will be the ones on which the dtw paths are computed.
 
         """
         super().__init__(pairs_path, features_path, batch_size, randomize_dataset,
@@ -504,34 +504,39 @@ class MultimodalDataLoader(FramesDataLoader):
         self.features_dict = None
         self.alignment_dict = {} #dict of the form {(f1, s1, e1, f2, s1, e2): (path1, path)}
 
-        #TODO: label different modes for later analysis
-
-
     def __getstate__(self):
         """used for pickle"""
-
-        #TODO: implement
-        pass
+        return (self.pairs_path,
+                self.features_path,
+                self.statistics_training,
+                self.seed,
+                self.num_max_minibatches,
+                self.batch_size,
+                self.features_dict,
+                self.alignment_dict)
 
     def __setstate__(self, state):
         """used for pickle"""
+        (
+            self.pairs_path,
+            self.features_path,
+            self.statistics_training,
+            self.seed,
+            self.num_max_minibatches,
+            self.batch_size,
+            self.features_dict,
+            self.alignment_dict
+        ) = state
 
-        #TODO: implement
-        pass
+        self.load_data()
 
-    def whoami(self):
-
-        #TODO: implement
-        pass
-
-    def check_consistency(self, features, deep=True):
+    def check_consistency(self, features):
         """
         This method checks that the pairs and features are
         consistent between each other, meaning they have the
         same items and can be used together
 
         :param features: list of features to be used
-        :param deep: when True, a more extensive
         """
 
         #TODO: implement, for now consistent data is assumed.
@@ -649,7 +654,7 @@ class MultimodalDataLoader(FramesDataLoader):
                 X1_list.append(Variable(torch.from_numpy(X1), volatile=not train_mode))
                 X2_list.append(Variable(torch.from_numpy(X2), volatile=not train_mode))
                 y_torch = Variable(torch.from_numpy(y), volatile=not train_mode)
-                
+
             print("{0:<5}, progress: {1:>3}%".format(mode,
                                         int((i-inicial)*100/(final-inicial))), end="\r")
             yield X1_list, X2_list, y_torch

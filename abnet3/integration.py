@@ -199,7 +199,6 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 
         return mask1, mask2
 
-
     def integration_method(self, x1_list, x2_list, embed):
         x1_cat = torch.cat(x1_list, 1)
         x2_cat = torch.cat(x2_list, 1)
