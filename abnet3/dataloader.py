@@ -649,5 +649,7 @@ class MultimodalDataLoader(FramesDataLoader):
                 X1_list.append(Variable(torch.from_numpy(X1), volatile=not train_mode))
                 X2_list.append(Variable(torch.from_numpy(X2), volatile=not train_mode))
                 y_torch = Variable(torch.from_numpy(y), volatile=not train_mode)
-            print("progress: {}%".format(int((i-inicial)*100/(final-inicial))), end="\r")
+                
+            print("{0:<5}, progress: {1:>3}%".format(mode,
+                                        int((i-inicial)*100/(final-inicial))), end="\r")
             yield X1_list, X2_list, y_torch
