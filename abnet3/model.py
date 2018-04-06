@@ -99,11 +99,14 @@ class SiameseNetwork(NetworkBuilder):
         Type of activation layer
     output_path: String
         Path to save network, params
+    :param bool return_multi_layer: return all layers instead of the last one
+
     """
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None,
                  output_dim=None, p_dropout=0.1, batch_norm=False,
                  type_init='xavier_uni', activation_layer=None,
-                 output_path=None):
+                 output_path=None,
+                 return_multi_layers=False):
         super(SiameseNetwork, self).__init__()
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
@@ -119,6 +122,7 @@ class SiameseNetwork(NetworkBuilder):
         self.activation_layer = activation_layer
         self.batch_norm = batch_norm
         self.type_init = type_init
+        self.return_multi_layers = return_multi_layers
         # Pass forward network functions
 
         activation = activation_functions[activation_layer]
@@ -136,12 +140,13 @@ class SiameseNetwork(NetworkBuilder):
         # hidden layers
         self.hidden_layers = []
         for idx in range(self.num_hidden_layers):
-            self.hidden_layers.append(nn.Linear(hidden_dim, hidden_dim))
-            self.hidden_layers.append(nn.Dropout(p=p_dropout))
+            layer = []
+            layer.append(nn.Linear(hidden_dim, hidden_dim))
+            layer.append(nn.Dropout(p=p_dropout))
             if self.batch_norm:
-                self.hidden_layers.append(nn.BatchNorm1d(hidden_dim))
-            self.hidden_layers.append(activation)
-        self.hidden_layers = nn.Sequential(*self.hidden_layers)
+                layer.append(nn.BatchNorm1d(hidden_dim))
+            layer.append(activation)
+            self.hidden_layers.append(nn.Sequential(*self.hidden_layers))
 
         # output layer
         output_layer = [
@@ -166,9 +171,26 @@ class SiameseNetwork(NetworkBuilder):
 
         """
         output = self.input_emb(x)
-        output = self.hidden_layers(output)
+        for layer in self.hidden_layers:
+            output = layer(output)
         output = self.output_layer(output)
         return output
+
+    def forward_return_all_layers(self, x):
+        """
+        simple forward pass, but returns all layers (after activation),
+        instead of just the last one. This will be used to train all
+        the layers together.
+        """
+        outputs = []
+        output = self.input_emb(x)
+        outputs.append(output)
+        for layer in self.hidden_layers:
+            output = layer(output)
+            outputs.append(output)
+        output = self.output_layer(output)
+        outputs.append(output)
+        return outputs
 
     def forward(self, input1, input2):
         """Forward pass through the same network
@@ -176,6 +198,10 @@ class SiameseNetwork(NetworkBuilder):
         https://discuss.pytorch.org/t/how-to-create-model-with-sharing-weight/398/2
         reason for design of the siamese
         """
+        if self.return_multi_layers:
+            outputs1 = self.forward_return_all_layers(input1)
+            outputs2 = self.forward_return_all_layers(input2)
+            return outputs1, outputs2
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
         return output1, output2
