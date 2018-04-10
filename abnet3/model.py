@@ -528,9 +528,9 @@ class MultimodalSiameseNetwork(NetworkBuilder):
             attention_index2 = self.pre_net2.get_partial_result(
                                                 self.asynchronous_attention_index
                                                 )
-            output = self.integration_unit(x1, x2, attention_index1, attention_index2)
+            output = self.integration_unit([x1, x2], attention_index1, attention_index2)
         else:
-            output = self.integration_unit(x1, x2)
+            output = self.integration_unit([x1, x2])
 
         if self.post:
             output = self.post_net(output)

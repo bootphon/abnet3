@@ -82,13 +82,11 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
         """
 
         concat_batch = torch.cat(x_list, 1)
-
         return concat_batch
 
-    def forward(self, x1_list, x2_list, y, embed=False, *args, **kwargs):
-        X1_batch = self.integration_method(x1_list)
-        X2_batch = self.integration_method(x2_list)
-        return X1_batch, X2_batch, y
+    def forward(self, x_list, *args, **kwargs):
+        X = self.integration_method(x_list)
+        return X
 
     def __str__(self):
         return str(self.__class__.__name__)
@@ -137,11 +135,11 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 
                                     Given the representation modes:
                                     [rep_tuple_1, rep_tuple_2], the feed mode
-                                    (0, 1) means that for the first branch of  the
+                                    (1, 0) means that for the first branch of  the
                                     siamese network the representation mode with
-                                    index 0 will be used: rep_tuple_1, and
+                                    index 1 will be used: rep_tuple_2, and
                                     for the second branch, the representation mode
-                                    with index 1 will be used: rep_tuple_2.
+                                    with index 0 will be used: rep_tuple_1.
     """
 
     def __init__(self, representation_modes, feed_modes, dimensions, batch_size,
@@ -151,6 +149,8 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         self.feed_modes = feed_modes
         self.batch_size = batch_size
         self.unexpanded_rep_modes = representation_modes
+
+        self.next_mask = None
 
         self.bootstrap(representation_modes, dimensions)
 
@@ -199,18 +199,20 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 
         return mask1, mask2
 
-    def integration_method(self, x1_list, x2_list, embed):
-        x1_cat = torch.cat(x1_list, 1)
-        x2_cat = torch.cat(x2_list, 1)
-        mask1, mask2 = self.get_batch_masks(embed)
-        X1_batch = torch.mul(mask1, x1_cat)
-        X2_batch = torch.mul(mask2, x2_cat)
+    def integration_method(self, x_list, embed):
+        x_cat = torch.cat(x_list, 1)
+        if self.next_mask:
+            mask = self.next_mask
+            self.next_mask = None
+        else:
+            mask, self.next_mask = self.get_batch_masks(embed)
+        X_batch = torch.mul(mask, x_cat)
 
-        return X1_batch, X2_batch
+        return X_batch
 
-    def forward(self, x1_list, x2_list, y, embed=False, *args, **kwargs):
-        X1_batch, X2_batch = self.integration_method(x1_list, x2_list, embed)
-        return X1_batch, X2_batch, y
+    def forward(self, x_list, embed=False, *args, **kwargs):
+        X = self.integration_method(x_list, embed)
+        return X
 
     def __str__(self):
         _str = ""
@@ -257,8 +259,9 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         v2_weighted = torch.mul(i2, self.weight_complement)
         return self.integration_function(v1_weighted, v2_weighted)
 
-    def forward(self, x1, x2):
-        X = self.integration_method(x1, x2)
+    def forward(self, x_list, *args, **kwargs):
+        assert len(x_list) == 2, "BiWeighted integrators only accept two input modalities"
+        X = self.integration_method(*x_list)
         return X
 
     def __str__(self):
@@ -395,15 +398,18 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
 
     def integration_method(self, i1, i2, di1, di2):
         if not self.freezed:
-            if isinstance(di1, Variable):
-                self.weight = self.compute_attention_weight(di1, di2)
-            else:
-                self.weight = self.compute_attention_weight(i1, i2)
+            self.weight = self.compute_attention_weight(di1, di2)
             self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
         return super(BiWeightedDeepLearnt, self).integration_method(i1, i2)
 
-    def forward(self, i1, i2, di1=None, di2=None):
-        X = self.integration_method(i1, i2, di1, di2)
+    def forward(self, x_list, di1=None, di2=None, *args, **kwargs):
+        assert len(x_list) == 2, "BiWeighted integrators only accept two input modalities"
+        i1 = x_list[0]
+        i2 = x_list[1]
+        if isinstance(di1, Variable):
+            X = self.integration_method(i1, i2, di1, di2)
+        else:
+            X = self.integration_method(i1, i2, i1, i2)
         return X
 
     def __str__(self):
