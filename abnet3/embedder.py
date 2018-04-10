@@ -174,10 +174,8 @@ class MultimodalEmbedder(EmbedderBuilder):
                 check_times = features.labels()
             if not items:
                 items = check_items
-                #TODO: assert items == check_items, "Items inconsistency found on path {}".format(path)
             if not times:
                 times = check_times
-                #TODO: assert times == check_times, "Times inconsistency found on path {}".format(path)
 
         print("Done loading input feature file")
 
