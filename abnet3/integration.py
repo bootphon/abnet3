@@ -91,6 +91,33 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
     def __str__(self):
         return str(self.__class__.__name__)
 
+class SumIntegration(IntegrationUnitBuilder):
+
+    def __init__(self, *args, **kwargs):
+        super(SumIntegration, self).__init__(*args, **kwargs)
+
+    @staticmethod
+    def integration_method(x_list):
+        """
+        Receives batch list of inputs and sums them
+
+        :param x_list: Batch list of inputs that should have the same
+                       number of rows (dimension 0) and columns (dimension 1)
+
+        """
+
+        __sum = torch.sum(x_list[0], x_list[1])
+        for _input in x_list[2:]:
+            __sum = torch.sum(__sum, _input)
+        return __sum
+
+    def forward(self, x_list, *args, **kwargs):
+        X = self.integration_method(x_list)
+        return X
+
+    def __str__(self):
+        return str(self.__class__.__name__)
+
 class MultitaskIntegration(IntegrationUnitBuilder):
     """
     Receives list of features from different modalities and joins them, zeroing
