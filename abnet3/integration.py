@@ -261,14 +261,17 @@ class BiWeightedFixed(IntegrationUnitBuilder):
                                 Fixed weight value used for the first input (with
                                 respect of the order the paths were provided to
                                 the dataloader).
+                                if None, random value is used
     """
 
 
-    def __init__(self, integration_mode="sum", weight_value=0.5, *args, **kwargs):
+    def __init__(self, integration_mode="sum", weight_value=None, *args, **kwargs):
         super(BiWeightedFixed, self).__init__(*args, **kwargs)
         assert weight_value >= 0, "weight must be greater or equal to 0"
         assert weight_value <= 1, "weight must be less or equal to 1"
         assert integration_mode in ("sum", "concat"), "Only sum and concat supported"
+        if not weight_value:
+            weight_value = np.random.random()
         self.weight = weight_value
         self.weight_complement = 1 - self.weight
         self.integration_mode = integration_mode
@@ -309,7 +312,7 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
 
     def __init__(self, *args, **kwargs):
         super(BiWeightedScalarLearnt, self).__init__(*args, **kwargs)
-        self.weight = nn.Parameter(torch.rand(1))
+        self.weight = nn.Parameter(torch.Tensor([self.weight]))
         self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
         self.start_training()
 
@@ -388,7 +391,7 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
 
     def build_net(self, dimensions_list, activation):
         dimensions_list = expand_dimension_list(dimensions_list)
-        
+
         layers = []
         for idx in range(len(dimensions_list)-1):
             in_dim = dimensions_list[idx]
