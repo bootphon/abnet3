@@ -333,3 +333,16 @@ class SequentialPartialSave(nn.Sequential):
 
         self.partial_results[i] = input
         return input
+
+def expand_dimension_list(dimensions_list):
+    final_list = []
+    for x in dimensions_list:
+        if isinstance(x, int):
+            final_list.append(x)
+        elif isinstance(x, tuple) or isinstance(x, list):
+            assert len(x) == 2
+            for _ in range(x[1]):
+                final_list.append(x[0])
+        else:
+            raise TypeError("Dimension list element must be integer or tuple")
+    return final_list

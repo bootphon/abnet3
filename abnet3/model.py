@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
-from utils import SequentialPartialSave
+from utils import SequentialPartialSave, expand_dimension_list
 # from graphviz import Digraph
 
 activation_functions = {'relu': nn.ReLU(),
@@ -468,6 +468,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
     def build_net(self, dimensions_list, activation):
 
+        dimensions_list = expand_dimension_list(dimensions_list)
         # layers
         layers = []
         for idx in range(len(dimensions_list)-1):

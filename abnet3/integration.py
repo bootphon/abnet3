@@ -10,6 +10,7 @@ import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import numpy as np
+from abnet3.utils import expand_dimension_list
 
 activation_functions = {'relu': nn.ReLU(),
                         'sigmoid': nn.Sigmoid(),
@@ -386,6 +387,8 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         self.start_training()
 
     def build_net(self, dimensions_list, activation):
+        dimensions_list = expand_dimension_list(dimensions_list)
+        
         layers = []
         for idx in range(len(dimensions_list)-1):
             in_dim = dimensions_list[idx]
