@@ -429,12 +429,13 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
             self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
         return super(BiWeightedDeepLearnt, self).integration_method(i1, i2)
 
-    def forward(self, x_list, di1=None, di2=None, *args, **kwargs):
+    def forward(self, x_list, di=None, *args, **kwargs):
         assert len(x_list) == 2, "BiWeighted integrators only accept two input modalities"
         i1 = x_list[0]
         i2 = x_list[1]
-        if isinstance(di1, Variable):
-            X = self.integration_method(i1, i2, di1, di2)
+        if di:
+            assert len(di) == 2, "BiWeighted integrators only accept two asynchronous inputs"
+            X = self.integration_method(i1, i2, di[0], di[1])
         else:
             X = self.integration_method(i1, i2, i1, i2)
         return X

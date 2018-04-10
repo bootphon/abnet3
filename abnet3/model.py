@@ -445,13 +445,12 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
         #Create nets
         if pre_integration_net_params:
-            self.pre_net1 = SequentialPartialSave(*self.build_net(
-                                                    pre_integration_net_params[0],
-                                                    activation))
+            self.pre_nets = []
+            for pre_net_params in pre_integration_net_params:
 
-            self.pre_net2 = SequentialPartialSave(*self.build_net(
-                                                    pre_integration_net_params[1],
-                                                    activation))
+                self.pre_nets.append(SequentialPartialSave(*self.build_net(
+                                                            pre_net_params,
+                                                            activation)))
 
             self.pre = True
         else:
@@ -493,8 +492,8 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         if self.attention_lr:
             network_params = []
             if self.pre:
-                network_params += list(self.pre_net1.parameters())
-                network_params += list(self.pre_net2.parameters())
+                for pre_net in self.pre_nets:
+                    network_params += list(pre_net.parameters())
             if self.post:
                 network_params += list(self.post_net.parameters())
 
@@ -515,22 +514,26 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         inputs
 
         """
-        x1 = x_list[0]
-        x2 = x_list[1]
+        partial_results = x_list
         if self.pre:
-            x1 = self.pre_net1(x1)
-            x2 = self.pre_net2(x2)
+            assert len(x_list) == len(self.pre_nets), "Number of inputs: "+\
+                                                      "{} doesn't ".format(len(x_list))+\
+                                                      "match number of pre_integration "+\
+                                                      "nets: {}".format(len(self.pre_nets))
+            partial_results = []
+            for _input, pre_net in zip(x_list, self.pre_nets):
+                partial_results.append(pre_net(_input))
 
         if self.asynchronous_attention_index:
-            attention_index1 = self.pre_net1.get_partial_result(
+            attention_inputs = []
+            for pre_net in self.pre_nets:
+                attention_inputs.append(pre_net.get_partial_result(
                                                 self.asynchronous_attention_index
-                                                )
-            attention_index2 = self.pre_net2.get_partial_result(
-                                                self.asynchronous_attention_index
-                                                )
-            output = self.integration_unit([x1, x2], attention_index1, attention_index2)
+                                                ))
+
+            output = self.integration_unit(partial_results, di = attention_inputs)
         else:
-            output = self.integration_unit([x1, x2])
+            output = self.integration_unit(partial_results)
 
         if self.post:
             output = self.post_net(output)
@@ -568,7 +571,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         _str = "Multimodal Siamese Architecture"
         if self.pre:
             i = 1
-            for pre_net in (self.pre_net1, self.pre_net2):
+            for pre_net in self.pre_nets:
                 _str += "\nPre Net {}:\n".format(i)
                 _str += str(pre_net)
                 _str += "\n"
