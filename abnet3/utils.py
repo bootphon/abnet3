@@ -229,11 +229,16 @@ def cast_features(features, target_type=np.float32):
     return features
 
 
-def read_vad_file(path):
+def read_vad_file(path, unit=1):
     """
     Read vad file of the form 
     https://github.com/bootphon/Zerospeech2015/blob/master/english_vad.txt
     returns a dictionnary of the form {file: [[s1, e1], [s2, e2], ...]}
+
+    Unit : this will divide the result by the unit.
+    1 -> second
+    1000 -> milliseconds
+    This function should return the VAD in seconds.
     """
     with open(path, 'r') as f:
         lines = [line.strip().split(',') for line in f]
@@ -243,7 +248,7 @@ def read_vad_file(path):
         dict_vad = defaultdict(list)
 
         for name, s, e in lines:
-            dict_vad[name].append([s, e])
+            dict_vad[name].append([s / unit, e / unit])
 
     return dict_vad
 

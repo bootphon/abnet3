@@ -23,6 +23,7 @@ class FeaturesGenerator:
                  load_mean_variance_path=None,
                  save_mean_variance_path=None,
                  vad_file=None,
+                 vad_unit=1,
                  n_filters=40, method='fbanks', normalization=True,
                  norm_per_file=True, stack=True,
                  nframes=7, deltas=False, deltasdeltas=False,
@@ -47,6 +48,9 @@ class FeaturesGenerator:
             Path to a file with VAD data. If given, the mean and variance
             of the dataset will be computed only in non-silent regions
         :param n_filters: number of filters in spectral
+        :param vad_unit: unit for the VAD file.
+                Default is 1 -> second
+                if you put 1000 -> millisecond.
         :param method: mfcc or fbanks
         :param normalization: if True, normalize the dataset
         :param norm_per_file: if True, normalize within each wav file.
@@ -63,6 +67,7 @@ class FeaturesGenerator:
         self.load_mean_variance_path = load_mean_variance_path
         self.save_mean_variance_path = save_mean_variance_path
         self.vad_file = vad_file
+        self.vad_unit = vad_unit
         self.n_filters = n_filters
         self.method = method
         self.normalization = normalization
@@ -219,7 +224,7 @@ class FeaturesGenerator:
 
         # VAD
         if vad_file is not None:
-            vad_data = read_vad_file(vad_file)
+            vad_data = read_vad_file(vad_file, unit=self.vad_unit)
             self.filter_vad_whole_dataset(features_accessor, vad_data)
 
         features = np.vstack(features_accessor.features.values())
@@ -280,7 +285,7 @@ class FeaturesGenerator:
             # VAD
             filtered_features = None
             if vad_file is not None:
-                vad_data = read_vad_file(vad_file)
+                vad_data = read_vad_file(vad_file, unit=self.vad_unit)
                 if str(f) in vad_data:
                     filtered_features = self.filter_vad_one_file(
                         features, times, vad_data[str(f)])
