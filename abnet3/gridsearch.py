@@ -191,32 +191,33 @@ class GridSearch(object):
         arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
 
-        if self.embed_only:
+        if not self.test_only:
+            if self.embed_only:
+                embedder.embed()
+                return
+
+            if features.run == 'never':
+                pass
+            if features.run == 'once' and self.features_run is False:
+                features.generate()
+                self.features_run = True
+            if features.run == 'always':
+                features.generate()
+            else:
+                pass
+
+            if sampler.run == 'never':
+                pass
+            if sampler.run == 'once' and self.sampler_run is False:
+                sampler.sample()
+                self.sampler_run = True
+            if sampler.run == 'always':
+                sampler.sample()
+            else:
+                pass
+
+            trainer.train()
             embedder.embed()
-            return
-
-        if features.run == 'never':
-            pass
-        if features.run == 'once' and self.features_run is False:
-            features.generate()
-            self.features_run = True
-        if features.run == 'always':
-            features.generate()
-        else:
-            pass
-
-        if sampler.run == 'never':
-            pass
-        if sampler.run == 'once' and self.sampler_run is False:
-            sampler.sample()
-            self.sampler_run = True
-        if sampler.run == 'always':
-            sampler.sample()
-        else:
-            pass
-
-        trainer.train()
-        embedder.embed()
 
         # embed test features
         if self.test_files:
@@ -299,7 +300,6 @@ def main():
     argparser.add_argument("--test-only", action='store_true',
                            help="Run only the testing (if the network is"
                                 "already trained")
-
 
     args = argparser.parse_args()
 
