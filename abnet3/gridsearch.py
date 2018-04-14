@@ -218,6 +218,7 @@ class GridSearch(object):
         trainer.train()
         embedder.embed()
 
+        # embed test features
         if self.test_files:
             for file in self.test_files:
                 test_wavs = file["files"]
@@ -227,7 +228,7 @@ class GridSearch(object):
                 else:
                     test_features = os.path.join(
                             single_experiment['pathname_experience'],
-                            'test-{name}.h5f'.format(name=name))
+                            'test-{name}'.format(name=name))
                 vad_file = None
                 if "vad_file" in file:
                     vad_file = file["vad_file"]
@@ -252,16 +253,16 @@ class GridSearch(object):
                 embedder_class = getattr(abnet3.embedder, embedder_prop['class'])
                 arguments = embedder_prop['arguments']
                 arguments['network'] = model
-                arguments['output_path'] = os.path.join(
-                         single_experiment['pathname_experience'],
-                         'test-{name}.embeddings.h5f'.format(name=name))
+                output_path = os.path.join(
+                    single_experiment['pathname_experience'],
+                    '{name}'.format(name=name))
+                arguments['output_path'] = output_path
                 arguments['feature_path'] = test_features
                 arguments['network_path'] = model.output_path + '.pth'
                 embedder = embedder_class(**arguments)
-
+                print("Embedding test features {} at path {}"
+                      .format(name, output_path))
                 embedder.embed()
-
-                
 
 
     def run(self):
