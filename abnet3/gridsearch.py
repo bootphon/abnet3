@@ -78,6 +78,14 @@ class GridSearch(object):
             msg_yaml_error + 'pathname_experience'
         default_params = self.params['default_params']
 
+        # fill test files
+        if self.test_files:
+            test_files = []
+            for path in self.test_files:
+                with open(path, 'r') as f:
+                    test_files.append(yaml.load(f))
+            self.test_files = test_files
+
         if 'grid_params' not in self.params:
             return [default_params]
 
@@ -109,14 +117,6 @@ class GridSearch(object):
                         )
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
-
-        # fill test files
-        if self.test_files:
-            test_files = []
-            for path in self.test_files:
-                with open(path, 'r') as f:
-                    test_files.append(yaml.load(f))
-            self.test_files = test_files
 
         return grid_experiments
 
