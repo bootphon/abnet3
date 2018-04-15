@@ -66,9 +66,6 @@ class OriginalDataLoader(DataLoader):
             If false, the longest word will be truncated to match the length
             of the smallest word.
         :param tcl: temporal coherence loss percentage (0 <= tcl < 1)
-        :param tcl_train_files: path to file listing the training wav items.
-            This is used for temporal coherence loss. If None, all files will
-            be considered.
         """
         assert 0 <= tcl < 1
 
