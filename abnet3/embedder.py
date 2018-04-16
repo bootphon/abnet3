@@ -78,7 +78,7 @@ class EmbedderSiamese(EmbedderBuilder):
         for feat in feats:
             if feat.dtype != np.float32:
                 feat = feat.astype(np.float32)
-            n_batches = len(feat) // self.batch_size
+            n_batches = len(feat) // self.batch_size + 1
             batches_feat = np.array_split(feat, n_batches)
             outputs = []
             for b_feat in batches_feat:
