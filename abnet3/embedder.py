@@ -34,7 +34,7 @@ class EmbedderBuilder:
 
     """
     def __init__(self, network=None, network_path=None, feature_path=None,
-                 output_path=None, cuda=True, batch_size=500):
+                 output_path=None, cuda=True, batch_size=5000):
         if network is None:
             raise ValueError("network is None.")
         self.network = network
