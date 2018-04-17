@@ -30,10 +30,11 @@ class EmbedderBuilder:
         Output path
     cuda: Bool
         If Gpu and Cuda are available
+    batch_size: for embedding, to avoid going over gpu memory limit
 
     """
     def __init__(self, network=None, network_path=None, feature_path=None,
-                 output_path=None, cuda=True):
+                 output_path=None, cuda=True, batch_size=5000):
         if network is None:
             raise ValueError("network is None.")
         self.network = network
@@ -41,6 +42,7 @@ class EmbedderBuilder:
         self.feature_path = feature_path
         self.output_path = output_path
         self.cuda = cuda
+        self.batch_size = batch_size
 
     def embed(self):
         raise NotImplementedError('Unimplemented embed for class:',
@@ -76,12 +78,18 @@ class EmbedderSiamese(EmbedderBuilder):
         for feat in feats:
             if feat.dtype != np.float32:
                 feat = feat.astype(np.float32)
-            feat_torch = Variable(torch.from_numpy(feat), volatile=True)
-            if self.cuda:
-                feat_torch = feat_torch.cuda()
-            emb, _ = self.network(feat_torch, feat_torch)
-            emb = emb.cpu()
-            embeddings.append(emb.data.numpy())
+            n_batches = len(feat) // self.batch_size + 1
+            batches_feat = np.array_split(feat, n_batches)
+            outputs = []
+            for b_feat in batches_feat:
+                feat_torch = Variable(torch.from_numpy(b_feat), volatile=True)
+                if self.cuda:
+                    feat_torch = feat_torch.cuda()
+                emb, _ = self.network(feat_torch, feat_torch)
+                emb = emb.cpu()
+                outputs.append(emb.data.numpy())
+            outputs = np.vstack(outputs)
+            embeddings.append(outputs)
 
         data = h5features.Data(items, times, embeddings, check=True)
         with h5features.Writer(self.output_path) as fh:

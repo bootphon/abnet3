@@ -198,13 +198,14 @@ class GridSearch(object):
 
             if features.run == 'never':
                 pass
-            if features.run == 'once' and self.features_run is False:
+            elif features.run == 'once' and self.features_run is False:
                 features.generate()
                 self.features_run = True
-            if features.run == 'always':
+            elif features.run == 'always':
                 features.generate()
-            else:
-                pass
+            elif features.run == 'if_none' and not os.path.isfile(
+                    features.output_path):
+                features.generate()
 
             if sampler.run == 'never':
                 pass
@@ -264,7 +265,6 @@ class GridSearch(object):
                 print("Embedding test features {} at path {}"
                       .format(name, output_path))
                 embedder.embed()
-
 
     def run(self):
         """Run command to launch the grid search

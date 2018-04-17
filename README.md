@@ -73,6 +73,8 @@ The default logdir is `./run` in the current directory.
 You can see examples for running the gridsearch and replicating our results
 in the repository https://github.com/Rachine/sampling_siamese2018
 
+The cli documentation is here https://coml.lscp.ens.fr/git/Rachine/abnet3/src/master/gridsearch.md
+
 ### Tests
 
 The package comes with a unit-tests suit. To run it, first install *pytest* on your Python environment:

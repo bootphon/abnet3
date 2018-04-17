@@ -7,7 +7,7 @@ import random
 
 from abnet3.utils import get_dtw_alignment, \
     Parse_Dataset, read_pairs, read_feats, \
-    read_spkid_file, read_dataset, group_pairs
+    read_spkid_file, read_dataset, group_pairs, Features_Accessor
 
 """
 This file contains several dataloaders.
@@ -47,9 +47,13 @@ class OriginalDataLoader(DataLoader):
 
     """
 
+    TCL_DISTANCE_SAME = [1]  # see Synnaeve paper about Temporal Coherence Loss
+    TCL_DISTANCES_DIFF = [15, 20, 25, 30]
+
     def __init__(self, pairs_path, features_path, num_max_minibatches=1000,
                  seed=None, batch_size=8, shuffle_between_epochs=False,
-                 align_different_words=False):
+                 align_different_words=False,
+                 tcl=0.0):
         """
 
         :param string pairs_path: path to dataset where the dev_pairs and
@@ -61,17 +65,22 @@ class OriginalDataLoader(DataLoader):
             If true, different words will be aligned along the diagonal.
             If false, the longest word will be truncated to match the length
             of the smallest word.
+        :param tcl: temporal coherence loss percentage (0 <= tcl < 1)
         """
+        assert 0 <= tcl < 1
+
         self.pairs_path = pairs_path
         self.features_path = features_path
         self.statistics_training = defaultdict(int)
         self.seed = seed
         self.num_max_minibatches = num_max_minibatches
         self.batch_size = batch_size
-        self.features = None
+        self.features = None  # type: Features_Accessor
         self.shuffle_between_epochs = shuffle_between_epochs
         self.align_different_words = align_different_words
-        self.pairs = {'train': None, 'dev': None}
+        self.tcl = tcl  # temporal coherence loss
+        self.train_files = None # type: set
+        self.pairs = {'train': None, 'dev': None}  # type: dict[str, list]
 
     def __getstate__(self):
         """used for pickle
@@ -129,6 +138,10 @@ class OriginalDataLoader(DataLoader):
         if self.pairs['dev'] is None:
             dev_dir = os.path.join(self.pairs_path, 'dev_pairs/dataset')
             self.pairs['dev'] = read_dataset(dev_dir)
+
+        # analyse which are the train files
+        self.train_files = list({pair[0] for pair in self.pairs['train']} |
+                                {pair[3] for pair in self.pairs['train']})
 
     def get_token_feats(self, pairs):
         token_feats = {}
@@ -277,12 +290,89 @@ class OriginalDataLoader(DataLoader):
             selected_batches = np.random.permutation(range(num_batches))
         for batch_id in selected_batches:
             grouped_pairs = group_pairs(batches[batch_id])
-            batch_els = self.load_frames_from_pairs(grouped_pairs)
-            X1, X2, Y = map(torch.from_numpy, batch_els)
+            batch = self.load_frames_from_pairs(grouped_pairs)
+
+            # add Temporal coherence loss
+            if self.tcl > 0:
+                batch = self.add_tcl_to_batch(batch)
+
+            X1, X2, Y = batch
+            X1, X2, Y = map(torch.from_numpy, [X1, X2, Y])
             X_batch1 = Variable(X1, volatile=not train_mode)
             X_batch2 = Variable(X2, volatile=not train_mode)
             y_batch = Variable(Y, volatile=not train_mode)
             yield X_batch1, X_batch2, y_batch
+
+    def add_tcl_to_batch(self, batch):
+        X1, X2, Y = batch
+        num_pairs = len(Y)
+        num_pairs_to_add = int((self.tcl * num_pairs) / (1 - self.tcl))
+        X1_tcl, X2_tcl, Y_tcl = self.temporal_coherence_loss(num_pairs_to_add)
+        X1 = np.vstack((X1, X1_tcl))
+        X2 = np.vstack((X2, X2_tcl))
+        Y = np.concatenate((Y, Y_tcl))
+        return X1, X2, Y
+
+    def temporal_coherence_loss(self, num_pairs):
+        """
+        As described in
+            Dupoux, E., & Synnaeve, G. (2016).
+            A Temporal Coherence Loss Function for
+            Learning Unsupervised Acoustic Embeddings. SLTU.
+        """
+        X1, X2, Y = [], [], []
+        pairs_per_iteration = len(self.TCL_DISTANCES_DIFF) + len(self.TCL_DISTANCE_SAME)
+        for i in range(round(num_pairs /pairs_per_iteration)):
+            files = list(self.features.features.keys())
+            if self.train_files is not None:
+                files = self.train_files
+            f = random.choice(files)
+            # pick random time in file
+            file_features = self.features.features[f]
+            t = random.choice(range(len(file_features) - max(self.TCL_DISTANCES_DIFF)))
+            # "same" pairs
+            for delta in self.TCL_DISTANCE_SAME:
+                X1.append(file_features[t])
+                X2.append(file_features[t + delta])
+                Y.append(1)
+            # "diff" pairs
+            for delta in self.TCL_DISTANCES_DIFF:
+                X1.append(file_features[t])
+                X2.append(file_features[t + delta])
+                Y.append(-1)
+
+        return np.vstack(X1), np.vstack(X2), np.array(Y)
+
+
+class TemporalCoherenceDataLoader(OriginalDataLoader):
+    """
+    This dataloader will load only temporal coherence pairs
+    Which means for positive pairs : pairs that are close
+    to one another, and for negative pairs, that are far.
+    It won't use the sampled dataset for training, but
+    it will use it for evaluation and early stopping.
+    """
+
+    def __init__(self, pairs_path, features_path, batch_size=500,
+                 test_words_batch_size=8,
+                 num_max_minibatches=1000):
+        super().__init__(pairs_path, features_path,
+                         num_max_minibatches=num_max_minibatches,
+                         batch_size=test_words_batch_size)
+        self.batch_size = batch_size
+
+    def batch_iterator(self, train_mode=True):
+        self.load_data()
+        if train_mode:
+            for _ in range(self.num_max_minibatches):
+                batch = self.temporal_coherence_loss(num_pairs=self.batch_size)
+                X1, X2, Y = map(torch.from_numpy, batch)
+                X1 = Variable(X1, volatile=not train_mode)
+                X2 = Variable(X2, volatile=not train_mode)
+                Y = Variable(Y, volatile=not train_mode)
+                yield X1, X2, Y
+        else:
+            yield from super(TemporalCoherenceDataLoader, self).batch_iterator(train_mode)
 
 
 class FramesDataLoader(OriginalDataLoader):
