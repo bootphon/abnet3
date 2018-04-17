@@ -1,0 +1,4 @@
+files: path/to/wav/directory
+features: path/to/features.h5f
+name: test_features.h5f
+vad_file:
