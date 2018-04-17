@@ -76,7 +76,7 @@ class FeaturesGenerator:
 
         if self.method not in ['mfcc', 'fbanks']:
             raise ValueError("Method %s not recognized" % self.method)
-        assert self.run in ['never', 'once', 'always']
+        assert self.run in ['never', 'once', 'always', 'if_none']
 
         if load_mean_variance_path is not None \
                 and save_mean_variance_path is not None:
