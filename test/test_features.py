@@ -62,8 +62,8 @@ class TestFeatures:
         dset = list(h5py.File(h5f_mean_var).keys())[0]
         data = h5py.File(h5f_mean_var)[dset]['features'][:]
         means = np.mean(data, axis=0)
-        assert all(means == pytest.approx(0.0, abs=1e-6))
-        assert all(np.std(data, axis=0) == pytest.approx(1.0, abs=1e-6))
+        assert np.allclose(means, 0.0, atol=1e-6)
+        assert np.std(data, axis=0) == pytest.approx(1.0, abs=1e-6)
 
         ## test normalization across all chanels
         tmp2 = str(tempdir/'h5temp.h5')
