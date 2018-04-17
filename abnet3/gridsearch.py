@@ -85,6 +85,12 @@ class GridSearch(object):
                 with open(path, 'r') as f:
                     test_files.append(yaml.load(f))
             self.test_files = test_files
+        else:
+            self.test_files = []
+        # fill test files in the yaml
+        if "test_files" in self.params:
+            for test_file in self.params["test_files"]:
+                self.test_files.append(self.params["test_files"][test_file])
 
         if 'grid_params' not in self.params:
             return [default_params]
