@@ -25,22 +25,6 @@ class RequiredPackagedInstall(install):
         from github.com/bootphon, by launching pip via
         subprocess
         """
-        import pip
-
-        # github repositories we want to get
-        DTW_cython = "git+https://github.com/Rachine/DTW_Cython.git"
-        spectral = "git+https://github.com/bootphon/spectral.git"
-        h5features = "git+https://github.com/bootphon/h5features.git"
-
-        # install with pip
-        pip.main(['install', DTW_cython])
-        pip.main(['install', spectral])
-        pip.main(['install', h5features])
-
-        # install cuda80 from channel soumith
-        # TODO find if there's a prettier way than calling subprocess
-        # _ = subprocess.call(['conda', 'install', 'cuda80', '-c', 'soumith'])
-
         # run ABnet3 package installation
         install.run(self)
 
