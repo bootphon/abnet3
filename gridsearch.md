@@ -22,26 +22,31 @@ default_params:
       run: never
       ...
   dataloader:
-      class: OriginalDataLoader
-      arguments:
+    class: OriginalDataLoader
+    arguments:
+      ...
   sampler:
     class: SamplerClusterSiamese
     arguments:
       run: always
-      seed: 0
+      ...
   model:
     class: SiameseNetwork
     arguments:
       input_dim: 280
+      ...
   loss:
     class: coscos2
     arguments:
+      ...
   trainer:
     class: TrainerSiamese
     arguments:
+      ...
   embedder:
     class: EmbedderSiamese
     arguments:
+      ...
 ```
 
 You must define all the arguments for the `features`, `dataloader`, `sampler`,
