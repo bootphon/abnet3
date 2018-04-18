@@ -29,7 +29,7 @@ Build Representation for speech frames based on side information. Composed of di
 
 To install the ABnet3 package, you can use Anaconda, and either create a conda environment:
 
-    conda create --name abnet3 python=3.6 --file environment.yml
+    conda env create --name abnet3 python=3.6 -f environment.yml
 
 or use a conda environment you already have with python 3 :
     conda env update -f environment.yml
@@ -72,6 +72,8 @@ The default logdir is `./run` in the current directory.
 
 You can see examples for running the gridsearch and replicating our results
 in the repository https://github.com/Rachine/sampling_siamese2018
+
+The cli documentation is here https://coml.lscp.ens.fr/git/Rachine/abnet3/src/master/gridsearch.md
 
 ### Tests
 
