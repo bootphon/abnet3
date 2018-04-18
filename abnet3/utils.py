@@ -316,9 +316,11 @@ class SequentialPartialSave(nn.Sequential):
 
     def create_partial_dict(self):
         partial_dict = {}
+        partial_index = 0
         for i in range(len(self)):
             if isinstance(self[i], nn.Linear):
-                partial_dict[i] = 0
+                partial_dict[partial_index] = 0
+                partial_index += 1
         return partial_dict
 
     def get_partial_result(self, index):
@@ -333,7 +335,6 @@ class SequentialPartialSave(nn.Sequential):
                 i += 1
             input = module(input)
 
-        self.partial_results[i] = input
         return input
 
 def expand_dimension_list(dimensions_list):
