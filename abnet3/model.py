@@ -492,6 +492,11 @@ class MultimodalSiameseNetwork(NetworkBuilder):
                       gain=nn.init.calculate_gain(self.activation_layer))
             layer.bias.data.fill_(0.0)
 
+    def cuda(self):
+        super(MultimodalSiameseNetwork, self).cuda()
+        for pre_net in self.pre_nets:
+            pre_net.cuda()
+
     def parameters(self):
         if self.attention_lr:
             network_params = []
