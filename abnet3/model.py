@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
-from utils import SequentialPartialSave, expand_dimension_list
+from utils import SequentialPartialSave, expand_dimension_list, to_ordinal
 # from graphviz import Digraph
 
 activation_functions = {'relu': nn.ReLU(),
@@ -582,6 +582,15 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
         _str += "\nIntegration Unit:\n"
         _str += str(self.integration_unit)
+        if self.asynchronous_integration_index:
+            _str += "\nAsynchonours integration using "
+            if self.asynchronous_integration_index = 0:
+                _str += "raw features"
+            else:
+                _str += "{} layer output".format(to_ordinal(
+                                            self.asynchronous_integration_index))
+
+
         if self.post:
             _str += "\nPost Net:\n"
             _str += str(self.post_net)

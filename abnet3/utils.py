@@ -349,3 +349,14 @@ def expand_dimension_list(dimensions_list):
         else:
             raise TypeError("Dimension list element must be integer or tuple")
     return final_list
+
+def to_ordinal(number):
+    suffix = "th"
+    if !(10 < number < 21):
+        if number % 10 == 1:
+            suffix = "st"
+        else if number % 10 == 2:
+            suffix = "nd"
+        else if number % 10 == 3:
+            suffix = "rd"
+    return "{}{}".format(number,suffix)
