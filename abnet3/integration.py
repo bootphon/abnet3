@@ -459,8 +459,8 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         else:
             _str += "Input dims:    ({0}, {0})\n".format(self.input_dim1)
         _str += "Activation:    {}\n".format(self.activation_type)
-        _str += "\nLinear 1:\n{}\n".format(str(self.linear1))
-        _str += "\nLinear 2:\n{}\n".format(str(self.linear2))
+        _str += "\nLinear 1:\n{}".format(str(self.linear1))
+        _str += "\nLinear 2:\n{}".format(str(self.linear2))
         _str += "\nAct Layer:     {}\n".format(str(self.activation_layer))
         return _str
 
@@ -520,6 +520,6 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
 
     def __str__(self):
         _str = super(BiWeightedPreTrained, self).__str__()
-        _str += "\nPre-trained 1:\n{}\n".format(str(self.pretrained_1))
-        _str += "\nPre-trained 2:\n{}\n".format(str(self.pretrained_2))
+        _str += "\nPre-trained 1:\n{}".format(str(self.pretrained_1))
+        _str += "\nPre-trained 2:\n{}".format(str(self.pretrained_2))
         return _str
