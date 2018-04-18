@@ -412,7 +412,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
         assert not pre_integration_net_params or len(pre_integration_net_params) == 2,\
                                                 'Only 2 inputs supported for now'
-        assert (integration unit != None), 'If only using one input, use original SiameseNetwork'
+        assert integration_unit is not None, 'If only using one input, use original SiameseNetwork'
 
         assert asynchronous_attention_index >= 0,\
                     '''
