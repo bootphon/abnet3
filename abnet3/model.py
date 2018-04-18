@@ -533,7 +533,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
             for _input, pre_net in zip(x_list, self.pre_nets):
                 partial_results.append(pre_net(_input))
 
-        if self.asynchronous_integration_index:
+        if self.asynchronous_integration_index is not None:
             attention_inputs = []
             for pre_net in self.pre_nets:
                 attention_inputs.append(pre_net.get_partial_result(
@@ -588,7 +588,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
         _str += "\nIntegration Unit:\n"
         _str += str(self.integration_unit)
-        if self.asynchronous_integration_index != None:
+        if self.asynchronous_integration_index is not None:
             _str += "\nAsynchronous integration using "
             if self.asynchronous_integration_index == 0:
                 _str += "raw features\n"
