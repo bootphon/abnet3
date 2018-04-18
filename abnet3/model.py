@@ -420,9 +420,9 @@ class MultimodalSiameseNetwork(NetworkBuilder):
                     '''
                     asynchronous integration index must be greater than 0
                     '''
-            assert asynchronous_integration_index <= len(pre_integration_net_params[0]),\
+            assert asynchronous_integration_index < len(pre_integration_net_params[0]),\
                     '''
-                    asynchronous integration index must be less or equal than the
+                    asynchronous integration index must be less than the
                     pre-integration network length
                     '''
 
