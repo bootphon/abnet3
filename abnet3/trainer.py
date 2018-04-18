@@ -16,8 +16,7 @@ from abnet3.loss import *
 from abnet3.sampler import *
 from abnet3.utils import *
 from abnet3.integration import *
-from abnet3.dataloader import DataLoader, FramesDataLoader, MultiTaskDataLoader,
-                              MultimodalDataLoader
+from abnet3.dataloader import DataLoader, FramesDataLoader, MultiTaskDataLoader, MultimodalDataLoader
 import numpy as np
 import torch
 import torch.optim as optim
