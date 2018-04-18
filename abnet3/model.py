@@ -414,17 +414,19 @@ class MultimodalSiameseNetwork(NetworkBuilder):
                                                 'Only 2 inputs supported for now'
         assert integration_unit is not None, 'If only using one input, use original SiameseNetwork'
 
-        assert not asynchronous_integration_index or asynchronous_integration_index >= 0,\
+
+        if asynchronous_integration_index:
+            assert asynchronous_integration_index >= 0,\
                     '''
                     asynchronous attention index must be greater than 0
                     '''
-        assert asynchronous_integration_index <= len(pre_integration_net_params[0]),\
+            assert asynchronous_integration_index <= len(pre_integration_net_params[0]),\
                     '''
                     asynchronous attention index must be less or equal than the
                     pre-integration network length
                     '''
 
-        assert not asynchronous_integration_index or pre_integration_net_params,\
+            assert pre_integration_net_params,\
                     '''
                     If asynchronous attention index provided, then there must
                     exist pre integration networks
