@@ -355,8 +355,8 @@ def to_ordinal(number):
     if not 10 < number < 21:
         if number % 10 == 1:
             suffix = "st"
-        else if number % 10 == 2:
+        elif number % 10 == 2:
             suffix = "nd"
-        else if number % 10 == 3:
+        elif number % 10 == 3:
             suffix = "rd"
     return "{}{}".format(number,suffix)
