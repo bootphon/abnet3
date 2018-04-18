@@ -582,7 +582,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
         _str += "\nIntegration Unit:\n"
         _str += str(self.integration_unit)
-        if self.asynchronous_integration_index:
+        if self.asynchronous_integration_index is not None:
             _str += "\nAsynchonours integration using "
             if self.asynchronous_integration_index == 0:
                 _str += "raw features"
