@@ -267,11 +267,12 @@ class BiWeightedFixed(IntegrationUnitBuilder):
 
     def __init__(self, integration_mode="sum", weight_value=None, *args, **kwargs):
         super(BiWeightedFixed, self).__init__(*args, **kwargs)
-        assert weight_value >= 0, "weight must be greater or equal to 0"
-        assert weight_value <= 1, "weight must be less or equal to 1"
         assert integration_mode in ("sum", "concat"), "Only sum and concat supported"
         if not weight_value:
             weight_value = np.random.random()
+        else:
+            assert weight_value >= 0, "weight must be greater or equal to 0"
+            assert weight_value <= 1, "weight must be less or equal to 1"
         self.weight = weight_value
         self.weight_complement = 1 - self.weight
         self.integration_mode = integration_mode
