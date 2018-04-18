@@ -418,17 +418,17 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         if asynchronous_integration_index:
             assert asynchronous_integration_index >= 0,\
                     '''
-                    asynchronous attention index must be greater than 0
+                    asynchronous integration index must be greater than 0
                     '''
             assert asynchronous_integration_index <= len(pre_integration_net_params[0]),\
                     '''
-                    asynchronous attention index must be less or equal than the
+                    asynchronous integration index must be less or equal than the
                     pre-integration network length
                     '''
 
             assert pre_integration_net_params,\
                     '''
-                    If asynchronous attention index provided, then there must
+                    If asynchronous integration index provided, then there must
                     exist pre integration networks
                     '''
 
@@ -440,7 +440,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         self.output_path = output_path
         self.integration_unit = integration_unit
         self.attention_lr = attention_lr
-        self.asynchronous_attention_index = asynchronous_attention_index
+        self.asynchronous_integration_index = asynchronous_integration_index
 
         # Pass forward network functions
         activation = activation_functions[activation_layer]
@@ -527,11 +527,11 @@ class MultimodalSiameseNetwork(NetworkBuilder):
             for _input, pre_net in zip(x_list, self.pre_nets):
                 partial_results.append(pre_net(_input))
 
-        if self.asynchronous_attention_index:
+        if self.asynchronous_integration_index:
             attention_inputs = []
             for pre_net in self.pre_nets:
                 attention_inputs.append(pre_net.get_partial_result(
-                                                self.asynchronous_attention_index
+                                                self.asynchronous_integration_index
                                                 ))
 
             output = self.integration_unit(partial_results, di = attention_inputs)
