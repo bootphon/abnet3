@@ -122,7 +122,7 @@ class SiameseNetwork(NetworkBuilder):
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None,
                  output_dim=None, p_dropout=0.1, batch_norm=False,
                  type_init='xavier_uni', activation_layer=None,
-                 output_path=None):
+                 output_path=None, adversarial=False):
         super(SiameseNetwork, self).__init__()
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
@@ -138,6 +138,7 @@ class SiameseNetwork(NetworkBuilder):
         self.activation_layer = activation_layer
         self.batch_norm = batch_norm
         self.type_init = type_init
+        self.adversarial = adversarial
         # Pass forward network functions
 
         activation = activation_functions[activation_layer]
@@ -173,18 +174,21 @@ class SiameseNetwork(NetworkBuilder):
         self.output_path = output_path
         self.apply(self.init_weight_method)
 
-        # adversarial layer
-        adversarial_classifier = [
-            nn.Linear(2*output_dim, 100),
-            nn.ReLU(),
-            nn.Linear(100, 50),
-            nn.ReLU(),
-            nn.Linear(50, 1),
-            nn.Sigmoid()
-        ]
-        self.adversarial_classifier = nn.Sequential(*adversarial_classifier)
+        if self.adversarial:
+            # adversarial layer
+            adversarial_classifier = [
+                nn.Linear(2*output_dim, 100),
+                nn.ReLU(),
+                nn.Linear(100, 50),
+                nn.ReLU(),
+                nn.Linear(50, 1),
+                nn.Sigmoid()
+            ]
+            self.adversarial_classifier = nn.Sequential(*adversarial_classifier)
 
     def run_adversarial_classifier(self, embedding1, embedding2):
+        if not self.adversarial:
+            raise RuntimeError("The model doesn't have the adversarial classifier")
         # concatenate each pair in the batch
         input = torch.cat((embedding1, embedding2), dim=1)
         input = grad_reverse(input)
