@@ -440,7 +440,10 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         self.output_path = output_path
         self.integration_unit = integration_unit
         self.attention_lr = attention_lr
+        print("AIX",asynchronous_integration_index)
         self.asynchronous_integration_index = asynchronous_integration_index
+        print("self.AIX",self.asynchronous_integration_index)
+
 
         # Pass forward network functions
         activation = activation_functions[activation_layer]
@@ -582,7 +585,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
         _str += "\nIntegration Unit:\n"
         _str += str(self.integration_unit)
-        if self.asynchronous_integration_index is not None:
+        if self.asynchronous_integration_index != None:
             _str += "\nAsynchonours integration using "
             if self.asynchronous_integration_index == 0:
                 _str += "raw features"
