@@ -74,3 +74,12 @@ grid_params:
     sampler:
         arguments:
           type_sampling_mode: ['log','fcube','f','f2','1']
+
+test_files:
+  10s:
+    files: path/to/wav/directory
+    features: path/to/features.h5f
+    name: 1Os.h5f
+    vad_file:
+
+
