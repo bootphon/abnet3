@@ -307,7 +307,16 @@ class EmbeddingObserver(object):
 
 class SequentialPartialSave(nn.Sequential):
     '''
-    add description
+    Saves partial results from the sequential network. It saves each representation
+    before it goes into a new linear layer
+
+    :usage:     To create the sequential network, use exactly as you would use
+                nn.Sequential. To get a partial result use the method
+                get_partial_result(index). To get the initial features of the network
+                use index = 0, index = 1 is the representations after passing the
+                input layer and before the 1st hidden, index = 2 before the 2nd
+                hidden and so forth. It doesn't save the last result, only partial
+                ones, but if you need that behaviour it should be easy to expand.
     '''
 
     def __init__(self, *args, **kwargs):
@@ -351,6 +360,9 @@ def expand_dimension_list(dimensions_list):
     return final_list
 
 def to_ordinal(number):
+
+    "Returns ordinal string for the given number"
+
     suffix = "th"
     if not 10 < number < 21:
         if number % 10 == 1:
