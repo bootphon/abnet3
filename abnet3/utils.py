@@ -97,6 +97,27 @@ def sample_searchidx(cdf, num_samples):
     return idx
 
 
+def samplepairs_searchidx(cdf, num_samples):
+    """
+    Sample indexes based on cdf distribution
+    This function samples pairs of *different* elements (ie without 
+    replacement)
+    """
+    iterations = 0  # limit 5 iterations to avoid infinite loops
+    uniform_samples = np.random.random_sample((int(num_samples), 2))
+    idx = cdf.searchsorted(uniform_samples, side='right')
+    while True:
+        iterations += 1
+        if iterations > 5:
+            print("Warning : more than 5 iterations to sample different pairs")
+        indices_same_sample = np.where(idx[:, 0] == idx[:, 1])
+        num_samples_same = len(indices_same_sample[0])
+        if num_samples_same == 0:
+            break
+        new_samples = np.random.random_sample((int(num_samples_same), 2))
+        idx[indices_same_sample] = cdf.searchsorted(new_samples, side='right')
+    return idx
+
 def print_token(tok):
     """Pretty print token for batches
 

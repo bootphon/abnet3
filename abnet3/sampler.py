@@ -10,7 +10,7 @@ correct format for the Neural Network.
 """
 
 from abnet3.utils import normalize_distribution, cumulative_distribution
-from abnet3.utils import print_token, sample_searchidx
+from abnet3.utils import print_token, sample_searchidx, samplepairs_searchidx
 from abnet3.utils import read_spkid_file, read_spk_list, progress
 
 import numpy as np
@@ -316,15 +316,17 @@ class SamplerCluster(SamplerBuilder):
         """
         nb_tok = len(std_descr['tokens'])
         tokens_type = std_descr['tokens_type']
+        types = std_descr['types']
         p_spk_types = {'Stype_Sspk': {}, 'Stype_Dspk': {},
                        'Dtype_Sspk': {}, 'Dtype_Dspk': {}}
-        speakers = std_descr['tokens_speaker']
+        speakers_for_token = std_descr['tokens_speaker']
+        speakers = std_descr['speakers']
         W_spk_types = {}
         for tok in range(nb_tok):
             try:
-                W_spk_types[(speakers[tok], tokens_type[tok])] += 1.0
+                W_spk_types[(speakers_for_token[tok], tokens_type[tok])] += 1.0
             except Exception as e:
-                W_spk_types[(speakers[tok], tokens_type[tok])] = 1.0
+                W_spk_types[(speakers_for_token[tok], tokens_type[tok])] = 1.0
 
         if spk_sampling_mode == '1':
             def spk_samp_func(x):
@@ -348,32 +350,29 @@ class SamplerCluster(SamplerBuilder):
         for (spk, type_idx) in W_spk_types.keys():
             print_progress(i)
             i += 1
-            for (spk2, type_jdx) in W_spk_types.keys():
-                if spk == spk2:
-                    if type_idx == type_jdx:
-                        if (W_spk_types[(spk, type_idx)] - 1) == 0:
-                            p_spk_types['Stype_Sspk'][(spk, type_idx)] = 0.0
-                        else:
-                            p_spk_types['Stype_Sspk'][(spk, type_idx)] = \
-                                spk_samp_func(W_spk_types[(spk, type_idx)])
-                    else:
-                        min_idx = min(type_idx, type_jdx)
-                        max_idx = max(type_idx, type_jdx)
+            # Dtype, Dspk
+            p_spk_types['Dtype_Dspk'][(spk, type_idx)] = \
+                spk_samp_func(W_spk_types[(spk, type_idx)])
+            # Stype, Sspk
+            if (W_spk_types[(spk, type_idx)] - 1) == 0:
+                p_spk_types['Stype_Sspk'][(spk, type_idx)] = 0.0
+            else:
+                p_spk_types['Stype_Sspk'][(spk, type_idx)] = \
+                    spk_samp_func(W_spk_types[(spk, type_idx)])
+            # Dtype, Sspk
+            for type_jdx in range(len(types)):
+                    min_idx = min(type_idx, type_jdx)
+                    max_idx = max(type_idx, type_jdx)
+                    if (spk, type_jdx) in W_spk_types:
                         p_spk_types['Dtype_Sspk'][(spk, min_idx, max_idx)] = \
                             spk_samp_func(W_spk_types[(spk, type_idx)]) * \
                             spk_samp_func(W_spk_types[(spk, type_jdx)])
-                else:
-                    if type_idx == type_jdx:
-                        p_spk_types['Stype_Dspk'][(spk, spk2, type_idx)] = \
-                            spk_samp_func(W_spk_types[(spk, type_idx)]) * \
-                            spk_samp_func(W_spk_types[(spk2, type_idx)])
-                    else:
-                        min_idx = min(type_idx, type_jdx)
-                        max_idx = max(type_idx, type_jdx)
-                        p_spk_types['Dtype_Dspk'][(spk, spk2,
-                                                   min_idx, max_idx)] = \
-                            spk_samp_func(W_spk_types[(spk, type_idx)]) * \
-                            spk_samp_func(W_spk_types[(spk2, type_jdx)])
+            # Stype, Dspk
+            for spk2 in speakers:
+                if (spk2, type_idx) in W_spk_types:
+                    p_spk_types['Stype_Dspk'][(spk, spk2, type_idx)] = \
+                        spk_samp_func(W_spk_types[(spk, type_idx)]) * \
+                        spk_samp_func(W_spk_types[(spk2, type_idx)])
         return p_spk_types
 
     def generate_token_dict(self, std_descr):
@@ -425,9 +424,7 @@ class SamplerCluster(SamplerBuilder):
         """
         assert type_sampling_mode in ['1', 'f', 'f2', 'log', 'fcube']
         assert spk_sampling_mode in ['1', 'f', 'f2', 'log', 'fcube']
-        # W_types = std_descr['types']
-        # speakers = [e for e in std_descr['speakers']]
-        # W_speakers = [std_descr['speakers'][e] for e in speakers]
+
         p_types = self.type_sample_p(std_descr,
                                      type_sampling_mode=type_sampling_mode)
         p_spk_types = self.sample_spk_p(std_descr,
@@ -464,8 +461,7 @@ class SamplerCluster(SamplerBuilder):
             if config == 'Dtype_Dspk':
                 for el in p_spk_types[config].keys():
                     p_spk_types[config][el] = \
-                        p_types[el[2]] * \
-                        p_types[el[3]] * \
+                        p_types[el[1]] * \
                         p_spk_types[config][el]
 
         for config in p_spk_types.keys():
@@ -549,44 +545,48 @@ class SamplerClusterSiamese(SamplerCluster):
                          'Dtype_Dspk': num_Dtype_Dspk
                          }
         for config in p_spk_types.keys():
-            keys = np.array(list(p_spk_types[config].keys()))
-            sample_idx = sample_searchidx(cdf[config], sampled_ratio[config])
-            sample = keys[sample_idx]
-            if config == 'Stype_Sspk':
-                for key in sample:
-                    spk, type_idx = key
-                    tokens = token_dict[int(type_idx), spk]
-                    tok1, tok2 = np.random.choice(tokens, size=2,
-                                                  replace=False)
-                    sampled_tokens[config].append(
-                        (tok1, tok2))
-            if config == 'Stype_Dspk':
-                for key in sample:
-                    spk1, spk2, type_idx = key
-                    type_idx = int(type_idx)
-                    tok1 = np.random.choice(token_dict[type_idx, spk1])
-                    tok2 = np.random.choice(token_dict[type_idx, spk2])
-                    sampled_tokens[config].append((tok1, tok2))
-            if config == 'Dtype_Sspk':
-                for key in sample:
-                    spk, type_idx, type_jdx = key
-                    type_idx = int(type_idx)
-                    type_jdx = int(type_jdx)
-                    tok1 = np.random.choice(token_dict[type_idx, spk])
-                    tok2 = np.random.choice(token_dict[type_jdx, spk])
-                    sampled_tokens[config].append((tok1, tok2))
             if config == 'Dtype_Dspk':
+                """
+                Dtype_Dspk is particular
+                We sample two items and check they are different
+                """
+                keys = np.array(list(p_spk_types[config].keys()))
+                sample_idx = samplepairs_searchidx(cdf[config], sampled_ratio[config])
+                sample = keys[sample_idx]
                 for key in sample:
-                    spk1, spk2, type_idx, type_jdx = key
-                    type_idx = int(type_idx)
-                    type_jdx = int(type_jdx)
-                    try:
-                        tok1 = np.random.choice(token_dict[type_idx, spk1])
-                        tok2 = np.random.choice(token_dict[type_jdx, spk2])
-                    except Exception:
-                        tok1 = np.random.choice(token_dict[type_idx, spk2])
-                        tok2 = np.random.choice(token_dict[type_jdx, spk1])
+                    (spk1, type1), (spk2, type2) = key
+                    type1 = int(type1)
+                    type2 = int(type2)
+                    tok1 = np.random.choice(token_dict[type1, spk1])
+                    tok2 = np.random.choice(token_dict[type2, spk2])
                     sampled_tokens[config].append((tok1, tok2))
+            else:
+                keys = np.array(list(p_spk_types[config].keys()))
+                sample_idx = sample_searchidx(cdf[config], sampled_ratio[config])
+                sample = keys[sample_idx]
+                if config == 'Stype_Sspk':
+                    for key in sample:
+                        spk, type_idx = key
+                        tokens = token_dict[int(type_idx), spk]
+                        tok1, tok2 = np.random.choice(tokens, size=2,
+                                                      replace=False)
+                        sampled_tokens[config].append(
+                            (tok1, tok2))
+                if config == 'Stype_Dspk':
+                    for key in sample:
+                        spk1, spk2, type_idx = key
+                        type_idx = int(type_idx)
+                        tok1 = np.random.choice(token_dict[type_idx, spk1])
+                        tok2 = np.random.choice(token_dict[type_idx, spk2])
+                        sampled_tokens[config].append((tok1, tok2))
+                if config == 'Dtype_Sspk':
+                    for key in sample:
+                        spk, type_idx, type_jdx = key
+                        type_idx = int(type_idx)
+                        type_jdx = int(type_jdx)
+                        tok1 = np.random.choice(token_dict[type_idx, spk])
+                        tok2 = np.random.choice(token_dict[type_jdx, spk])
+                        sampled_tokens[config].append((tok1, tok2))
         return sampled_tokens
 
     def write_tokens(self, descr=None, proba=None, cdf=None,
