@@ -97,25 +97,31 @@ def sample_searchidx(cdf, num_samples):
     return idx
 
 
-def samplepairs_searchidx(cdf, num_samples):
+def samplepairs_searchidx(cdf, num_samples, keys):
     """
     Sample indexes based on cdf distribution
     This function samples pairs of *different* elements (ie without 
     replacement)
+    It samples randomly pairs of elements, and reruns the elements that have
+    one thing in common (this is used to sample pairs of (spk, type)
+    where both spk and type are different
     """
     iterations = 0  # limit 5 iterations to avoid infinite loops
     uniform_samples = np.random.random_sample((int(num_samples), 2))
     idx = cdf.searchsorted(uniform_samples, side='right')
     while True:
         iterations += 1
-        if iterations > 5:
-            print("Warning : more than 5 iterations to sample different pairs")
-        indices_same_sample = np.where(idx[:, 0] == idx[:, 1])
-        num_samples_same = len(indices_same_sample[0])
+        if iterations > 30:
+            print("Warning : more than 30 iterations to sample different pairs")
+        pair_keys = keys[idx]
+        index_same_spk = np.where(pair_keys[:, 0, 0] == pair_keys[:, 1, 0])[0]
+        index_same_type = np.where(pair_keys[:, 0, 1] == pair_keys[:, 1, 1])[0]
+        indices_to_change = np.concatenate((index_same_spk, index_same_type))
+        num_samples_same = len(indices_to_change)
         if num_samples_same == 0:
             break
         new_samples = np.random.random_sample((int(num_samples_same), 2))
-        idx[indices_same_sample] = cdf.searchsorted(new_samples, side='right')
+        idx[indices_to_change] = cdf.searchsorted(new_samples, side='right')
     return idx
 
 def print_token(tok):

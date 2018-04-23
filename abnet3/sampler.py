@@ -551,7 +551,7 @@ class SamplerClusterSiamese(SamplerCluster):
                 We sample two items and check they are different
                 """
                 keys = np.array(list(p_spk_types[config].keys()))
-                sample_idx = samplepairs_searchidx(cdf[config], sampled_ratio[config])
+                sample_idx = samplepairs_searchidx(cdf[config], sampled_ratio[config], keys=keys)
                 sample = keys[sample_idx]
                 for key in sample:
                     (spk1, type1), (spk2, type2) = key
