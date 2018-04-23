@@ -298,14 +298,11 @@ class SamplerCluster(SamplerBuilder):
                 W_types[tokens_type[tok]] += 1.0
             except Exception as e:
                 W_types[tokens_type[tok]] = 1.0
-        p_types = {"Stype": {}, "Dtype": {}}
+
+        p_types = dict()
 
         for type_idx in range(nb_types):
-            p_types["Stype"][type_idx] = type_samp_func(W_types[type_idx])
-            for type_jdx in range(type_idx+1, nb_types):
-                p_types["Dtype"][(type_idx, type_jdx)] = \
-                    type_samp_func(W_types[type_idx]) * \
-                    type_samp_func(W_types[type_jdx])
+            p_types[type_idx] = type_samp_func(W_types[type_idx])
         return p_types
 
     def sample_spk_p(self, std_descr, spk_sampling_mode='log'):
@@ -436,8 +433,7 @@ class SamplerCluster(SamplerBuilder):
         p_spk_types = self.sample_spk_p(std_descr,
                                         spk_sampling_mode=spk_sampling_mode)
 
-        for config in p_types.keys():
-            p_types[config] = normalize_distribution(p_types[config])
+        p_types = normalize_distribution(p_types)
 
         for config in p_spk_types.keys():
             p_spk_types[config] = normalize_distribution(p_spk_types[config])
@@ -451,23 +447,25 @@ class SamplerCluster(SamplerBuilder):
             i += 1
             if config == 'Stype_Sspk':
                 for el in p_spk_types[config].keys():
-                    p_spk_types[config][el] = p_types['Stype'][el[1]] * \
+                    p_spk_types[config][el] = \
+                        p_types[el[1]] * \
                         p_spk_types[config][el]
             if config == 'Stype_Dspk':
                 for el in p_spk_types[config].keys():
-                    p_spk_types[config][el] = p_types['Stype'][el[2]] * \
+                    p_spk_types[config][el] = \
+                        p_types[el[2]] * \
                         p_spk_types[config][el]
             if config == 'Dtype_Sspk':
                 for el in p_spk_types[config].keys():
-                    p_spk_types[config][el] = p_types['Dtype'][
-                                                               (el[1],
-                                                                el[2])] * \
+                    p_spk_types[config][el] = \
+                        p_types[el[1]] * \
+                        p_types[el[2]] * \
                         p_spk_types[config][el]
             if config == 'Dtype_Dspk':
                 for el in p_spk_types[config].keys():
-                    p_spk_types[config][el] = p_types['Dtype'][
-                                                               (el[2],
-                                                                el[3])] * \
+                    p_spk_types[config][el] = \
+                        p_types[el[2]] * \
+                        p_types[el[3]] * \
                         p_spk_types[config][el]
 
         for config in p_spk_types.keys():
