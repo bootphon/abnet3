@@ -52,9 +52,6 @@ class IntegrationUnitBuilder(nn.Module):
         raise NotImplementedError('Unimplemented whoami for class:',
                                   self.__class__.__name__)
 
-    def bootstrap(self, *args, **kwargs):
-        """Used for starting the integration unit
-        """
 
     def save(self, epoch=''):
         torch.save(self.state_dict(), self.output_path + epoch + 'integration.pth')
@@ -75,11 +72,7 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
     @staticmethod
     def integration_method(x_list):
         """
-        Receives batch list of inputs and concatenates them
-
-        :param x_list: Batch list of inputs that should have the same
-                       number of rows (dimension 0)
-
+        :param x_list: List of inputs to integrate
         """
 
         concat_batch = torch.cat(x_list, 1)
@@ -100,11 +93,7 @@ class SumIntegration(IntegrationUnitBuilder):
     @staticmethod
     def integration_method(x_list):
         """
-        Receives batch list of inputs and sums them
-
-        :param x_list: Batch list of inputs that should have the same
-                       number of rows (dimension 0) and columns (dimension 1)
-
+        :param x_list: List of inputs to integrate
         """
 
         __sum = torch.sum(x_list[0], x_list[1])
@@ -170,8 +159,8 @@ class MultitaskIntegration(IntegrationUnitBuilder):
                                     with index 0 will be used: rep_tuple_1.
     """
 
-    def __init__(self, representation_modes, feed_modes, dimensions, batch_size,
-                 *args, **kwargs):
+    def __init__(self, representation_modes, feed_modes, dimensions_list,
+                       batch_size, *args, **kwargs):
         super(MultitaskIntegration, self).__init__(*args, **kwargs)
         self.rep_modes = []
         self.feed_modes = feed_modes
@@ -179,12 +168,6 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         self.unexpanded_rep_modes = representation_modes
 
         self.next_mask = None
-
-        self.bootstrap(representation_modes, dimensions)
-
-    def bootstrap(self, representation_modes, dimensions_list):
-        """Constructs necessary elements for integration
-        """
 
         print("Expanding masks for multitask integration")
         for rep_mode in representation_modes:
@@ -228,6 +211,13 @@ class MultitaskIntegration(IntegrationUnitBuilder):
         return mask1, mask2
 
     def integration_method(self, x_list, embed):
+        """
+        :param x_list: List of inputs to integrate
+        :param embed:  Boolean, if True it means the integrator is working with
+                       sentence samples and the length is not constant for every
+                       sentence
+
+        """
         x_cat = torch.cat(x_list, 1)
         if self.next_mask:
             mask = self.next_mask
@@ -292,7 +282,10 @@ class BiWeightedFixed(IntegrationUnitBuilder):
         return self.integration_function(v1_weighted, v2_weighted)
 
     def forward(self, x_list, *args, **kwargs):
-        assert len(x_list) == 2, "BiWeighted integrators only accept two input modalities"
+        """
+        :param x_list: List of inputs to integrate
+        """
+        assert len(x_list) == 2, "BiWeighted integrators use two modalities"
         X = self.integration_method(*x_list)
         return X
 
@@ -348,17 +341,12 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
     Said weight is learnt, using a neural network for each of the input vectors,
     summing them and finally puting it through an activation layer
 
-    :param net_params:      List, indicating the network architecture. It must contain
-                            only integers, and must have len equal or greater than
-                            two. Each integer represents an internal representation
-                            dimension, except the first one that represents the
-                            input dimension and the last one that represents
-                            the output dimension. Every one of this representations
-                            will be joined by a fully connected linear layer, so
-                            for example the list [280, 1000, 39] means that the
-                            input of the network is 280, then a linear layer will
-                            take that to 1000 dims, and then a final layer will
-                            produce a 39 dimension output vector.
+    :param net_params:      List, indicating the network architecture. It must
+                            contain only integers, and must have len equal or
+                            greater than two. Each integer represents an
+                            internal representation dimension, except the first
+                            one that represents the input dimension and the last
+                            one that represents the output dimension.
 
     :param activation_type: ('sigmoid'|'tanh'),
                             activation type of the activation layer that the summed
@@ -416,13 +404,13 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         self.weight = Variable(torch.Tensor([headstart_weight]))
         self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
         self.freezed = True
-        for p in self.parameters():
-            p.requires_grad = False
+        for param in self.parameters():
+            param.requires_grad = False
 
     def start_training(self):
         self.freezed = False
-        for p in self.parameters():
-            p.requires_grad = True
+        for param in self.parameters():
+            param.requires_grad = True
 
     def compute_attention_weight(self, i1, i2):
         linear1_output = self.linear1(i1)
@@ -436,13 +424,18 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
             self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
         return super(BiWeightedDeepLearnt, self).integration_method(i1, i2)
 
-    def forward(self, x_list, di=None, *args, **kwargs):
-        assert len(x_list) == 2, "BiWeighted integrators only accept two input modalities"
+    def forward(self, x_list, diff_input=None, *args, **kwargs):
+        """
+        :param x_list:  List of inputs to integrate
+        :param diff_input:      Inputs for the attention model, if None the
+                                ones on x_list will be used
+        """
+        assert len(x_list) == 2, "BiWeighted integrators use two modalities"
         i1 = x_list[0]
         i2 = x_list[1]
-        if di:
-            assert len(di) == 2, "BiWeighted integrators only accept two asynchronous inputs"
-            X = self.integration_method(i1, i2, di[0], di[1])
+        if diff_input:
+            assert len(diff_input) == 2
+            X = self.integration_method(i1, i2, diff_input[0], diff_input[1])
         else:
             X = self.integration_method(i1, i2, i1, i2)
         return X
@@ -516,7 +509,8 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
     def integration_method(self, i1, i2, di1, di2):
         di1 = self.pretrained_1(di1)
         di2 = self.pretrained_2(di2)
-        return super(BiWeightedPreTrained, self).integration_method(i1, i2, di1, di2)
+        return super(BiWeightedPreTrained, self).integration_method(i1, i2,
+                                                                    di1, di2)
 
     def __str__(self):
         _str = super(BiWeightedPreTrained, self).__str__()

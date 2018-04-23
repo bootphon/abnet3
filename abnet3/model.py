@@ -373,16 +373,12 @@ class MultimodalSiameseNetwork(NetworkBuilder):
     integration_unit: Integration Class
         Integration unit, which joins the inputs
     pre_integration_net_params : List of lists
-        Every list refers to one of the modality networks. This lists must contain
-        only integers, and must have len equal or greater than two. Each integer
-        represents an internal representation dimension, except the first one
-        that represents the input dimension and the last one that represents
-        the output dimension. Every one of this representations will be joined
-        by a fully connected linear layer, so for example the list [280, 1000, 39]
-        means that the input of that network is 280, then a linear layer will
-        take that to 1000 dims, and then a final layer will produce a 39 dimension
-        output vector
-        If None, the integration unit will be the first layer
+        Every list refers to one of the modality networks. This lists must
+        contain only integers. Each integer represents an internal
+        representation dimension, except the first one that represents the input
+        dimension and the last one that represents the output dimension. Every
+        one of this representations will be joined by a fully connected linear
+        layer. If None, the integration unit will be the first layer
     post_integration_net_params : List
         List, indicating the dimensions of the after integration network. It
         should have the same form as the pre integration lists
@@ -390,9 +386,9 @@ class MultimodalSiameseNetwork(NetworkBuilder):
     p_dropout: Float
         Probability to drop a unit during forward training (common to all nets)
     asynchronous_integration_index: Int
-        Only available with integrators which use inputs appart from the ones they're
-        joining. This index indicates from which layer those inputs will be taken.
-        If none, said inputs will be the same ones being joined.
+        Only available with integrators which use inputs for attention model.
+        This index indicates from which layer those inputs will be taken.
+        If None, they will be the same ones being joined.
     batch_norm: Bool
         Add batch normalization layer on the first layer(s)
     type_init: String
@@ -544,7 +540,8 @@ class MultimodalSiameseNetwork(NetworkBuilder):
                                                 self.asynchronous_integration_index
                                                 ))
 
-            output = self.integration_unit(partial_results, di = attention_inputs)
+            output = self.integration_unit(partial_results,
+                                           diff_input = attention_inputs)
         else:
             output = self.integration_unit(partial_results)
 
@@ -583,12 +580,12 @@ class MultimodalSiameseNetwork(NetworkBuilder):
     def architecture_str(self):
         _str = "Multimodal Siamese Architecture"
         if self.pre:
-            i = 1
+            net_index = 1
             for pre_net in self.pre_nets:
-                _str += "\nPre Net {}:\n".format(i)
+                _str += "\nPre Net {}:\n".format(net_index)
                 _str += str(pre_net)
                 _str += "\n"
-                i +=1
+                net_index +=1
 
         _str += "\nIntegration Unit:\n"
         _str += str(self.integration_unit)

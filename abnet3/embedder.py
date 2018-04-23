@@ -156,8 +156,8 @@ class MultimodalEmbedder(EmbedderBuilder):
         if isinstance(self.network.integration_unit, BiWeightedDeepLearnt):
             print("Placing observer to save learnt attention weights")
             self.observers.append(EmbeddingObserver(
-                                   self.network.integration_unit.get_weights,
-                                   self.output_path + "attention_weights.features"))
+                                 self.network.integration_unit.get_weights,
+                                 self.output_path+"attention_weights.features"))
 
     def embed(self):
         """

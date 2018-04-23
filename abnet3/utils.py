@@ -326,8 +326,8 @@ class SequentialPartialSave(nn.Sequential):
     def create_partial_dict(self):
         partial_dict = {}
         partial_index = 0
-        for i in range(len(self)):
-            if isinstance(self[i], nn.Linear):
+        for layer_index in range(len(self)):
+            if isinstance(self[layer_index], nn.Linear):
                 partial_dict[partial_index] = 0
                 partial_index += 1
         return partial_dict
@@ -336,12 +336,12 @@ class SequentialPartialSave(nn.Sequential):
         return self.partial_results[index]
 
     def forward(self, input):
-        i = 0
+        layer_index = 0
 
         for module in self._modules.values():
             if isinstance(module, nn.Linear): #saves every input before going into linear
-                self.partial_results[i] = input
-                i += 1
+                self.partial_results[layer_index] = input
+                layer_index += 1
             input = module(input)
 
         return input

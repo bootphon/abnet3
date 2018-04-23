@@ -598,21 +598,23 @@ class MultimodalDataLoader(FramesDataLoader):
     """
 
     def __init__(self, pairs_path, features_path,
-                 batch_size=500, randomize_dataset=False, max_batches_per_epoch=None):
+                 batch_size=500, randomize_dataset=False,
+                 max_batches_per_epoch=None):
         """
 
-        :param string pairs_path: path to dataset where the dev_pairs and train_pairs
-                                  folders are
-        :param features_paths: list of paths from multiple inputs, this turns the
-                               OriginalDataLoader features_path parameter into a
-                               list. The features corresponfing to the first path
-                               will be the ones on which the dtw paths are computed.
+        :param string pairs_path: path to dataset where the dev_pairs and
+                                  train_pairs folders are
+        :param features_paths:  list of paths from multiple inputs, this turns
+                                the OriginalDataLoader features_path parameter
+                                into a list. The features corresponfing to the
+                                first path will be the ones on which the dtw
+                                paths are computed.
 
         """
-        super().__init__(pairs_path, features_path, batch_size, randomize_dataset,
-                         max_batches_per_epoch)
+        super().__init__(pairs_path, features_path, batch_size,
+                         randomize_dataset, max_batches_per_epoch)
         self.features_dict = None
-        self.alignment_dict = {} #dict of the form {(f1, s1, e1, f2, s1, e2): (path1, path)}
+        self.alignment_dict = {} #form {(f1, s1, e1, f2, s1, e2):(path1, path2)}
 
     def __getstate__(self):
         """used for pickle"""
@@ -676,7 +678,8 @@ class MultimodalDataLoader(FramesDataLoader):
             print("Loading all frames..", end='', flush=True)
             self.token_features['train'], self.frame_pairs['train'] = \
                 self.load_all_frames(self.pairs['train'])
-            print("Done. %s frame pairs in total." % len(self.frame_pairs['train']))
+            print("Done. %s frame pairs in total." % len(
+                                                     self.frame_pairs['train']))
 
         if self.token_features['dev'] is None:
             self.token_features['dev'], self.frame_pairs['dev'] = \
@@ -686,14 +689,15 @@ class MultimodalDataLoader(FramesDataLoader):
     def load_all_frames(self, pairs):
         token_feats_list = [] #list of token feats for every modality
         self.features = self.features_dict[self.features_path[0]]
-        token_feats, frames = super(MultimodalDataLoader, self).load_all_frames(pairs)
+        token_feats, frames = super(MultimodalDataLoader, self).load_all_frames(
+                                                                          pairs)
                               #loads token feats, alignment and
                               #frames for first path
         token_feats_list.append(token_feats)
 
         pairs = group_pairs(pairs)
-        for path in self.features_path[1:]: #add token feats of the other modalities
-                                            #to the token feats dict
+        for path in self.features_path[1:]: #add token feats of the other
+                                            #modalities to the token feats dict
             self.features = self.features_dict[path]
             path_token_feats = self.get_token_feats(pairs)
             token_feats_list.append(path_token_feats)
@@ -761,10 +765,13 @@ class MultimodalDataLoader(FramesDataLoader):
             X2_list = []
             for token_features in self.token_features[mode]:
                 X1, X2, y = self.load_batch(pairs_batch, token_features)
-                X1_list.append(Variable(torch.from_numpy(X1), volatile=not train_mode))
-                X2_list.append(Variable(torch.from_numpy(X2), volatile=not train_mode))
+                X1_list.append(Variable(torch.from_numpy(X1),
+                                                      volatile=not train_mode))
+                X2_list.append(Variable(torch.from_numpy(X2),
+                                                      volatile=not train_mode))
                 y_torch = Variable(torch.from_numpy(y), volatile=not train_mode)
 
             print("{0:<5}, progress: {1:>3}%".format(mode,
-                                        int((i-inicial)*100/(final-inicial))), end="\r")
+                                        int((i-inicial)*100/(final-inicial))),
+                                                                      end="\r")
             yield X1_list, X2_list, y_torch
