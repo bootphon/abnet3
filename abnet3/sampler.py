@@ -360,7 +360,7 @@ class SamplerCluster(SamplerBuilder):
                 p_spk_types['Stype_Sspk'][(spk, type_idx)] = \
                     spk_samp_func(W_spk_types[(spk, type_idx)])
             # Dtype, Sspk
-            for type_jdx in range(len(types)):
+            for type_jdx in range(type_idx + 1, len(types)):
                     min_idx = min(type_idx, type_jdx)
                     max_idx = max(type_idx, type_jdx)
                     if (spk, type_jdx) in W_spk_types:
@@ -369,7 +369,7 @@ class SamplerCluster(SamplerBuilder):
                             spk_samp_func(W_spk_types[(spk, type_jdx)])
             # Stype, Dspk
             for spk2 in speakers:
-                if (spk2, type_idx) in W_spk_types:
+                if spk != spk2 and (spk2, type_idx) in W_spk_types:
                     p_spk_types['Stype_Dspk'][(spk, spk2, type_idx)] = \
                         spk_samp_func(W_spk_types[(spk, type_idx)]) * \
                         spk_samp_func(W_spk_types[(spk2, type_idx)])
@@ -557,6 +557,8 @@ class SamplerClusterSiamese(SamplerCluster):
                     (spk1, type1), (spk2, type2) = key
                     type1 = int(type1)
                     type2 = int(type2)
+                    assert spk1 != spk2
+                    assert type1 != type2
                     tok1 = np.random.choice(token_dict[type1, spk1])
                     tok2 = np.random.choice(token_dict[type2, spk2])
                     sampled_tokens[config].append((tok1, tok2))
@@ -575,6 +577,7 @@ class SamplerClusterSiamese(SamplerCluster):
                 if config == 'Stype_Dspk':
                     for key in sample:
                         spk1, spk2, type_idx = key
+                        assert spk1 != spk2
                         type_idx = int(type_idx)
                         tok1 = np.random.choice(token_dict[type_idx, spk1])
                         tok2 = np.random.choice(token_dict[type_idx, spk2])
@@ -582,6 +585,7 @@ class SamplerClusterSiamese(SamplerCluster):
                 if config == 'Dtype_Sspk':
                     for key in sample:
                         spk, type_idx, type_jdx = key
+                        assert type_idx != type_jdx
                         type_idx = int(type_idx)
                         type_jdx = int(type_jdx)
                         tok1 = np.random.choice(token_dict[type_idx, spk])
