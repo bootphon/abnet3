@@ -389,6 +389,10 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         If None, the integration unit will be the last layer
     p_dropout: Float
         Probability to drop a unit during forward training (common to all nets)
+    asynchronous_integration_index: Int
+        Only available with integrators which use inputs appart from the ones they're
+        joining. This index indicates from which layer those inputs will be taken.
+        If none, said inputs will be the same ones being joined.
     batch_norm: Bool
         Add batch normalization layer on the first layer(s)
     type_init: String
