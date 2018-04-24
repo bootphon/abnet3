@@ -528,15 +528,15 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
 
     @staticmethod
     def __trim_network(network, start_idx, end_idx):
-        child = list(network.children())
+        child = self.__unroll_sequential(network)
 
         if start_idx:
-            assert start_idx > 0 and start_idx < end_idx
+            assert start_idx > 0
         else:
             start_idx = 0
 
         if end_idx:
-            assert end_idx > start_idx and end_idx < len(child)
+            assert end_idx < len(child)
         else:
             end_idx = len(child)
 
