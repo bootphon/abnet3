@@ -513,7 +513,8 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
             self.pretrained_1.cuda()
             self.pretrained_2.cuda()
 
-    def __load_network(network, path, trim_start, trim_end, title = "network"):
+    def __load_network(self, network, path, trim_start, trim_end,
+                             title = "network"):
         network.load_network(path)
         if trim_start or trim_end:
             network = self.__trim_network(network,
