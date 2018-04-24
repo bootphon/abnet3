@@ -60,6 +60,10 @@ class IntegrationUnitBuilder(nn.Module):
         self.load_state_dict(torch.load(path+'integration.pth'))
 
     def __str__(self):
+        '''
+        This method should provide a easy way to visualize the integrator's
+        architecture and how it works via a printable string
+        '''
         return str(self.__class__.__name__)
 
 
@@ -83,7 +87,9 @@ class ConcatenationIntegration(IntegrationUnitBuilder):
         return X
 
     def __str__(self):
-        return str(self.__class__.__name__)
+        _str = str(self.__class__.__name__)
+        _str += "\nIntegration method: concatenation\n"
+        return _str
 
 class SumIntegration(IntegrationUnitBuilder):
 
@@ -106,7 +112,10 @@ class SumIntegration(IntegrationUnitBuilder):
         return X
 
     def __str__(self):
-        return str(self.__class__.__name__)
+        _str = str(self.__class__.__name__)
+        _str += "\nIntegration method: sum\n"
+        return _str
+
 
 class MultitaskIntegration(IntegrationUnitBuilder):
     """
@@ -331,7 +340,7 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
         _str += str(self.__class__.__name__)
         _str += "\n"
         _str += "Integration method: {}\n".format(self.integration_mode)
-        _str += "Weight value: {}\n".format(self.weight)
+        _str += "Actual weight value: {}\n".format(self.weight)
         return _str
 
 
