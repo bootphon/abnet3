@@ -199,7 +199,7 @@ class TrainerSiamese(TrainerBuilder):
     """
     def __init__(self, *args, **kwargs):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
-        assert type(self.network) == abnet3.model.SiameseNetwork
+        assert issubclass(self.network, abnet3.model.NetworkBuilder)
 
     def give_batch_to_network(self, batch):
         """
