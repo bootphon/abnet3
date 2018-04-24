@@ -492,7 +492,7 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
     @staticmethod
     def __load_network(network, path, trim_start, trim_end, title = "network"):
         network.load_network(path)
-        if trim_start or trim_send:
+        if trim_start or trim_end:
             network = self.__trim_network(network,
                                         trim_start,
                                         trim_end)
