@@ -501,20 +501,22 @@ class MultimodalSiameseNetwork(NetworkBuilder):
             pre_net.cuda()
 
     def parameters(self):
-        if self.attention_lr:
-            network_params = []
-            if self.pre:
-                for pre_net in self.pre_nets:
-                    network_params += list(pre_net.parameters())
-            if self.post:
-                network_params += list(self.post_net.parameters())
+        network_params = []
+        if self.pre:
+            for pre_net in self.pre_nets:
+                network_params += list(pre_net.parameters())
+        if self.post:
+            network_params += list(self.post_net.parameters())
 
+        if self.attention_lr:
             return [{'params': network_params},
                     {'params': self.integration_unit.parameters(),
                                                         'lr': self.attention_lr}
                     ]
+
         else:
-            return super(MultimodalSiameseNetwork, self).parameters()
+            network_params += list(self.integration_unit.parameters())
+            return [{'params': network_params}]
 
     def freeze_training(self):
         for p in super(MultimodalSiameseNetwork, self).parameters():
