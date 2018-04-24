@@ -472,6 +472,30 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
 
 
 class BiWeightedPreTrained(BiWeightedDeepLearnt):
+    """
+    Sums pointwise or concatenates two vectors, using a weight and it's compliment.
+    Said weight is learnt, using a neural network for each of the input vectors,
+    summing them and finally puting it through an activation layer. The inputs
+    of said neural network pass through a pretrained network before they're
+    used.
+
+    :param net_1, net_2:    SiameseNetworks, pretrained for that input type and
+                            with matching dimensions
+
+    :param net_path1, net_path2:    Path where the network.pth file is saved for
+                                    the networks 1 and 2 respectively.
+
+    :param trim_net1_start, trim_net2_start:    Index of the layer from which to
+                                                consider the network 1 and 2
+                                                respectively. If None it won't 
+                                                be trimmed.
+
+    :param trim_net1_end, trim_net2_end:        Index of the last layer to be
+                                                considered the network 1 and 2
+                                                respectively. If None it won't
+                                                be trimmed.
+    """
+
 
     def __init__(self, net_1, net_2, net_path1, net_path2,
                        trim_net1_start=None, trim_net1_end=None,
