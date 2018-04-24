@@ -523,7 +523,7 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
             print("Trimmed {}, new structure:".format(title))
             print(network)
         else:
-            network = nn.Sequential(*list(network.children()))
+            network = nn.Sequential(*self.__unroll_sequential(network))
         return network
 
     @staticmethod
@@ -541,6 +541,17 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
             end_idx = len(child)
 
         return nn.Sequential(*child[start_idx:end_idx+1])
+
+    def __unroll_sequential(self, sequential, layers=None):
+        if not layers:
+            layers = []
+        for child in sequential.children():
+            if isinstance(child, nn.Sequential):
+                self.__unroll_sequential(child, layers)
+            else:
+                layers.append(child)
+        return layers
+
 
 
     def integration_method(self, i1, i2, di1, di2):
