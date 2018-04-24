@@ -526,8 +526,7 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
             network = nn.Sequential(*self.__unroll_sequential(network))
         return network
 
-    @staticmethod
-    def __trim_network(network, start_idx, end_idx):
+    def __trim_network(self, network, start_idx, end_idx):
         child = self.__unroll_sequential(network)
 
         if start_idx:
