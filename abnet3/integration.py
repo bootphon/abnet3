@@ -487,7 +487,7 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
 
     :param trim_net1_start, trim_net2_start:    Index of the layer from which to
                                                 consider the network 1 and 2
-                                                respectively. If None it won't 
+                                                respectively. If None it won't
                                                 be trimmed.
 
     :param trim_net1_end, trim_net2_end:        Index of the last layer to be
@@ -513,7 +513,6 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
             self.pretrained_1.cuda()
             self.pretrained_2.cuda()
 
-    @staticmethod
     def __load_network(network, path, trim_start, trim_end, title = "network"):
         network.load_network(path)
         if trim_start or trim_end:
