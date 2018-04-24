@@ -543,7 +543,9 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
 
     def __unroll_sequential(self, sequential):
         layers = []
-        for child in sequential.children():
+        #You should use .children() and not ._modules.values() but there was a
+        #bug with children, when fixed this should go back to .children()
+        for child in sequential._modules.values():
             if isinstance(child, nn.Sequential):
                 recursion_layers = self.__unroll_sequential(child)
                 for layer in recursion_layers:
