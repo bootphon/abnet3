@@ -540,7 +540,7 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
         else:
             end_idx = len(child)
 
-        return nn.Sequential(*child[start_idx:end_idx])
+        return nn.Sequential(*child[start_idx:end_idx+1])
 
 
     def integration_method(self, i1, i2, di1, di2):
