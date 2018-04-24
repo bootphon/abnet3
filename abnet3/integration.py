@@ -548,7 +548,7 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
             if isinstance(child, nn.Sequential):
                 recursion_layers = self.__unroll_sequential(child, layers)
                 for layer in recursion_layers:
-                    layers.append(child)
+                    layers.append(layer)
             else:
                 layers.append(child)
         return layers
