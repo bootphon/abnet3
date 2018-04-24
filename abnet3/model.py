@@ -378,7 +378,10 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         representation dimension, except the first one that represents the input
         dimension and the last one that represents the output dimension. Every
         one of this representations will be joined by a fully connected linear
-        layer. If None, the integration unit will be the first layer
+        layer. For contiguous representations of the same dimension, instead of
+        writing it multiple times, a tuple can be passed of the form
+        (dimension, number of times it appears). If None, the integration unit
+        will be the first layer
     post_integration_net_params : List
         List, indicating the dimensions of the after integration network. It
         should have the same form as the pre integration lists

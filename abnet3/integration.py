@@ -346,7 +346,11 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
                             greater than two. Each integer represents an
                             internal representation dimension, except the first
                             one that represents the input dimension and the last
-                            one that represents the output dimension.
+                            one that represents the output dimension. For
+                            contiguous representations of the same dimension,
+                            instead of writing it multiple times, a tuple can be
+                            passed of the form (dimension, number of times it
+                            appears).
 
     :param activation_type: ('sigmoid'|'tanh'),
                             activation type of the activation layer that the summed
