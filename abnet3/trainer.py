@@ -272,7 +272,7 @@ class TrainerSiameseMultitask(TrainerSiamese):
                                      y_spk_batch, y_phn_batch)
         return train_loss_value
 
-class MultimodalTrainer(TrainerBuilder):
+class MultimodalTrainer(TrainerSiamese):
     """Multimodal Trainer class for ABnet3
 
     :param headstart:   Only available when using integrators that have
@@ -318,15 +318,26 @@ class MultimodalTrainer(TrainerBuilder):
             cuda_on.append(mode.cuda())
         return cuda_on
 
+    def give_batch_to_network(self, batch):
+        """
+        This function takes a batch given by the dataloader,
+        feeds it to the network, and returns the loss to
+        optimize.
+        """
+        X_batch1, X_batch2, y_batch = batch
+        if self.cuda:
+            X_list1 = self.cuda_all_modes(X_list1)
+            X_list2 = self.cuda_all_modes(X_list2)
+            y_batch = y_batch.cuda()
+        emb_batch1, emb_batch2 = self.network(X_list1, X_list2)
+        train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+        return train_loss_value
+
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Multimodal Siamese network.
 
         """
-        train_loss = 0.0
-        dev_loss = 0.0
-        self.network.train()
-
         #Headstart check if ended
         if self.headstart and self.headstart_epochs == 0:
             if not self.parallel_after_headstart:
@@ -338,44 +349,8 @@ class MultimodalTrainer(TrainerBuilder):
                                 "which have start_training() method implemented")
             print("Headstart ended")
 
-        for X_list1, X_list2, y_batch in self.dataloader.batch_iterator(train_mode=True):
-            if self.cuda:
-                X_list1 = self.cuda_all_modes(X_list1)
-                X_list2 = self.cuda_all_modes(X_list2)
-                y_batch = y_batch.cuda()
-
-            self.optimizer.zero_grad()
-            emb_batch1, emb_batch2 = self.network(X_list1, X_list2)
-            train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
-            if do_training:
-                train_loss_value.backward()
-                self.optimizer.step()
-            else:
-                self.num_batches_train += 1
-            train_loss += train_loss_value.data[0]
-
-        self.network.eval()
-        for X_list1, X_list2, y_batch in self.dataloader.batch_iterator(train_mode=False):
-            if self.cuda:
-                X_list1 = self.cuda_all_modes(X_list1)
-                X_list2 = self.cuda_all_modes(X_list2)
-                y_batch = y_batch.cuda()
-
-            if do_training:
-                pass
-            else:
-                self.num_batches_dev += 1
-
-            emb_batch1, emb_batch2 = self.network(X_list1, X_list2)
-            dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
-            dev_loss += dev_loss_value.data[0]
-
-        self.train_losses.append(train_loss/self.num_batches_train)
-        self.dev_losses.append(dev_loss/self.num_batches_dev)
-        normalized_train_loss = train_loss/self.num_batches_train
-        normalized_dev_loss = dev_loss/self.num_batches_dev
-
-        self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
+        #Perform train and dev test
+        dev_loss = super(MultimodalTrainer, self).optimize_model(do_training)
 
         #Headstart count diminishes
         if self.headstart and self.headstart_epochs > -1:
