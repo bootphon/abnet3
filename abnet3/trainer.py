@@ -324,7 +324,7 @@ class MultimodalTrainer(TrainerSiamese):
         feeds it to the network, and returns the loss to
         optimize.
         """
-        X_batch1, X_batch2, y_batch = batch
+        X_list1, X_list2, y_batch = batch
         if self.cuda:
             X_list1 = self.cuda_all_modes(X_list1)
             X_list2 = self.cuda_all_modes(X_list2)
