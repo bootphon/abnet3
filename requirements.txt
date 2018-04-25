@@ -4,7 +4,6 @@ h5py >= 2.3.0
 pytest==3.5
 numpydoc
 scipy >= 0.13.0
-matplotlib
 pyyaml
 tensorboardX==1.0
 git+https://github.com/Rachine/DTW_Cython.git
