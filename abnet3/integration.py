@@ -102,9 +102,9 @@ class SumIntegration(IntegrationUnitBuilder):
         :param x_list: List of inputs to integrate
         """
 
-        __sum = torch.sum(x_list[0], x_list[1])
+        __sum = torch.add(x_list[0], x_list[1])
         for _input in x_list[2:]:
-            __sum = torch.sum(__sum, _input)
+            __sum = torch.add(__sum, _input)
         return __sum
 
     def forward(self, x_list, *args, **kwargs):
