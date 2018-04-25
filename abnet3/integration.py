@@ -414,6 +414,11 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
     def set_headstart_weight(self, headstart_weight):
         self.weight = Variable(torch.Tensor([headstart_weight]))
         self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
+
+        if self.cuda_bool:
+            self.weight = self.weight.cuda()
+            self.weight_complement = self.weight_complement.cuda()
+            
         self.freezed = True
         for param in self.parameters():
             param.requires_grad = False
