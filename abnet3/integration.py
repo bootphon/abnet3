@@ -228,7 +228,7 @@ class MultitaskIntegration(IntegrationUnitBuilder):
 
         """
         x_cat = torch.cat(x_list, 1)
-        if self.next_mask:
+        if isinstance(self.next_mask, Variable):
             mask = self.next_mask
             self.next_mask = None
         else:
