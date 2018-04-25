@@ -12,9 +12,9 @@ import torch.nn as nn
 import numpy as np
 from abnet3.utils import expand_dimension_list
 
-activation_functions = {'relu': nn.ReLU(),
-                        'sigmoid': nn.Sigmoid(),
-                        'tanh': nn.Tanh()}
+activation_functions = {'relu': nn.ReLU,
+                        'sigmoid': nn.Sigmoid,
+                        'tanh': nn.Tanh}
 
 init_functions = {'xavier_uni': nn.init.xavier_uniform,
                   'xavier_normal': nn.init.xavier_normal,
@@ -398,7 +398,7 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
             out_dim = dimensions_list[idx + 1]
             layers.append(nn.Linear(in_dim, out_dim))
             if idx != len(dimensions_list)-2:
-                layers.append(activation) #on the last layer, the activation is
+                layers.append(activation()) #on the last layer, the activation is
                                           #applied after the sum of both networks
 
         layers = nn.Sequential(*layers)
