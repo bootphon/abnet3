@@ -376,7 +376,7 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
 
         self.input_dim1 = net_params[0][0]
         self.input_dim2 = net_params[1][0]
-        self.activation_layer = activation_functions[activation_type]
+        self.activation_layer = activation_functions[activation_type]()
         self.activation_type = activation_type
         self.init_function = init_functions[init_type]
         self.freezed = False
@@ -384,12 +384,12 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         self.weight = Variable(torch.rand(1))
         self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
 
-        self.linear1 = self.build_net(net_params[0], self.activation_layer)
-        self.linear2 = self.build_net(net_params[1], self.activation_layer)
+        self.linear1 = self.build_net(net_params[0], self.activation_type)
+        self.linear2 = self.build_net(net_params[1], self.activation_type)
         self.apply(self.init_weight_method)
         self.start_training()
 
-    def build_net(self, dimensions_list, activation):
+    def build_net(self, dimensions_list, activation_type):
         dimensions_list = expand_dimension_list(dimensions_list)
 
         layers = []
@@ -398,7 +398,8 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
             out_dim = dimensions_list[idx + 1]
             layers.append(nn.Linear(in_dim, out_dim))
             if idx != len(dimensions_list)-2:
-                layers.append(activation()) #on the last layer, the activation is
+                layers.append(activation_functions[activation_type]())
+                                          #on the last layer, activation is
                                           #applied after the sum of both networks
 
         layers = nn.Sequential(*layers)
