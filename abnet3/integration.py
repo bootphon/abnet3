@@ -418,7 +418,7 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         if self.cuda_bool:
             self.weight = self.weight.cuda()
             self.weight_complement = self.weight_complement.cuda()
-            
+
         self.freezed = True
         for param in self.parameters():
             param.requires_grad = False
@@ -470,7 +470,7 @@ class BiWeightedDeepLearnt(BiWeightedFixed):
         _str += "Activation:    {}\n".format(self.activation_type)
         _str += "\nLinear 1:\n{}".format(str(self.linear1))
         _str += "\nLinear 2:\n{}".format(str(self.linear2))
-        _str += "\nAct Layer:     {}\n".format(str(self.activation_layer))
+        _str += "\nAct Layer:     {}\n".format(str(self.activation_type))
         return _str
 
 
