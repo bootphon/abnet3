@@ -22,12 +22,8 @@ import torch.optim as optim
 import time
 import pickle
 import os
-import matplotlib
 import warnings
 import copy
-# matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 from tensorboardX import SummaryWriter
 from pathlib import Path
 
