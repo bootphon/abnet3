@@ -513,6 +513,12 @@ class BiWeightedPreTrained(BiWeightedDeepLearnt):
             self.pretrained_1.cuda()
             self.pretrained_2.cuda()
 
+    def parameters(self):
+        parameters = []
+        parameters += list(self.linear1.parameters())
+        parameters += list(self.linear2.parameters())
+        return parameters
+
     def __load_network(self, network, path, trim_start, trim_end,
                              title = "network"):
         network.load_network(path)
