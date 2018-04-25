@@ -16,9 +16,9 @@ import numpy as np
 from utils import SequentialPartialSave, expand_dimension_list, to_ordinal
 # from graphviz import Digraph
 
-activation_functions = {'relu': nn.ReLU,
-                        'sigmoid': nn.Sigmoid,
-                        'tanh': nn.Tanh}
+activation_functions = {'relu': nn.ReLU(),
+                        'sigmoid': nn.Sigmoid(),
+                        'tanh': nn.Tanh()}
 
 init_functions = {'xavier_uni': nn.init.xavier_uniform,
                   'xavier_normal': nn.init.xavier_normal,
@@ -456,7 +456,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
                 self.pre_nets.append(SequentialPartialSave(*self.build_net(
                                                             pre_net_params,
-                                                            activation())))
+                                                            activation)))
 
             self.pre = True
         else:
@@ -464,7 +464,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
 
         if post_integration_net_params:
             self.post_net = nn.Sequential(*self.build_net(post_integration_net_params,
-                                                          activation()))
+                                                          activation))
             self.post = True
         else:
             self.post = False
@@ -484,7 +484,7 @@ class MultimodalSiameseNetwork(NetworkBuilder):
             layers.append(nn.Dropout(p=self.p_dropout))
             if self.batch_norm:
                 layers.append(nn.BatchNorm1d(out_dim))
-            layers.append(activation())
+            layers.append(activation)
 
         return layers
 
