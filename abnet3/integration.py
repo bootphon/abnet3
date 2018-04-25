@@ -310,7 +310,7 @@ class BiWeightedFixed(IntegrationUnitBuilder):
 class BiWeightedScalarLearnt(BiWeightedFixed):
     """
     Sums pointwise or concatenates two vectors, using a weight and it's compliment.
-    Said weight is learnt
+    Said weight is learnt parameter
     """
 
     def __init__(self, *args, **kwargs):
@@ -330,9 +330,7 @@ class BiWeightedScalarLearnt(BiWeightedFixed):
 
     def integration_method(self, i1, i2):
         self.weight_complement = torch.add(torch.mul(self.weight, -1), 1)
-        v1_weighted = torch.mul(i1, self.weight)
-        v2_weighted = torch.mul(i2, self.weight_complement)
-        return self.integration_function(v1_weighted, v2_weighted)
+        return super(BiWeightedScalarLearnt, self).integration_method(i1, i2)
 
 
     def __str__(self):
