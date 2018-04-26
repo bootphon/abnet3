@@ -23,12 +23,8 @@ import torch.optim as optim
 import time
 import pickle
 import os
-import matplotlib
 import warnings
 import copy
-# matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 from tensorboardX import SummaryWriter
 from pathlib import Path
 
@@ -200,7 +196,7 @@ class TrainerSiamese(TrainerBuilder):
     """
     def __init__(self, *args, **kwargs):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
-        assert type(self.network) == abnet3.model.SiameseNetwork
+        assert isinstance(self.network, abnet3.model.NetworkBuilder)
 
     def give_batch_to_network(self, batch):
         """

@@ -321,13 +321,13 @@ class SamplerCluster(SamplerBuilder):
         tokens_type = std_descr['tokens_type']
         p_spk_types = {'Stype_Sspk': {}, 'Stype_Dspk': {},
                        'Dtype_Sspk': {}, 'Dtype_Dspk': {}}
-        speakers = std_descr['tokens_speaker']
+        speakers_for_token = std_descr['tokens_speaker']
         W_spk_types = {}
         for tok in range(nb_tok):
             try:
-                W_spk_types[(speakers[tok], tokens_type[tok])] += 1.0
+                W_spk_types[(speakers_for_token[tok], tokens_type[tok])] += 1.0
             except Exception as e:
-                W_spk_types[(speakers[tok], tokens_type[tok])] = 1.0
+                W_spk_types[(speakers_for_token[tok], tokens_type[tok])] = 1.0
 
         if spk_sampling_mode == '1':
             def spk_samp_func(x):
