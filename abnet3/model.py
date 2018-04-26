@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
-from utils import SequentialPartialSave, expand_dimension_list, to_ordinal
+from abnet3.utils import SequentialPartialSave, expand_dimension_list, to_ordinal
 # from graphviz import Digraph
 
 activation_functions = {'relu': nn.ReLU,
