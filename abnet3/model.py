@@ -563,7 +563,8 @@ class MultimodalSiameseNetwork(NetworkBuilder):
         """Output description for the neural network and all parameters
 
         """
-        return {'params': self.__dict__, 'class_name': self.__class__.__name__}
+        return {'params': self.__dict__, 'class_name': self.__class__.__name__,
+                'architecture': self.architecture_str()}
 
     def save_network(self, epoch=''):
         torch.save(self.state_dict(), self.output_path + epoch + 'network.pth')
