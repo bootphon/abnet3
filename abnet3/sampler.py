@@ -67,7 +67,7 @@ class SamplerBuilder(object):
 class DummySampler(SamplerBuilder):
     """
     The dummy sampler can be used with a dataloader that does
-    the sampling himself. It is useful because the yaml gridsearch format
+    the sampling by itself. It is useful because the yaml gridsearch format
     needs a sampler.
     """
 
