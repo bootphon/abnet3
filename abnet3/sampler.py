@@ -64,6 +64,23 @@ class SamplerBuilder(object):
                                   self.__class__.__name__)
 
 
+class DummySampler(SamplerBuilder):
+    """
+    The dummy sampler can be used with a dataloader that does
+    the sampling himself. It is useful because the yaml gridsearch format
+    needs a sampler.
+    """
+
+    def __init__(self, *args, **kwargs):
+        print("Warning. You're using the dummy sampler, it won't do anything")
+        super().__init__()
+
+    def whoami(self):
+        return {'params': self.__dict__, 'class_name': self.__class__.__name__}
+
+    def sample(self):
+        print("Dummy sampler : not sampling anything.")
+
 class SamplerPairs(SamplerBuilder):
     """Sampler Model interface based on pairs of similar words
 
