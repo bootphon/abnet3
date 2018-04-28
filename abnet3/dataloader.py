@@ -4,6 +4,7 @@ from torch.autograd import Variable
 import os
 from collections import defaultdict
 import random
+from typing import Dict
 
 from abnet3.utils import get_dtw_alignment, \
     Parse_Dataset, read_pairs, read_feats, \
@@ -342,6 +343,106 @@ class OriginalDataLoader(DataLoader):
                 Y.append(-1)
 
         return np.vstack(X1), np.vstack(X2), np.array(Y)
+
+
+class PairsDataLoader(OriginalDataLoader):
+    """
+    This dataloader takes a pair file as argument (instead of a cluster
+    file like the other dataloaders)
+    """
+
+    def __init__(self, pairs_path, features_path, id_to_file,
+                 ratio_split_train_test=0.7,
+                 batch_size=8, train_iterations=10000, test_iterations=500,
+                 proportion_positive_pairs=0.5,
+                 align_different_words=True):
+        self.pairs_path = pairs_path
+        self.features_path = features_path
+        self.features = None  # type: Features_Accessor
+        self.id_to_file = id_to_file
+        self.pairs = {'train': None, 'test': None}  # type: Dict[str, list]
+        self.ratio_split_train_test = ratio_split_train_test
+        self.batch_size = batch_size
+        self.align_different_words = align_different_words
+        self.iterations = {'train': train_iterations, 'test': test_iterations}
+        self.proportion_positive_pairs = proportion_positive_pairs
+        self.tokens = {'train': set(), 'test': set()}
+        self.statistics_training = defaultdict(int)
+
+    def load_data(self):
+        if self.pairs['train'] is None:
+            self.load_pairs()
+
+        if self.features is None:
+            print("Loading features")
+            features, align_features, feat_dim = read_feats(self.features_path)
+            self.features = features
+
+    def load_pairs(self):
+        pairs = []
+        with open(self.pairs_path, 'r') as f:
+            for line in f:
+                line = line.split(' ')
+                file1, file2, begin1, end1, begin2, end2, distance = line
+                file1, file2, begin1, end1, begin2, end2 = (
+                    int(file1), int(file2), int(begin1), int(end1),
+                    int(begin2), int(end2)
+                )
+                pairs.append(
+                    [file1, begin1, end1, file2, begin2, end2])
+        self.pairs['train'], self.pairs['test'] = self.split_train_test(pairs)
+        for mode in ('train', 'test'):
+            for file1, begin1, end1, file2, begin2, end2 in self.pairs[mode]:
+                self.tokens[mode].add((file1, begin1, end1))
+                self.tokens[mode].add((file2, begin2, end2))
+
+    def split_train_test(self, pairs):
+        random.shuffle(pairs)
+        n = len(pairs)
+        train_n = int(self.ratio_split_train_test * n)
+        train_pairs = pairs[:train_n]
+        test_pairs = pairs[train_n:]
+        return train_pairs, test_pairs
+
+    def batch_iterator(self, train_mode=True):
+        mode = 'train' if train_mode else 'test'
+        iterations = self.iterations[mode]
+        self.load_data()
+
+        all_positive_pairs = self.pairs[mode]
+        tokens = self.tokens[mode]
+
+        num_pairs = iterations * self.batch_size
+        num_positive_pairs = int(num_pairs * self.proportion_positive_pairs)
+        num_negative_pairs = num_pairs - num_positive_pairs
+
+        # deal with maximum pairs
+        if num_positive_pairs > len(all_positive_pairs):
+            print("Not enough positive pairs to sample this number of "
+                  "iterations. There is only {}, but {} requested"
+                  .format(len(all_positive_pairs), num_positive_pairs))
+            num_positive_pairs = len(all_positive_pairs)
+
+        positive_pairs = random.sample(all_positive_pairs, num_positive_pairs)
+        positive_pairs = [pair + ['same'] for pair in positive_pairs]
+        # for negative pairs, we sample same pairs and we align them wrongly
+        negative_pairs = []
+        for _ in range(num_negative_pairs):
+            tok1, tok2 = random.sample(tokens, 2)
+            negative_pairs.append(list(tok1) + list(tok2) + ["diff"])
+
+        pairs = positive_pairs + negative_pairs
+        random.shuffle(pairs)
+
+        for i in range(iterations):
+            pairs_batch = pairs[i * self.batch_size: (i + 1) * self.batch_size]
+            grouped_pairs = group_pairs(pairs_batch)
+            X1, X2, Y = self.load_frames_from_pairs(grouped_pairs)
+            X1, X2, Y = map(torch.from_numpy, [X1, X2, Y])
+            X_batch1 = Variable(X1, volatile=not train_mode)
+            X_batch2 = Variable(X2, volatile=not train_mode)
+            y_batch = Variable(Y, volatile=not train_mode)
+            yield X_batch1, X_batch2, y_batch
 
 
 class TemporalCoherenceDataLoader(OriginalDataLoader):
