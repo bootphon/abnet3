@@ -1,0 +1,85 @@
+# Config file to test
+default_params:
+  pathname_experience: /scratch2/rriad/projects/interspeech_paper_abnet3/exp/study_sampling_functions
+  features:
+    class: FeaturesGenerator
+    arguments:
+      run: never
+      files: None
+      output_path: /scratch2/rriad/projects/cdancette_project/fb40_normalized_stacked7.features
+      load_mean_variance_path:
+      save_mean_variance_path: False
+      vad_folder: None
+      n_filters: 40
+      method: 'fbanks'
+      normalization: False
+      norm_per_file: False
+      stack: True
+      nframes: 7
+      deltas: False
+      deltasdeltas: False
+  dataloader:
+      class: OriginalDataLoader
+      arguments:
+        seed : 0
+        num_max_minibatches : 10000
+        batch_size : 8
+  sampler:
+    class: SamplerClusterSiamese
+    arguments:
+      run: always
+      std_file: /scratch2/rriad/projects/abnet3_zr/interspeech_paper/Abnet_neil_discovered.classes
+      spkid_file: /scratch2/rriad/back_rriad/zerospeech2015/wav2spk.lst
+      spk_list_file: /scratch2/rriad/back_rriad/zerospeech2015/all_spk.lst
+      batch_size: 8
+      max_size_cluster: 20
+      ratio_train_dev: 0.7
+      ratio_same_diff_spk: 0.5
+      ratio_same_diff_type: 0.5
+      spk_sampling_mode: 1
+      num_total_sampled_pairs: 500000
+      sample_batches: False
+      seed: 0
+  model:
+    class: SiameseNetwork
+    arguments:
+      input_dim: 280
+      num_hidden_layers: 2
+      hidden_dim: 500
+      output_dim: 100
+      p_dropout: 0.0
+      batch_norm: False
+      type_init: xavier_uni
+      activation_layer: sigmoid
+  loss:
+    class: coscos2
+    arguments:
+      avg: False
+  trainer:
+    class: TrainerSiamese
+    arguments:
+      num_epochs: 200
+      patience: 30
+      lr: 0.1
+      momentum:
+      seed: 0
+      cuda: False
+      optimizer_type: adadelta
+  embedder:
+    class: EmbedderSiamese
+    arguments:
+      cuda: False
+
+grid_params:
+    sampler:
+        arguments:
+          type_sampling_mode: ['log','fcube','f','f2','1']
+
+test_files:
+  10s:
+    files: path/to/wav/directory
+    features: path/to/features.h5f
+    name: 1Os.h5f
+    vad_file:
+
+

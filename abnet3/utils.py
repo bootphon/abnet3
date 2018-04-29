@@ -13,7 +13,7 @@ import os
 import h5features
 from dtw import DTW
 import scipy
-
+from collections import defaultdict
 
 def get_var_name(**variable):
     return list(variable.keys())[0]
@@ -118,12 +118,24 @@ class Features_Accessor(object):
 
     def __init__(self, times, features):
         self.times = times
-        self.features = features
+        if features[list(features.keys())[0]].dtype == np.float32:
+            self.features = features
+        else:
+            self.features = cast_features(features)
+
+    @staticmethod
+    def get_features_between(feature, time, start, end):
+        t = np.where(np.logical_and(time >= start,
+                                    time <= end))[0]
+        return feature[t, :]
 
     def get(self, f, on, off):
-        t = np.where(np.logical_and(self.times[f.encode('UTF-8')] >= on,
-                                    self.times[f.encode('UTF-8')] <= off))[0]
-        return self.features[f.encode('UTF-8')][t, :]
+        # check wether filename is string or byte
+        filename = f.encode('UTF-8')  # byte
+        if filename not in self.times:
+            filename = f
+        return self.get_features_between(self.features[filename],
+                                         self.times[filename], on, off)
 
 
 def get_dtw_alignment(feat1, feat2):
@@ -206,6 +218,34 @@ def read_feats(features_file, align_features_file=None):
         feats = align_features.dict_features()
         align_features = Features_Accessor(times, feats)
     return features, align_features, feat_dim
+
+def cast_features(features, target_type=np.float32):
+    """
+    cast features to float32, as this is the currently supported type.
+    """
+    for item in features:
+        features[item] = features[item].astype(target_type)
+    print('Casted features to correct type np.float32')
+    return features
+
+
+def read_vad_file(path):
+    """
+    Read vad file of the form 
+    https://github.com/bootphon/Zerospeech2015/blob/master/english_vad.txt
+    returns a dictionnary of the form {file: [[s1, e1], [s2, e2], ...]}
+    """
+    with open(path, 'r') as f:
+        lines = [line.strip().split(',') for line in f]
+        lines = lines[1:]  # skip header
+        lines = [(name, float(s), float(e)) for name, s, e in lines]
+
+        dict_vad = defaultdict(list)
+
+        for name, s, e in lines:
+            dict_vad[name].append([s, e])
+
+    return dict_vad
 
 
 def progress(max_number, every=0.1, title=""):

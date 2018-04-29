@@ -22,12 +22,10 @@ import torch.optim as optim
 import time
 import pickle
 import os
-import matplotlib
 import warnings
 import copy
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
+from tensorboardX import SummaryWriter
+from pathlib import Path
 
 
 class TrainerBuilder:
@@ -37,7 +35,8 @@ class TrainerBuilder:
     def __init__(self, network=None, loss=None,
                  num_epochs=200, patience=20,
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
-                 seed=0, dataloader=None):
+                 seed=0, dataloader=None, log_dir=None,
+                 feature_generator=None):
         self.network = network
         self.loss = loss
         self.num_epochs = num_epochs
@@ -49,10 +48,16 @@ class TrainerBuilder:
         self.cuda = cuda
         self.statistics_training = {}
         self.dataloader = dataloader
+        self.feature_generator = feature_generator
 
         if cuda:
             self.loss.cuda()
             self.network.cuda()
+
+        if log_dir is None:
+            self.log_dir = Path('./runs/%s' % time.strftime('%m-%d-%Hh%M-%S'))
+        else:
+            self.log_dir = Path(log_dir) / ('%s' % time.strftime('%m-%d-%Hh%M-%S'))
 
         assert optimizer_type in ('sgd', 'adadelta', 'adam', 'adagrad',
                                   'RMSprop', 'LBFGS')
@@ -78,16 +83,19 @@ class TrainerBuilder:
     def params(self):
         params = copy.copy(self.__dict__)
         del params['dataloader']
+        del params['feature_generator']
 
     def whoami(self):
-        whoami = {'params': self.params(),
-                'network': self.network.whoami(),
-                'loss': self.loss.whoami(),
-                'class_name': self.__class__.__name__,
-                'dataloader': self.dataloader.whoami()
-                }
+        whoami = {
+            'params': self.params(),
+            'network': self.network.whoami(),
+            'loss': self.loss.whoami(),
+            'class_name': self.__class__.__name__,
+            'dataloader': self.dataloader.whoami()
+        }
+        if self.feature_generator is not None:
+            whoami['feature_generator'] = self.feature_generator.whoami()
         return whoami
-
 
     def save_whoami(self):
         pickle.dump(self.whoami(),
@@ -115,7 +123,12 @@ class TrainerBuilder:
         self.network.eval()
         self.network.save_network()
 
+        train_writer = SummaryWriter(log_dir=str(self.log_dir / 'train_loss'))
+        dev_writer = SummaryWriter(log_dir=str(self.log_dir / 'dev_loss'))
+
         _ = self.optimize_model(do_training=False)
+        train_writer.add_scalar('loss', self.train_losses[-1], 0)
+        dev_writer.add_scalar('loss', self.dev_losses[-1], 0)
 
         for key in self.statistics_training.keys():
             self.statistics_training[key] = 0
@@ -125,12 +138,18 @@ class TrainerBuilder:
 
             dev_loss = self.optimize_model(do_training=True)
 
+            # tensorboard logging
+            train_writer.add_scalar('loss', self.train_losses[-1], epoch + 1)
+            dev_writer.add_scalar('loss', self.dev_losses[-1], epoch + 1)
+
             if self.best_dev is None or dev_loss < self.best_dev:
                 self.best_dev = dev_loss
                 self.patience_dev = 0
-                print('Saving best model so far, epoch {}'.format(epoch+1))
+                print('Saving best model so far, ' +
+                      'epoch {}... '.format(epoch+1), end='', flush=True)
                 self.network.save_network()
                 self.save_whoami()
+                print("Done.")
                 self.best_epoch = epoch
             else:
                 self.patience_dev += 1
@@ -176,8 +195,22 @@ class TrainerSiamese(TrainerBuilder):
     """
     def __init__(self, *args, **kwargs):
         super(TrainerSiamese, self).__init__(*args, **kwargs)
-        assert type(self.network) == abnet3.model.SiameseNetwork
+        assert isinstance(self.network, abnet3.model.NetworkBuilder)
 
+    def give_batch_to_network(self, batch):
+        """
+        This function takes a batch given by the dataloader,
+        feeds it to the network, and returns the loss to
+        optimize.
+        """
+        X_batch1, X_batch2, y_batch = batch
+        if self.cuda:
+            X_batch1 = X_batch1.cuda()
+            X_batch2 = X_batch2.cuda()
+            y_batch = y_batch.cuda()
+        emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
+        train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+        return train_loss_value
 
     def optimize_model(self, do_training=True):
         """Optimization model step for the Siamese network.
@@ -185,52 +218,34 @@ class TrainerSiamese(TrainerBuilder):
         """
         train_loss = 0.0
         dev_loss = 0.0
+        num_batches_train = 0
+        num_batches_dev = 0
         self.network.train()
-
         for minibatch in self.dataloader.batch_iterator(train_mode=True):
-            X_batch1, X_batch2, y_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_batch = y_batch.cuda()
-
+            train_loss_value = self.give_batch_to_network(minibatch)
             self.optimizer.zero_grad()
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
             if do_training:
                 train_loss_value.backward()
                 self.optimizer.step()
-            else:
-                self.num_batches_train += 1
+            num_batches_train += 1
             train_loss += train_loss_value.data[0]
 
         self.network.eval()
         for minibatch in self.dataloader.batch_iterator(train_mode=False):
-            X_batch1, X_batch2, y_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_batch = y_batch.cuda()
-
-            if do_training:
-                pass
-            else:
-                self.num_batches_dev += 1
-
-            emb_batch1, emb_batch2 = self.network(X_batch1, X_batch2)
-            dev_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+            num_batches_dev += 1
+            dev_loss_value = self.give_batch_to_network(minibatch)
             dev_loss += dev_loss_value.data[0]
 
-        self.train_losses.append(train_loss/self.num_batches_train)
-        self.dev_losses.append(dev_loss/self.num_batches_dev)
-        normalized_train_loss = train_loss/self.num_batches_train
-        normalized_dev_loss = dev_loss/self.num_batches_dev
+        self.train_losses.append(train_loss/num_batches_train)
+        self.dev_losses.append(dev_loss/num_batches_dev)
+        normalized_train_loss = train_loss/num_batches_train
+        normalized_dev_loss = dev_loss/num_batches_dev
 
         self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
         return dev_loss
 
 
-class TrainerSiameseMultitask(TrainerBuilder):
+class TrainerSiameseMultitask(TrainerSiamese):
     """Siamese Trainer class for ABnet3 for multi task phn and spk
 
     """
@@ -238,63 +253,19 @@ class TrainerSiameseMultitask(TrainerBuilder):
         super(TrainerSiameseMultitask, self).__init__(*args, **kwargs)
         assert type(self.network) == abnet3.model.SiameseMultitaskNetwork
 
-
-    def optimize_model(self, do_training=True):
-        """Optimization model step for the Siamese network with multitask.
-
-        """
-        train_loss = 0.0
-        dev_loss = 0.0
-        self.network.train()
-        for minibatch in self.dataloader.batch_iterator(train_mode=True):
-            X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_spk_batch = y_spk_batch.cuda()
-                y_phn_batch = y_phn_batch.cuda()
-
-            self.optimizer.zero_grad()
-            emb = self.network(X_batch1, X_batch2)
-            emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
-            train_loss_value = self.loss(emb_spk1, emb_phn1,
-                                         emb_spk2, emb_phn2,
-                                         y_spk_batch, y_phn_batch)
-            if do_training:
-                train_loss_value.backward()
-                self.optimizer.step()
-            else:
-                self.num_batches_train += 1
-            train_loss += train_loss_value.data[0]
-
-        self.network.eval()
-        for minibatch in self.dataloader.batch_iterator(train_mode=False):
-            X_batch1, X_batch2, y_spk_batch, y_phn_batch = minibatch
-            if self.cuda:
-                X_batch1 = X_batch1.cuda()
-                X_batch2 = X_batch2.cuda()
-                y_spk_batch = y_spk_batch.cuda()
-                y_phn_batch = y_phn_batch.cuda()
-
-            if do_training:
-                pass
-            else:
-                self.num_batches_dev += 1
-
-            emb = self.network(X_batch1, X_batch2)
-            emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
-            dev_loss_value = self.loss(emb_spk1, emb_phn1,
-                                       emb_spk2, emb_phn2,
-                                       y_spk_batch, y_phn_batch)
-            dev_loss += dev_loss_value.data[0]
-
-        self.train_losses.append(train_loss/self.num_batches_train)
-        self.dev_losses.append(dev_loss/self.num_batches_dev)
-        normalized_train_loss = train_loss/self.num_batches_train
-        normalized_dev_loss = dev_loss/self.num_batches_dev
-
-        self.pretty_print_losses(normalized_train_loss, normalized_dev_loss)
-        return dev_loss
+    def give_batch_to_network(self, batch):
+        X_batch1, X_batch2, y_spk_batch, y_phn_batch = batch
+        if self.cuda:
+            X_batch1 = X_batch1.cuda()
+            X_batch2 = X_batch2.cuda()
+            y_spk_batch = y_spk_batch.cuda()
+            y_phn_batch = y_phn_batch.cuda()
+        emb = self.network(X_batch1, X_batch2)
+        emb_spk1, emb_phn1, emb_spk2, emb_phn2 = emb
+        train_loss_value = self.loss(emb_spk1, emb_phn1,
+                                     emb_spk2, emb_phn2,
+                                     y_spk_batch, y_phn_batch)
+        return train_loss_value
 
 
 if __name__ == '__main__':

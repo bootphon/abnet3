@@ -1,0 +1,19 @@
+name: abnet
+channels:
+  - soumith
+  - defaults
+dependencies:
+  - python=3.6
+  - pyyaml
+  - numpy=1.*
+  - cython
+  - h5py=2.*
+  - pytest=3.5.*
+  - numpydoc
+  - scipy>=0.13.*
+  - pytorch=0.2.0
+  - pip:
+    - tensorboardX==1.0
+    - git+https://github.com/Rachine/DTW_Cython.git
+    - git+https://github.com/bootphon/spectral.git
+    - git+https://github.com/bootphon/h5features.git

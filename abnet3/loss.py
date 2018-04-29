@@ -96,7 +96,7 @@ class cosmargin(LossBuilder):
         assert input1.size() == input2.size(), 'Input not the same size'
         cos_sim = cos(input1, input2)
         idx = torch.eq(y, 1)
-        cos_sim[idx] = -cos_sim[idx]
+        cos_sim[idx] = 1-cos_sim[idx]
         idx = torch.eq(y, -1)
         cos_sim[idx] = torch.clamp(cos_sim[idx]-self.margin, min=0)
         output = cos_sim.sum()
