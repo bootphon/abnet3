@@ -105,6 +105,38 @@ class cosmargin(LossBuilder):
         return output
 
 
+class KLLoss(LossBuilder):
+    """
+    This class computes the contrastive KL loss.
+
+    If we are given two embeddings P and Q :
+
+    loss(P, Q) will return :
+        - KL(P, Q) if P and Q embed the same phoneme
+        - max(0, margin - KL(P, Q) if not
+
+    This is implemented using the hinge margin loss.
+
+    """
+
+    def __init__(self, margin=1, avg=True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.margin = margin
+        self.avg = avg
+
+    def forward(self,  input1, input2, y, avg=True):
+
+        hingeloss = nn.HingeEmbeddingLoss(margin=self.margin, size_average=self.avg)
+        kldiv1 = torch.sum(input1 * torch.log(input1 / input2), 1)
+        loss1 = hingeloss(kldiv1, y)
+
+        hingeloss2 = nn.HingeEmbeddingLoss(margin=self.margin, size_average=self.avg)
+        kldiv2 = torch.sum(input2 * torch.log(input2 / input1), 1)
+        loss2 = hingeloss2(kldiv2, y)
+        
+        return loss1 + loss2
+
+
 class weighted_loss_multi(LossBuilder):
     """weighted_loss_multi Loss function
     This a weighted loss for multi-task training based on another loss

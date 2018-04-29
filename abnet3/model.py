@@ -103,7 +103,8 @@ class SiameseNetwork(NetworkBuilder):
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None,
                  output_dim=None, p_dropout=0.1, batch_norm=False,
                  type_init='xavier_uni', activation_layer=None,
-                 output_path=None):
+                 output_path=None,
+                 softmax=False):
         super(SiameseNetwork, self).__init__()
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
@@ -119,6 +120,7 @@ class SiameseNetwork(NetworkBuilder):
         self.activation_layer = activation_layer
         self.batch_norm = batch_norm
         self.type_init = type_init
+        self.softmax = softmax
         # Pass forward network functions
 
         activation = activation_functions[activation_layer]
@@ -149,7 +151,10 @@ class SiameseNetwork(NetworkBuilder):
             nn.Dropout(p=p_dropout)]
         if self.batch_norm:
             output_layer.append(nn.BatchNorm1d(output_dim))
-        output_layer.append(activation())
+        if softmax:
+            output_layer.append(nn.Softmax())
+        else:
+            output_layer.append(activation())
         self.output_layer = nn.Sequential(*output_layer)
         self.output_path = output_path
         self.apply(self.init_weight_method)
