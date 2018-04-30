@@ -366,7 +366,7 @@ class PairsDataLoader(OriginalDataLoader):
         self.align_different_words = align_different_words
         self.iterations = {'train': train_iterations, 'test': test_iterations}
         self.proportion_positive_pairs = proportion_positive_pairs
-        self.tokens = {'train': set(), 'test': set()}
+        self.tokens = {'train': [], 'test': []}
         self.statistics_training = defaultdict(int)
 
     def load_data(self):
@@ -400,10 +400,12 @@ class PairsDataLoader(OriginalDataLoader):
                 pairs.append(
                     [file1, begin1, end1, file2, begin2, end2])
         self.pairs['train'], self.pairs['test'] = self.split_train_test(pairs)
+        tokens = {'train': set(), 'test': set()}
         for mode in ('train', 'test'):
             for file1, begin1, end1, file2, begin2, end2 in self.pairs[mode]:
-                self.tokens[mode].add((file1, begin1, end1))
-                self.tokens[mode].add((file2, begin2, end2))
+                tokens[mode].add((file1, begin1, end1))
+                tokens[mode].add((file2, begin2, end2))
+            self.tokens[mode] = list(tokens[mode])
 
     def split_train_test(self, pairs):
         random.shuffle(pairs)
@@ -414,6 +416,7 @@ class PairsDataLoader(OriginalDataLoader):
         return train_pairs, test_pairs
 
     def batch_iterator(self, train_mode=True):
+        print("constructing batches")
         mode = 'train' if train_mode else 'test'
         iterations = self.iterations[mode]
         self.load_data()
@@ -435,16 +438,17 @@ class PairsDataLoader(OriginalDataLoader):
         positive_pairs = random.sample(all_positive_pairs, num_positive_pairs)
         positive_pairs = [pair + ['same'] for pair in positive_pairs]
         # for negative pairs, we sample same pairs and we align them wrongly
-        negative_pairs = []
-        for _ in range(num_negative_pairs):
-            tok1, tok2 = random.sample(tokens, 2)
-            negative_pairs.append(list(tok1) + list(tok2) + ["diff"])
+        tokens = random.choices(tokens, k=2*num_negative_pairs)
+        negative_pairs = [list(tokens[i]) + list(tokens[i+1]) + ["diff"]
+                          for i in range(0, len(tokens), 2)]
 
         pairs = positive_pairs + negative_pairs
         random.shuffle(pairs)
-
+        print("done constructing batches for epoch")
         for i in range(iterations):
             pairs_batch = pairs[i * self.batch_size: (i + 1) * self.batch_size]
+            if len(pairs_batch) == 0:
+                break
             grouped_pairs = group_pairs(pairs_batch)
             X1, X2, Y = self.load_frames_from_pairs(grouped_pairs)
             X1, X2, Y = map(torch.from_numpy, [X1, X2, Y])
