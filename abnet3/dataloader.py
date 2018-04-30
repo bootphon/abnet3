@@ -375,6 +375,41 @@ class PairsDataLoader(OriginalDataLoader):
         self.proportion_positive_pairs = proportion_positive_pairs
         self.tokens = {'train': [], 'test': []}
         self.statistics_training = defaultdict(int)
+        self.seed = 0
+
+    def __getstate__(self):
+        """used for pickle
+        This function is used to remove the features in the state.
+        They are very heavy (several GB)
+        so we must remove them from the state before
+        pickling and saving the network.
+        """
+
+        return (self.pairs_path,
+                self.features_path,
+                self.id_to_file,
+                self.ratio_split_train_test,
+                self.align_different_words,
+                self.proportion_positive_pairs
+                )
+
+    def __setstate__(self, state):
+        """
+        As for __getstate__, this function is used to reconstruct the object
+        from a pickled object.
+        We have to reload the data since we didn't save the features
+        and train / dev pairs.
+        """
+        (
+            self.pairs_path,
+            self.features_path,
+            self.id_to_file,
+            self.ratio_split_train_test,
+            self.align_different_words,
+            self.proportion_positive_pairs
+        ) = state
+
+        self.load_data()
 
     def load_data(self):
         if self.pairs['train'] is None:
