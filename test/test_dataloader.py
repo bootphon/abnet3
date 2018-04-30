@@ -4,7 +4,7 @@ import os
 
 class MockFeaturesAccessor:
 
-    def get(self, f, e, s):
+    def get_between_frames(self, f, e, s):
         return np.ones((10, 3))  # 10 frames of size 3
 
 def test_pair_loader_loading():

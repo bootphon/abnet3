@@ -137,6 +137,11 @@ class Features_Accessor(object):
         return self.get_features_between(self.features[filename],
                                          self.times[filename], on, off)
 
+    def get_between_frames(self, f, frame_on, frame_off):
+        filename = f.encode('UTF-8')  # byte
+        if filename not in self.times:
+            filename = f
+        return self.features[filename][frame_on:frame_off]
 
 def get_dtw_alignment(feat1, feat2):
     distance_array = cosine_distance(feat1, feat2)

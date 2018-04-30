@@ -144,21 +144,26 @@ class OriginalDataLoader(DataLoader):
         self.train_files = list({pair[0] for pair in self.pairs['train']} |
                                 {pair[3] for pair in self.pairs['train']})
 
-    def get_token_feats(self, pairs):
+    def get_token_feats(self, pairs, frames=False):
         token_feats = {}
+
+        if not frames:
+            get_features = self.features.get
+        else:
+            get_features = self.features.get_between_frames
         for f1, s1, e1, f2, s2, e2 in pairs['same']:
             if (f1, s1, e1) not in token_feats:
-                token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
+                token_feats[f1, s1, e1] = get_features(f1, s1, e1)
             if (f2, s2, e2) not in token_feats:
-                token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
+                token_feats[f2, s2, e2] = get_features(f2, s2, e2)
         for f1, s1, e1, f2, s2, e2 in pairs['diff']:
             if (f1, s1, e1) not in token_feats:
-                token_feats[f1, s1, e1] = self.features.get(f1, s1, e1)
+                token_feats[f1, s1, e1] = get_features(f1, s1, e1)
             if (f2, s2, e2) not in token_feats:
-                token_feats[f2, s2, e2] = self.features.get(f2, s2, e2)
+                token_feats[f2, s2, e2] = get_features(f2, s2, e2)
         return token_feats
 
-    def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None):
+    def load_frames_from_pairs(self, pairs, seed=0, fid2spk=None, frames=False):
         """Prepare a batch in Pytorch format based on a batch file
         :param pairs: list of pairs under the form
                       {'same': [pairs], 'diff': [pairs] }
@@ -166,9 +171,11 @@ class OriginalDataLoader(DataLoader):
         :param fid2spk:
             if None, will return X1, X2, y_phones
             If it is the spkid mapping, will return X1, X2, y_phones, y_speaker
+        :param frames: 
+            True if the pairs are given in term of frames instead of seconds
         """
         # f are filenames, s are start times, e are end times
-        token_feats = self.get_token_feats(pairs)
+        token_feats = self.get_token_feats(pairs, frames=frames)
 
         # 2. align features for each pair
         X1, X2, y_phn, y_spk = [], [], [], []
@@ -450,7 +457,7 @@ class PairsDataLoader(OriginalDataLoader):
             if len(pairs_batch) == 0:
                 break
             grouped_pairs = group_pairs(pairs_batch)
-            X1, X2, Y = self.load_frames_from_pairs(grouped_pairs)
+            X1, X2, Y = self.load_frames_from_pairs(grouped_pairs, frames=True)
             X1, X2, Y = map(torch.from_numpy, [X1, X2, Y])
             X_batch1 = Variable(X1, volatile=not train_mode)
             X_batch2 = Variable(X2, volatile=not train_mode)
