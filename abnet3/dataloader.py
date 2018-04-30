@@ -380,6 +380,13 @@ class PairsDataLoader(OriginalDataLoader):
 
     def load_pairs(self):
         pairs = []
+        file_mapping = {}
+        if self.id_to_file is not None:
+            with open(self.id_to_file, 'r') as f:
+                lines = [l.strip().split() for l in f]
+                for (id, name) in lines:
+                    file_mapping[int(id)] = name
+
         with open(self.pairs_path, 'r') as f:
             for line in f:
                 line = line.split(' ')
@@ -388,6 +395,8 @@ class PairsDataLoader(OriginalDataLoader):
                     int(file1), int(file2), int(begin1), int(end1),
                     int(begin2), int(end2)
                 )
+                file1 = file_mapping.get(file1, file1)
+                file2 = file_mapping.get(file2, file2)
                 pairs.append(
                     [file1, begin1, end1, file2, begin2, end2])
         self.pairs['train'], self.pairs['test'] = self.split_train_test(pairs)

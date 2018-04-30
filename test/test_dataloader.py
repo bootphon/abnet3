@@ -1,6 +1,6 @@
 from abnet3.dataloader import PairsDataLoader
 import numpy as np
-
+import os
 
 class MockFeaturesAccessor:
 
@@ -8,8 +8,11 @@ class MockFeaturesAccessor:
         return np.ones((10, 3))  # 10 frames of size 3
 
 def test_pair_loader_loading():
+    base_path = os.path.dirname(__file__)
+    pairs_path = os.path.join(base_path, "data/dataloader/pairs_knn.txt")
+
     sampler_pairs = PairsDataLoader(
-        pairs_path='data/pairs_knn.txt',
+        pairs_path=pairs_path,
         features_path=None,
         id_to_file=None, ratio_split_train_test=0.7,
         train_iterations=2, test_iterations=2,
@@ -28,10 +31,29 @@ def test_pair_loader_loading():
     assert all([len(x) == 6 for x in sampler_pairs.pairs['train']])
     assert all([len(x) == 6 for x in sampler_pairs.pairs['test']])
 
+    # test with file mapping
+    id_to_file = os.path.join(base_path, "data/dataloader/id_to_file.txt")
+    sampler_pairs = PairsDataLoader(
+        pairs_path=pairs_path,
+        features_path=None,
+        id_to_file=id_to_file, ratio_split_train_test=0.7,
+        train_iterations=2, test_iterations=2,
+        proportion_positive_pairs=0.5
+    )
+
+    sampler_pairs.load_pairs()
+    for pair in sampler_pairs.pairs['train']:
+        assert pair[0] in ['file0', 'file3', 'file5', 'file10', 'file11']
+        assert pair[3] in ['file0', 'file3', 'file5', 'file10', 'file11']
+
+
 
 def test_pair_loader_iterator():
+    base_path = os.path.dirname(__file__)
+    pairs_path = os.path.join(base_path, "data/dataloader/pairs_knn.txt")
+
     sampler_pairs = PairsDataLoader(
-        pairs_path='data/pairs_knn.txt',
+        pairs_path=pairs_path,
         features_path=None,
         id_to_file=None, ratio_split_train_test=0.7,
         train_iterations=2, test_iterations=3,
