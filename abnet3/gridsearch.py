@@ -170,7 +170,8 @@ class GridSearch(object):
         dataloader_prop = single_experiment['dataloader']
         dataloader_class = getattr(abnet3.dataloader, dataloader_prop['class'])
         arguments = dataloader_prop['arguments']
-        arguments['pairs_path'] = sampler.directory_output
+        if not 'pairs_path' in arguments:
+            arguments['pairs_path'] = sampler.directory_output
         arguments['features_path'] = features.output_path
         dataloader = dataloader_class(**arguments)
 
