@@ -15,7 +15,8 @@ from abnet3.model import *
 from abnet3.loss import *
 from abnet3.sampler import *
 from abnet3.utils import *
-from abnet3.dataloader import DataLoader, FramesDataLoader, MultiTaskDataLoader
+from abnet3.integration import *
+from abnet3.dataloader import DataLoader, FramesDataLoader, MultiTaskDataLoader, MultimodalDataLoader
 import numpy as np
 import torch
 import torch.optim as optim
@@ -266,6 +267,93 @@ class TrainerSiameseMultitask(TrainerSiamese):
                                      emb_spk2, emb_phn2,
                                      y_spk_batch, y_phn_batch)
         return train_loss_value
+
+class MultimodalTrainer(TrainerSiamese):
+    """Multimodal Trainer class for ABnet3
+
+    :param headstart:   Only available when using integrators that have
+                        set_headstart_weight() and start_training() methods
+                        implemented, if not, an error will be raised.
+                        This gives the abnet a headstart over the attention
+                        training. It should be a tuple of the form:
+
+                        tuple[0]:   int, how many epochs to wait before begin
+                                    training the attention model
+                        tuple[1]:   bool, whether after the attention model starts
+                                    the network keeps training (True) or it stops
+                                    (False)
+                        tuple[2]:   float greater or equal to 0 and less or equal
+                                    to 1, the weight used as attention weight
+                                    during the headstart
+
+                        if None, both network and attention model start training
+                        at the same time
+
+    """
+    def __init__(self, headstart=None, *args, **kwargs):
+
+        super(MultimodalTrainer, self).__init__(*args, **kwargs)
+        assert type(self.dataloader) == MultimodalDataLoader
+        assert type(self.network) == MultimodalSiameseNetwork
+
+        if headstart:
+            self.headstart_epochs = headstart[0]
+            self.parallel_after_headstart = headstart[1]
+            try:
+                self.network.integration_unit.set_headstart_weight(headstart[2])
+            except NotImplementedError:
+                raise TypeError("Headstart only works with integration units"+\
+                                "which have set_headstart_weight() method implemented")
+            self.headstart = True
+        else:
+            self.headstart = False
+
+    def cuda_all_modes(self, batch_list):
+        cuda_on = []
+        for mode in batch_list:
+            cuda_on.append(mode.cuda())
+        return cuda_on
+
+    def give_batch_to_network(self, batch):
+        """
+        This function takes a batch given by the dataloader,
+        feeds it to the network, and returns the loss to
+        optimize.
+        """
+        X_list1, X_list2, y_batch = batch
+        if self.cuda:
+            X_list1 = self.cuda_all_modes(X_list1)
+            X_list2 = self.cuda_all_modes(X_list2)
+            y_batch = y_batch.cuda()
+        emb_batch1, emb_batch2 = self.network(X_list1, X_list2)
+        train_loss_value = self.loss(emb_batch1, emb_batch2, y_batch)
+        return train_loss_value
+
+
+    def optimize_model(self, do_training=True):
+        """Optimization model step for the Multimodal Siamese network.
+
+        """
+        #Headstart check if ended
+        if self.headstart and self.headstart_epochs == 0:
+            if not self.parallel_after_headstart:
+                self.network.freeze_training()
+            try:
+                self.network.integration_unit.start_training()
+            except NotImplementedError:
+                raise TypeError("Headstart only works with integration units"+\
+                                "which have start_training() method implemented")
+            print("Headstart ended")
+
+        #Perform train and dev test
+        dev_loss = super(MultimodalTrainer, self).optimize_model(do_training)
+
+        #Headstart count diminishes
+        if self.headstart and self.headstart_epochs > -1:
+            self.headstart_epochs -= 1
+
+        return dev_loss
+
 
 
 if __name__ == '__main__':

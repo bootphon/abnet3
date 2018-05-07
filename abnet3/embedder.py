@@ -11,8 +11,9 @@ from torch.autograd import Variable
 import h5features
 import argparse
 
-from abnet3.utils import read_feats
+from abnet3.utils import read_feats, EmbeddingObserver
 from abnet3.model import *
+from abnet3.integration import BiWeightedDeepLearnt
 
 
 class EmbedderBuilder:
@@ -140,3 +141,75 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
 
         with h5features.Writer(self.output_path+'.phn') as fh:
             fh.write(data_phn, 'features')
+
+class MultimodalEmbedder(EmbedderBuilder):
+    """
+    Embedder class for multimodal siamese network
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(MultimodalEmbedder, self).__init__(*args, **kwargs)
+        self.observers = [] #tuples list, of the form (EmbedderObserver,
+                                                      #function to get the data,
+                                                      #path to be saved)
+
+        if isinstance(self.network.integration_unit, BiWeightedDeepLearnt):
+            print("Placing observer to save learnt attention weights")
+            self.observers.append(EmbeddingObserver(
+                                 self.network.integration_unit.get_weights,
+                                 self.output_path+"attention_weights.features"))
+
+    def embed(self):
+        """
+        Embed method to embed features based on a saved network
+        """
+
+        if self.network_path is not None:
+            self.network.load_network(self.network_path)
+        self.network.eval()
+
+        if self.cuda:
+            self.network.cuda()
+
+        items = None
+        times = None
+        features_list = []
+        for path in self.feature_path:
+            with h5features.Reader(path, 'features') as fh:
+                features = fh.read()
+                features_list.append(features.features())
+                check_items = features.items()
+                check_times = features.labels()
+            if not items:
+                items = check_items
+            if not times:
+                times = check_times
+
+        print("Done loading input feature file")
+
+        zipped_feats = zip(*features_list)
+        embeddings = []
+        for feats in zipped_feats:
+            modes_list = []
+            for feat in feats:
+                if feat.dtype != np.float32:
+                    feat = feat.astype(np.float32)
+                feat_torch = Variable(torch.from_numpy(feat), volatile=True)
+                if self.cuda:
+                    feat_torch = feat_torch.cuda()
+                modes_list.append(feat_torch)
+            emb, _ = self.network(modes_list, modes_list)
+            emb = emb.cpu()
+            embeddings.append(emb.data.numpy())
+
+            #Register activity on observer
+            for observer in self.observers:
+                observer.register_status()
+
+        data = h5features.Data(items, times, embeddings, check=True)
+        with h5features.Writer(self.output_path + "embedded.features") as fh:
+            fh.write(data, 'features')
+
+        #Save observer registers
+        for observer in self.observers:
+            observer.save(items, times)

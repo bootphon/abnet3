@@ -588,3 +588,191 @@ class MultiTaskDataLoader(OriginalDataLoader):
             X_batch1, X_batch2, y_spk_batch, y_phn_batch = map(Variable,
                                                                batch_els)
             yield X_batch1, X_batch2, y_spk_batch, y_phn_batch
+
+class MultimodalDataLoader(FramesDataLoader):
+    """
+    Class to manage multiple inputs, extract features
+    from features file and provide iterator for multimodal
+    training of the siamese network. Multimodal version
+    of the frames dataloader
+    """
+
+    def __init__(self, pairs_path, features_path,
+                 batch_size=500, randomize_dataset=False,
+                 max_batches_per_epoch=None):
+        """
+
+        :param string pairs_path: path to dataset where the dev_pairs and
+                                  train_pairs folders are
+        :param features_paths:  list of paths from multiple inputs, this turns
+                                the OriginalDataLoader features_path parameter
+                                into a list. The features corresponfing to the
+                                first path will be the ones on which the dtw
+                                paths are computed.
+
+        """
+        super().__init__(pairs_path, features_path, batch_size,
+                         randomize_dataset, max_batches_per_epoch)
+        self.features_dict = None
+        self.alignment_dict = {} #form {(f1, s1, e1, f2, s1, e2):(path1, path2)}
+
+    def __getstate__(self):
+        """used for pickle"""
+        return (self.pairs_path,
+                self.features_path,
+                self.statistics_training,
+                self.seed,
+                self.num_max_minibatches,
+                self.batch_size,
+                self.features_dict,
+                self.alignment_dict)
+
+    def __setstate__(self, state):
+        """used for pickle"""
+        (
+            self.pairs_path,
+            self.features_path,
+            self.statistics_training,
+            self.seed,
+            self.num_max_minibatches,
+            self.batch_size,
+            self.features_dict,
+            self.alignment_dict
+        ) = state
+
+        self.load_data()
+
+    def check_consistency(self, features):
+        """
+        This method checks that the pairs and features are
+        consistent between each other, meaning they have the
+        same items and can be used together
+
+        :param features: list of features to be used
+        """
+
+        #TODO: implement, for now consistent data is assumed.
+        pass
+
+    def load_data(self):
+        """
+        Load pairs and features
+        """
+
+        if self.features_dict is None:
+            print("Loading features")
+            self.features_dict = {}
+            for path in self.features_path:
+                self.features_dict[path], _ , _ = read_feats(path)
+
+        if self.pairs['train'] is None:
+            print("Loading word pairs")
+            train_dir = os.path.join(self.pairs_path, 'train_pairs/dataset')
+            self.pairs['train'] = read_dataset(train_dir)
+
+        if self.pairs['dev'] is None:
+            dev_dir = os.path.join(self.pairs_path, 'dev_pairs/dataset')
+            self.pairs['dev'] = read_dataset(dev_dir)
+
+        if self.token_features['train'] is None:
+            print("Loading all frames..", end='', flush=True)
+            self.token_features['train'], self.frame_pairs['train'] = \
+                self.load_all_frames(self.pairs['train'])
+            print("Done. %s frame pairs in total." % len(
+                                                     self.frame_pairs['train']))
+
+        if self.token_features['dev'] is None:
+            self.token_features['dev'], self.frame_pairs['dev'] = \
+                self.load_all_frames(self.pairs['dev'])
+
+
+    def load_all_frames(self, pairs):
+        token_feats_list = [] #list of token feats for every modality
+        self.features = self.features_dict[self.features_path[0]]
+        token_feats, frames = super(MultimodalDataLoader, self).load_all_frames(
+                                                                          pairs)
+                              #loads token feats, alignment and
+                              #frames for first path
+        token_feats_list.append(token_feats)
+
+        pairs = group_pairs(pairs)
+        for path in self.features_path[1:]: #add token feats of the other
+                                            #modalities to the token feats dict
+            self.features = self.features_dict[path]
+            path_token_feats = self.get_token_feats(pairs)
+            token_feats_list.append(path_token_feats)
+
+        return token_feats_list, frames
+
+
+    def batch_iterator(self, train_mode=True):
+        """
+        Build iterator next batch from folder for a specific epoch
+        This function can be used when the batches were already created
+        by the sampler.
+
+        :param train: boolean, indicates if the pairs should be extracted from
+                      the train set (if True) or the dev set (if False)
+
+        Returns batches of the form (X1array, X2array, y), where X1list and
+        X2list are lists of torch variables, each one corresponding
+        to the different modes representing the same phenomena,
+        and y is a torch variable which contains same/different info, which is
+        the same for every modality
+        """
+
+        # read all features
+        self.load_data()
+
+        if train_mode:
+            mode = 'train'
+        else:
+            mode = 'dev'
+
+        frame_pairs = self.frame_pairs[mode]
+        num_pairs = len(frame_pairs)
+        num_batches = num_pairs // self.batch_size
+
+        if num_batches == 0:
+            num_batches = 1
+
+        # choose which batches to run in this epoch
+        if mode == 'dev' or self.max_batches_per_epoch is None:  # normal behaviour
+            batch_ids = range(num_batches)
+            if self.randomize_dataset:
+                np.random.shuffle(frame_pairs)
+        else:
+            # we want to read only a subset of the dataset
+            if self.batch_position >= num_batches:  # reset the count
+                print("Arrived at the end of the dataset. Starting over.")
+                if self.randomize_dataset:
+                    np.random.shuffle(frame_pairs)
+                self.batch_position = 0
+            batch_ids = range(
+                self.batch_position,
+                min(self.batch_position + self.max_batches_per_epoch,
+                    num_batches)
+            )
+            self.batch_position += self.max_batches_per_epoch
+
+        final = batch_ids[-1]
+        inicial = batch_ids[0]
+        for i in batch_ids:
+            pairs_batch = frame_pairs[i*self.batch_size:
+                                      i*self.batch_size + self.batch_size]
+
+            X1_list = []
+            X2_list = []
+            for token_features in self.token_features[mode]:
+                X1, X2, y = self.load_batch(pairs_batch, token_features)
+                X1_list.append(Variable(torch.from_numpy(X1),
+                                                      volatile=not train_mode))
+                X2_list.append(Variable(torch.from_numpy(X2),
+                                                      volatile=not train_mode))
+                y_torch = Variable(torch.from_numpy(y), volatile=not train_mode)
+
+            #Show percentage of progress
+            print("{0:<5}: {1:>3}%".format(mode,
+                                        int((i-inicial)*100/(final-inicial))),
+                                                                      end="\r")
+            yield X1_list, X2_list, y_torch
