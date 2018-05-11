@@ -37,7 +37,11 @@ class TrainerBuilder:
                  num_epochs=200, patience=20,
                  optimizer_type='sgd', lr=0.001, momentum=0.9, cuda=True,
                  seed=0, dataloader=None, log_dir=None,
-                 feature_generator=None):
+                 feature_generator=None,
+                 save_checkpoint=False):
+        """
+        :param save_checkpoint:  whether to save checkpoints of best models
+        """
         self.network = network
         self.loss = loss
         self.num_epochs = num_epochs
@@ -50,6 +54,7 @@ class TrainerBuilder:
         self.statistics_training = {}
         self.dataloader = dataloader
         self.feature_generator = feature_generator
+        self.save_checkpoints = save_checkpoint
 
         if cuda:
             self.loss.cuda()
@@ -148,6 +153,8 @@ class TrainerBuilder:
                 self.patience_dev = 0
                 print('Saving best model so far, ' +
                       'epoch {}... '.format(epoch+1), end='', flush=True)
+                if self.save_checkpoints:
+                    self.network.save_network(epoch=str(epoch))
                 self.network.save_network()
                 self.save_whoami()
                 print("Done.")
