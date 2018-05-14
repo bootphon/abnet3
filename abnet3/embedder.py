@@ -113,6 +113,9 @@ class EmbedderSiameseMultitask(EmbedderBuilder):
             self.network.load_network(self.network_path)
         self.network.eval()
 
+        if self.cuda:
+            self.network.cuda()
+
         with h5features.Reader(self.feature_path, 'features') as fh:
             features = fh.read()
 
