@@ -65,6 +65,9 @@ class EmbedderSiamese(EmbedderBuilder):
         if self.network_path is not None:
             self.network.load_network(self.network_path)
         self.network.eval()
+
+        if self.cuda:
+            self.network.cuda()
         print("Done loading network weights")
 
         with h5features.Reader(self.feature_path, 'features') as fh:
