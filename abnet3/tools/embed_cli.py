@@ -11,16 +11,12 @@ import yaml
 import faulthandler
 import os
 import time
-import copy
-import datetime
 import argparse
 
-import abnet3
-from abnet3.sampler import *
-from abnet3.loss import *
-from abnet3.model import *
-from abnet3.embedder import *
-from abnet3.dataloader import *
+import abnet3.features
+import abnet3.model
+import abnet3.embedder
+
 import torch
 
 faulthandler.enable()
@@ -39,9 +35,9 @@ class EmbedCLI(object):
             Gpu id available for computation
 
     """
-    def __init__(self, input_file=None,
+    def __init__(self, yaml_file=None,
                  weights=None, input_features=None):
-        self.input_file = input_file
+        self.yaml_file = yaml_file
         self.sampler_run = False
         self.features_run = False
         self.weights = weights
@@ -53,7 +49,7 @@ class EmbedCLI(object):
         """Parse yaml input file for grid search
 
         """
-        with open(self.input_file, 'r') as stream:
+        with open(self.yaml_file, 'r') as stream:
             self.params = yaml.load(stream)
 
     def run_embedding(self, single_experiment=None):
@@ -69,6 +65,7 @@ class EmbedCLI(object):
             if not os.path.exists(arguments['output_path']):
                 features.generate()
             self.input_features = arguments['output_path']
+            print("Using default features : %s" % self.input_features)
 
         model_prop = single_experiment['model']
         model_class = getattr(abnet3.model, model_prop['class'])
@@ -87,8 +84,13 @@ class EmbedCLI(object):
                  'embeddings.h5f')
 
         arguments['feature_path'] = self.input_features
-        arguments['network_path'] = model.output_path + '.pth'
+        if self.weights is not None:
+            print("using weights in %s" % self.weights)
+            arguments['network_path'] = self.weights
+        else:
+            arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
+
         embedder.embed()
 
         # # embed test features
@@ -173,7 +175,7 @@ def main():
         torch.cuda.set_device(args.gpu_id)
     t1 = time.time()
     print("Start embedding")
-    grid = EmbedCLI(input_file=args.exp_yml,
+    grid = EmbedCLI(yaml_file=args.exp_yml,
                     weights=args.weights,
                     input_features=args.input_features
                     )
