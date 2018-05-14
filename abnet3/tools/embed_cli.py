@@ -36,13 +36,13 @@ class EmbedCLI(object):
 
     """
     def __init__(self, yaml_file=None,
-                 weights=None, input_features=None):
+                 weights=None, input_features=None, output_embeddings=None):
         self.yaml_file = yaml_file
         self.sampler_run = False
         self.features_run = False
         self.weights = weights
         self.input_features = input_features
-
+        self.output_embeddings = output_embeddings
         self.test_files = []
 
     def parse_yaml_input_file(self):
@@ -53,6 +53,10 @@ class EmbedCLI(object):
             self.params = yaml.load(stream)
 
     def run_embedding(self, single_experiment=None):
+
+        if self.output_embeddings is None and self.input_features is not None:
+            raise ValueError("If you give a custom input, you have to specify"
+                             "an output.")
 
         if self.input_features is None:
             features_prop = single_experiment['features']
@@ -78,10 +82,13 @@ class EmbedCLI(object):
         embedder_class = getattr(abnet3.embedder, embedder_prop['class'])
         arguments = embedder_prop['arguments']
         arguments['network'] = model
-        if 'output_path' not in arguments:
-            arguments['output_path'] = os.path.join(
-                 single_experiment['pathname_experience'],
-                 'embeddings.h5f')
+        if self.output_embeddings is not None:
+            arguments['output_path'] = self.output_embeddings
+        else:
+            if 'output_path' not in arguments:
+                arguments['output_path'] = os.path.join(
+                     single_experiment['pathname_experience'],
+                     'embeddings.h5f')
 
         arguments['feature_path'] = self.input_features
         if self.weights is not None:
@@ -166,8 +173,7 @@ def main():
     argparser.add_argument("-i", "--input-features", type=str,
                            help="Path to input features. Default will be those"
                                 "in the yaml file")
-
-    argparser.add_argument("-o", "--output")
+    argparser.add_argument("-o", "--output", help="path to save output features")
 
     args = argparser.parse_args()
 
@@ -177,7 +183,8 @@ def main():
     print("Start embedding")
     grid = EmbedCLI(yaml_file=args.exp_yml,
                     weights=args.weights,
-                    input_features=args.input_features
+                    input_features=args.input_features,
+                    output_embeddings=args.output
                     )
 
     grid.run()
