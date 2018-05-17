@@ -136,6 +136,9 @@ class TrainerBuilder:
         train_writer.add_scalar('loss', self.train_losses[-1], 0)
         dev_writer.add_scalar('loss', self.dev_losses[-1], 0)
 
+        if self.checkpoints:
+            self.network.save_network(epoch=0)
+
         for key in self.statistics_training.keys():
             self.statistics_training[key] = 0
 
@@ -154,7 +157,7 @@ class TrainerBuilder:
                 print('Saving best model so far, ' +
                       'epoch {}... '.format(epoch+1), end='', flush=True)
                 if self.checkpoints:
-                    self.network.save_network(epoch=str(epoch))
+                    self.network.save_network(epoch=epoch+1)
                 self.network.save_network()
                 self.save_whoami()
                 print("Done.")

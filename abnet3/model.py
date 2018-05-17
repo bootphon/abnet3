@@ -193,7 +193,7 @@ class SiameseNetwork(NetworkBuilder):
         return {'params': self.__dict__, 'class_name': self.__class__.__name__}
 
     def save_network(self, epoch=''):
-        torch.save(self.state_dict(), self.output_path + epoch + '.pth')
+        torch.save(self.state_dict(), self.output_path + str(epoch) + '.pth')
 
     def load_network(self, network_path=None):
         self.load_state_dict(torch.load(network_path))
