@@ -99,6 +99,7 @@ class SamplerCluster(SamplerBuilder):
                  max_num_clusters=None,
                  sample_batches=False,
                  num_total_sampled_pairs=None,
+                 split_on_files=False,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -112,6 +113,7 @@ class SamplerCluster(SamplerBuilder):
         self.max_num_clusters = max_num_clusters
         self.sample_batches = sample_batches
         self.num_total_sampled_pairs = num_total_sampled_pairs
+        self.split_on_files = split_on_files
 
     def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
@@ -197,6 +199,34 @@ class SamplerCluster(SamplerBuilder):
                     train_clusters.append(cluster)
                 else:
                     dev_clusters.append(cluster)
+
+        return train_clusters, dev_clusters
+
+    def split_clusters_on_file(self, clusters):
+        """
+        This is an alternative splitting method.
+        It will split clusters by splitting the dataset on
+        wav files.
+        :return:
+        """
+        files = list(self.spkid_from_file)
+        num_files_test = int(len(files) * self.ratio_train_dev)
+        dev_files = random.sample(files, num_files_test)
+
+        train_clusters, dev_clusters = [], []
+        for c in clusters:
+            train_c = []
+            dev_c = []
+            for file, s, e in c:
+                if file in dev_files:
+                    dev_c.append([file, s, e])
+                else:
+                    train_c.append([file, s, e])
+
+            if train_c:
+                train_clusters.append(train_c)
+            if dev_c:
+                dev_clusters.append(dev_c)
 
         return train_clusters, dev_clusters
 
@@ -706,6 +736,7 @@ class SamplerClusterSiamese(SamplerCluster):
         # 0) Read mapping for id to speaker
         print("Reading id to speaker file %s" % self.spkid_file)
         get_spkid_from_fid = read_spkid_file(self.spkid_file)
+        self.spkid_from_file = get_spkid_from_fid
 
         # 1) parsing files to get clusters and speakers
         print("Reading cluster file %s with max_num_clusters = %s" %
@@ -717,7 +748,11 @@ class SamplerClusterSiamese(SamplerCluster):
             spk_list = read_spk_list(self.spk_list_file)
 
         # 2) Split the clusters according to train/dev ratio
-        split_clusters = self.split_clusters_ratio(clusters)
+        if self.split_on_files:
+            split_clusters = self.split_clusters_on_file(clusters)
+        else:
+            # original option
+            split_clusters = self.split_clusters_ratio(clusters)
         train_clusters, dev_clusters = split_clusters
 
         # 3) Analysis of clusters to be able to sample
