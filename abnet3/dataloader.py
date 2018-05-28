@@ -375,6 +375,7 @@ class PairsDataLoader(OriginalDataLoader):
         self.proportion_positive_pairs = proportion_positive_pairs
         self.tokens = {'train': [], 'test': []}
         self.statistics_training = defaultdict(int)
+        self.files = set()
         self.seed = 0
 
     def __getstate__(self):
@@ -439,6 +440,8 @@ class PairsDataLoader(OriginalDataLoader):
                 )
                 file1 = file_mapping.get(file1, file1)
                 file2 = file_mapping.get(file2, file2)
+                self.files.add(file1)
+                self.files.add(file2)
                 pairs.append(
                     [file1, begin1, end1, file2, begin2, end2])
         self.pairs['train'], self.pairs['test'] = self.split_train_test(pairs)
@@ -450,12 +453,23 @@ class PairsDataLoader(OriginalDataLoader):
             self.tokens[mode] = list(tokens[mode])
 
     def split_train_test(self, pairs):
-        random.shuffle(pairs)
-        n = len(pairs)
-        train_n = int(self.ratio_split_train_test * n)
-        train_pairs = pairs[:train_n]
-        test_pairs = pairs[train_n:]
-        return train_pairs, test_pairs
+        """
+        We split train and dev by splitting the dataset
+        files in two subsets. The pairs that are across train
+        and dev set will be deleted.
+        """
+        num_files_test = int(len(self.files) * (1 - self.ratio_split_train_test))
+        dev_files = set(random.sample(self.files, num_files_test))
+        train_pairs, dev_pairs = [], []
+        print("File selected for validation set : %s" % dev_files)
+        for pair in pairs:
+            [file1, _, _, file2, _, _] = pair
+            if file1 in dev_files and file2 in dev_files:
+                dev_pairs.append(pair)
+            elif file1 not in dev_files and file2 not in dev_files:
+                train_pairs.append(pair)
+
+        return train_pairs, dev_pairs
 
     def batch_iterator(self, train_mode=True):
         print("constructing batches")
