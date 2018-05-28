@@ -212,6 +212,7 @@ class SamplerCluster(SamplerBuilder):
         files = list(self.spkid_from_file)
         num_files_test = int(len(files) * self.ratio_train_dev)
         dev_files = random.sample(files, num_files_test)
+        print("File selected for validation set : %s" % dev_files)
 
         train_clusters, dev_clusters = [], []
         for c in clusters:
