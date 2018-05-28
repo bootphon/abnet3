@@ -210,7 +210,7 @@ class SamplerCluster(SamplerBuilder):
         :return:
         """
         files = list(self.spkid_from_file)
-        num_files_test = int(len(files) * self.ratio_train_dev)
+        num_files_test = int(len(files) * (1 - self.ratio_train_dev))
         dev_files = random.sample(files, num_files_test)
         print("File selected for validation set : %s" % dev_files)
 
