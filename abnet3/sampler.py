@@ -231,7 +231,8 @@ class SamplerCluster(SamplerBuilder):
         """
         This is an alternative splitting method.
         It will split clusters by splitting the dataset on
-        wav files.
+        wav files. Each file will belong either to the training
+        or dev set.
         :return:
         """
         files = list(self.spkid_from_file)
@@ -257,6 +258,12 @@ class SamplerCluster(SamplerBuilder):
         return train_clusters, dev_clusters
 
     def split_each_file(self, clusters):
+        """
+        Alternative splitting train / dev method.
+        It will split each file according to the train / dev ratio.
+        The beginning of the file will go to the train set,
+        and the end of the file to the dev set.
+        """
         # fill len of each file
         len_files = defaultdict(int)
         for c in clusters:
