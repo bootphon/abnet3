@@ -102,5 +102,38 @@ class TestSampler:
         assert max([len(cluster) for cluster in train_clusters]) <= 3
 
 
+    def test_split_each_file(self):
+        base_path = os.path.dirname(__file__)
+        file_name = os.path.join(base_path, "data/english.split.test.classes")
+        sampler = SamplerClusterSiamese()
+
+        clusters = sampler.parse_input_file(file_name)
+
+        sampler.spkid_from_file = {
+            's0101a': 1,
+            's0102a': 1,
+            's2001a': 20,
+            's2401a': 24,
+            's2402b': 24,
+            's2403b': 24,
+            's2404b': 24,
+            's2405b': 24,
+            's2403a': 24,
+            's2702a': 27,
+        }
+
+        train_clusters, dev_clusters = sampler.split_each_file(
+            clusters)
+
+        print(train_clusters)
+        print(dev_clusters)
+        assert train_clusters == [
+            [['s0102a', 10.0, 20.0], ['s0102a', 40.0, 50.0]],
+            [['s2401a', 10.0, 20.0], ['s2402b', 40.0, 50.0]]]
+
+        assert dev_clusters == [[['s2402b', 75.0, 100.0]],
+                                [['s0102a', 75.0, 100.0]]]
+
+
 if __name__ == '__main__':
     pytest.main([__file__])

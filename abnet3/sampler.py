@@ -107,8 +107,15 @@ class SamplerCluster(SamplerBuilder):
     create_batches: bool
         If you want the sampler to save one file for each dataset,
         or multiple batches
+    split_method:
+        must be one of "clusters", "files", or "split_each_file"
 
     """
+    SPLIT_CLUSTERS = "clusters"
+    SPLIT_FILES = "files"
+    SPLIT_EACH_FILE = "split_each_file"
+    SPLIT_METHODS = [SPLIT_CLUSTERS, SPLIT_FILES, SPLIT_EACH_FILE]
+
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.75,
                  ratio_same_diff_type=0.5,
                  type_sampling_mode='log', spk_sampling_mode='log',
@@ -116,7 +123,7 @@ class SamplerCluster(SamplerBuilder):
                  max_num_clusters=None,
                  sample_batches=False,
                  num_total_sampled_pairs=None,
-                 split_on_files=False,
+                 split_method=SPLIT_CLUSTERS,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -130,7 +137,8 @@ class SamplerCluster(SamplerBuilder):
         self.max_num_clusters = max_num_clusters
         self.sample_batches = sample_batches
         self.num_total_sampled_pairs = num_total_sampled_pairs
-        self.split_on_files = split_on_files
+        self.split_method = split_method
+        assert split_method in self.SPLIT_METHODS
 
     def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
@@ -247,6 +255,36 @@ class SamplerCluster(SamplerBuilder):
                 dev_clusters.append(dev_c)
 
         return train_clusters, dev_clusters
+
+    def split_each_file(self, clusters):
+        # fill len of each file
+        len_files = defaultdict(int)
+        for c in clusters:
+            for file, s, e in c:
+                len_files[file] = max(len_files[file], e)
+        print(len_files)
+
+        # split on length
+        train_threshold = {}
+        for file in len_files:
+            train_threshold[file] = len_files[file] * self.ratio_train_dev
+        print(train_threshold)
+        # split clusters
+        train_clusters, dev_clusters = [], []
+        for c in clusters:
+            train_c = []
+            dev_c = []
+            for file, s, e in c:
+                if s > train_threshold[file]:
+                    dev_c.append([file, s, e])
+                else:
+                    train_c.append([file, s, e])
+            if train_c:
+                train_clusters.append(train_c)
+            if dev_c:
+                dev_clusters.append(dev_c)
+        return train_clusters, dev_clusters
+
 
     def analyze_clusters(self, clusters, get_spkid_from_fid=None):
         """Analysis input file to prepare sampler
@@ -766,11 +804,19 @@ class SamplerClusterSiamese(SamplerCluster):
             spk_list = read_spk_list(self.spk_list_file)
 
         # 2) Split the clusters according to train/dev ratio
-        if self.split_on_files:
-            split_clusters = self.split_clusters_on_file(clusters)
-        else:
+        if self.split_method == self.SPLIT_CLUSTERS:
             # original option
             split_clusters = self.split_clusters_ratio(clusters)
+        elif self.split_method == self.SPLIT_FILES:
+            split_clusters = self.split_clusters_on_file(clusters)
+        elif self.split_method == self.SPLIT_EACH_FILE:
+            split_clusters = self.split_each_file(clusters)
+            print("Numer of train clusters: %s, Number of dev clusters: %s" % (
+                len(split_clusters[0]), len(split_clusters[1])
+            ))
+        else:
+            raise ValueError("split method doesn't exist")
+
         train_clusters, dev_clusters = split_clusters
 
         # 3) Analysis of clusters to be able to sample
