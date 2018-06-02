@@ -482,7 +482,6 @@ class PairsDataLoader(OriginalDataLoader):
 
         num_pairs = iterations * self.batch_size
         num_positive_pairs = int(num_pairs * self.proportion_positive_pairs)
-        num_negative_pairs = num_pairs - num_positive_pairs
 
         # deal with maximum pairs
         if num_positive_pairs > len(all_positive_pairs):
@@ -490,7 +489,7 @@ class PairsDataLoader(OriginalDataLoader):
                   "iterations. There is only {}, but {} requested"
                   .format(len(all_positive_pairs), num_positive_pairs))
             num_positive_pairs = len(all_positive_pairs)
-
+        num_negative_pairs = num_pairs - num_positive_pairs
         positive_pairs = random.sample(all_positive_pairs, num_positive_pairs)
         positive_pairs = [pair + ['same'] for pair in positive_pairs]
         # for negative pairs, we sample same pairs and we align them wrongly
