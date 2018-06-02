@@ -357,12 +357,16 @@ class PairsDataLoader(OriginalDataLoader):
     This dataloader takes a pair file as argument (instead of a cluster
     file like the other dataloaders)
     """
+    SPLIT_FILES = "files"
+    SPLIT_EACH_FILE = "split_each_file"
+    SPLIT_METHODS = [SPLIT_FILES, SPLIT_EACH_FILE]
 
     def __init__(self, pairs_path, features_path, id_to_file,
                  ratio_split_train_test=0.7,
                  batch_size=8, train_iterations=10000, test_iterations=500,
                  proportion_positive_pairs=0.5,
-                 align_different_words=True):
+                 align_different_words=True,
+                 split_method=SPLIT_EACH_FILE):
         self.pairs_path = pairs_path
         self.features_path = features_path
         self.features = None  # type: Features_Accessor
@@ -373,6 +377,8 @@ class PairsDataLoader(OriginalDataLoader):
         self.align_different_words = align_different_words
         self.iterations = {'train': train_iterations, 'test': test_iterations}
         self.proportion_positive_pairs = proportion_positive_pairs
+        self.split_method = split_method
+        assert split_method in self.SPLIT_METHODS
         self.tokens = {'train': [], 'test': []}
         self.statistics_training = defaultdict(int)
         self.files = set()
@@ -444,7 +450,10 @@ class PairsDataLoader(OriginalDataLoader):
                 self.files.add(file2)
                 pairs.append(
                     [file1, begin1, end1, file2, begin2, end2])
-        self.pairs['train'], self.pairs['test'] = self.split_train_test(pairs)
+        if self.split_method == self.SPLIT_FILES:
+            self.pairs['train'], self.pairs['test'] = self.split_train_test(pairs)
+        elif self.split_method == self.SPLIT_EACH_FILE:
+            self.pairs['train'], self.pairs['test'] = self.split_train_test_each_file(pairs)
         tokens = {'train': set(), 'test': set()}
         for mode in ('train', 'test'):
             for file1, begin1, end1, file2, begin2, end2 in self.pairs[mode]:
@@ -469,6 +478,30 @@ class PairsDataLoader(OriginalDataLoader):
             elif file1 not in dev_files and file2 not in dev_files:
                 train_pairs.append(pair)
 
+        return train_pairs, dev_pairs
+
+    def split_train_test_each_file(self, pairs):
+        # fill len of each file
+        len_files = defaultdict(int)
+        for p in pairs:
+            file1, s1, e1, file2, s2, e2 = p
+            len_files[file1] = max(len_files[file1], e1)
+            len_files[file2] = max(len_files[file2], e2)
+        print(len_files)
+
+        # split on length
+        train_threshold = {}
+        for file in len_files:
+            train_threshold[file] = len_files[file] * self.ratio_split_train_test
+        print(train_threshold)
+        # split clusters
+        train_pairs, dev_pairs = [], []
+        for p in pairs:
+            file1, s1, e1, file2, s2, e2 = p
+            if s1 > train_threshold[file1] and s2 > train_threshold[file2]:
+                dev_pairs.append(p)
+            elif s1 < train_threshold[file1] and s2 <= train_threshold[file2]:
+                train_pairs.append(p)
         return train_pairs, dev_pairs
 
     def batch_iterator(self, train_mode=True):
