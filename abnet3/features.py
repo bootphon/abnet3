@@ -12,7 +12,7 @@ from scipy.io import wavfile
 import os
 import h5py
 import shutil
-import tempfile
+import argparse
 
 from abnet3.utils import read_vad_file, read_feats, Features_Accessor
 
@@ -397,3 +397,45 @@ class FeaturesGenerator:
                 shutil.copy(h5_temp2, self.output_path)
         finally:
             shutil.rmtree(tempdir)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("wav_dir", help="Path to wav directory")
+    parser.add_argument("output_path", help="Path to output h5f file")
+    parser.add_argument("method", choices=["mfcc", "fbanks"],
+                        help="which features to generate")
+    parser.add_argument("--vad", help="Path to vad file "
+                                      "(CSV, seconds with header)")
+    parser.add_argument("--normalization", "-n", action="store_true")
+    parser.add_argument("--norm-per-file", action="store_true",
+                        help="Independent normalization for each file")
+    parser.add_argument("--norm-per-channel", action="store_true",
+                        help="Normalize each channel independently")
+    parser.add_argument("--n-filters", type=int, default=40)
+    parser.add_argument("--save-mean-var", type=str,
+                        help="Path to emplacement where mean / var"
+                             "will be saved")
+    parser.add_argument("--load-mean-var", type=str,
+                        help="Path to emplacement where mean / var"
+                             "are saved. Will be used to compute test features")
+
+    args = parser.parse_args()
+    features_generator = FeaturesGenerator(
+        files=args.wav_dir,
+        output_path=args.output_path,
+        method=args.method,
+        n_filters=args.n_filters,
+        save_mean_variance_path=args.save_mean_var,
+        load_mean_variance_path=args.load_mean_var,
+        vad_file=args.vad,
+        normalization=args.normalization,
+        norm_per_file=args.norm_per_file,
+        norm_per_channel=args.norm_per_channel,
+    )
+
+    features_generator.generate()
+
+if __name__ == '__main__':
+    main()
