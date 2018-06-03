@@ -139,6 +139,9 @@ class GridSearch(object):
 
         os.makedirs(single_experiment['pathname_experience'], exist_ok=True)
 
+        with open(os.path.join(single_experiment['pathname_experience'], 'exp.yml'), 'w') as f:
+            yaml.dump(single_experiment, f, default_flow_style=False)
+
         features_prop = single_experiment['features']
         features_class = getattr(abnet3.features, features_prop['class'])
         arguments = features_prop['arguments']
