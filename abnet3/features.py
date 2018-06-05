@@ -486,7 +486,6 @@ def main():
     parser_normalize.set_defaults(func=main_normalize)
 
     args = parser.parse_args()
-    print(args)
     if args.func:
         args.func(args)
 
