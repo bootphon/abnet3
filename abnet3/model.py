@@ -18,7 +18,9 @@ from abnet3.utils import SequentialPartialSave, expand_dimension_list, to_ordina
 
 activation_functions = {'relu': nn.ReLU,
                         'sigmoid': nn.Sigmoid,
-                        'tanh': nn.Tanh}
+                        'tanh': nn.Tanh,
+                        "softmax": nn.Softmax,
+                        }
 
 init_functions = {'xavier_uni': nn.init.xavier_uniform,
                   'xavier_normal': nn.init.xavier_normal,
@@ -100,12 +102,15 @@ class SiameseNetwork(NetworkBuilder):
         Type of activation layer
     output_path: String
         Path to save network, params
+    last_layer: If "default", will be the same as activation
+        else: specify the specific activation you want
+        if None: no last layer
     """
+
     def __init__(self, input_dim=None, num_hidden_layers=None, hidden_dim=None,
                  output_dim=None, p_dropout=0.1, batch_norm=False,
                  type_init='xavier_uni', activation_layer=None,
-                 output_path=None,
-                 softmax=False):
+                 output_path=None, last_non_linearity="default"):
         super(SiameseNetwork, self).__init__()
         assert activation_layer in ('relu', 'sigmoid', 'tanh')
         assert type_init in ('xavier_uni', 'xavier_normal', 'orthogonal')
@@ -121,7 +126,7 @@ class SiameseNetwork(NetworkBuilder):
         self.activation_layer = activation_layer
         self.batch_norm = batch_norm
         self.type_init = type_init
-        self.softmax = softmax
+        self.last_non_linearity = last_non_linearity
         # Pass forward network functions
 
         activation = activation_functions[activation_layer]
@@ -152,10 +157,14 @@ class SiameseNetwork(NetworkBuilder):
             nn.Dropout(p=p_dropout)]
         if self.batch_norm:
             output_layer.append(nn.BatchNorm1d(output_dim))
-        if softmax:
-            output_layer.append(nn.Softmax())
-        else:
+
+        if self.last_non_linearity == "default":
             output_layer.append(activation())
+        elif self.last_non_linearity is None:
+            pass
+        else:
+            output_layer.append(activation_functions[self.last_non_linearity]())
+
         self.output_layer = nn.Sequential(*output_layer)
         self.output_path = output_path
         self.apply(self.init_weight_method)
