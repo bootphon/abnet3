@@ -64,6 +64,23 @@ class SamplerBuilder(object):
                                   self.__class__.__name__)
 
 
+class DummySampler(SamplerBuilder):
+    """
+    The dummy sampler can be used with a dataloader that does
+    the sampling by itself. It is useful because the yaml gridsearch format
+    needs a sampler.
+    """
+
+    def __init__(self, *args, **kwargs):
+        print("Warning. You're using the dummy sampler, it won't do anything")
+        super().__init__()
+
+    def whoami(self):
+        return {'params': self.__dict__, 'class_name': self.__class__.__name__}
+
+    def sample(self):
+        print("Dummy sampler : not sampling anything.")
+
 class SamplerPairs(SamplerBuilder):
     """Sampler Model interface based on pairs of similar words
 
@@ -90,8 +107,15 @@ class SamplerCluster(SamplerBuilder):
     create_batches: bool
         If you want the sampler to save one file for each dataset,
         or multiple batches
+    split_method:
+        must be one of "clusters", "files", or "split_each_file"
 
     """
+    SPLIT_CLUSTERS = "clusters"
+    SPLIT_FILES = "files"
+    SPLIT_EACH_FILE = "split_each_file"
+    SPLIT_METHODS = [SPLIT_CLUSTERS, SPLIT_FILES, SPLIT_EACH_FILE]
+
     def __init__(self, max_size_cluster=10, ratio_same_diff_spk=0.75,
                  ratio_same_diff_type=0.5,
                  type_sampling_mode='log', spk_sampling_mode='log',
@@ -99,6 +123,7 @@ class SamplerCluster(SamplerBuilder):
                  max_num_clusters=None,
                  sample_batches=False,
                  num_total_sampled_pairs=None,
+                 split_method=SPLIT_CLUSTERS,
                  *args, **kwargs):
         super(SamplerCluster, self).__init__(*args, **kwargs)
         self.max_size_cluster = max_size_cluster
@@ -112,6 +137,8 @@ class SamplerCluster(SamplerBuilder):
         self.max_num_clusters = max_num_clusters
         self.sample_batches = sample_batches
         self.num_total_sampled_pairs = num_total_sampled_pairs
+        self.split_method = split_method
+        assert split_method in self.SPLIT_METHODS
 
     def parse_input_file(self, input_file=None, max_num_clusters=None):
         """Parse input file:
@@ -199,6 +226,72 @@ class SamplerCluster(SamplerBuilder):
                     dev_clusters.append(cluster)
 
         return train_clusters, dev_clusters
+
+    def split_clusters_on_file(self, clusters):
+        """
+        This is an alternative splitting method.
+        It will split clusters by splitting the dataset on
+        wav files. Each file will belong either to the training
+        or dev set.
+        :return:
+        """
+        files = list(self.spkid_from_file)
+        num_files_test = int(len(files) * (1 - self.ratio_train_dev))
+        dev_files = random.sample(files, num_files_test)
+        print("File selected for validation set : %s" % dev_files)
+
+        train_clusters, dev_clusters = [], []
+        for c in clusters:
+            train_c = []
+            dev_c = []
+            for file, s, e in c:
+                if file in dev_files:
+                    dev_c.append([file, s, e])
+                else:
+                    train_c.append([file, s, e])
+
+            if train_c:
+                train_clusters.append(train_c)
+            if dev_c:
+                dev_clusters.append(dev_c)
+
+        return train_clusters, dev_clusters
+
+    def split_each_file(self, clusters):
+        """
+        Alternative splitting train / dev method.
+        It will split each file according to the train / dev ratio.
+        The beginning of the file will go to the train set,
+        and the end of the file to the dev set.
+        """
+        # fill len of each file
+        len_files = defaultdict(int)
+        for c in clusters:
+            for file, s, e in c:
+                len_files[file] = max(len_files[file], e)
+        print(len_files)
+
+        # split on length
+        train_threshold = {}
+        for file in len_files:
+            train_threshold[file] = len_files[file] * self.ratio_train_dev
+        print(train_threshold)
+        # split clusters
+        train_clusters, dev_clusters = [], []
+        for c in clusters:
+            train_c = []
+            dev_c = []
+            for file, s, e in c:
+                if s > train_threshold[file]:
+                    dev_c.append([file, s, e])
+                else:
+                    train_c.append([file, s, e])
+            if train_c:
+                train_clusters.append(train_c)
+            if dev_c:
+                dev_clusters.append(dev_c)
+        return train_clusters, dev_clusters
+
 
     def analyze_clusters(self, clusters, get_spkid_from_fid=None):
         """Analysis input file to prepare sampler
@@ -706,6 +799,7 @@ class SamplerClusterSiamese(SamplerCluster):
         # 0) Read mapping for id to speaker
         print("Reading id to speaker file %s" % self.spkid_file)
         get_spkid_from_fid = read_spkid_file(self.spkid_file)
+        self.spkid_from_file = get_spkid_from_fid
 
         # 1) parsing files to get clusters and speakers
         print("Reading cluster file %s with max_num_clusters = %s" %
@@ -717,7 +811,19 @@ class SamplerClusterSiamese(SamplerCluster):
             spk_list = read_spk_list(self.spk_list_file)
 
         # 2) Split the clusters according to train/dev ratio
-        split_clusters = self.split_clusters_ratio(clusters)
+        if self.split_method == self.SPLIT_CLUSTERS:
+            # original option
+            split_clusters = self.split_clusters_ratio(clusters)
+        elif self.split_method == self.SPLIT_FILES:
+            split_clusters = self.split_clusters_on_file(clusters)
+        elif self.split_method == self.SPLIT_EACH_FILE:
+            split_clusters = self.split_each_file(clusters)
+            print("Numer of train clusters: %s, Number of dev clusters: %s" % (
+                len(split_clusters[0]), len(split_clusters[1])
+            ))
+        else:
+            raise ValueError("split method doesn't exist")
+
         train_clusters, dev_clusters = split_clusters
 
         # 3) Analysis of clusters to be able to sample

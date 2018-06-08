@@ -44,5 +44,7 @@ setup(
     },
     entry_points={'console_scripts': [
         'abnet3-gridsearch = abnet3.gridsearch:main',
+        'abnet3-embed = abnet3.tools.embed_cli:main',
+        'abnet3-features = abnet3.features:main',
     ]}
 )
