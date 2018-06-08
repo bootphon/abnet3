@@ -84,11 +84,15 @@ The package comes with a unit-tests suit. To run it, first install *pytest* on y
 
 #### References
 
-    .. [1] Thiolliere, R., Dunbar, E., Synnaeve, G., Versteegh, M., & Dupoux, E.
+    .. [1] Riad, R., Dancette, C., Karadayi, J., Zeghidour, N., Schatz, T., Dupoux, E.
+           *Sampling strategies in Siamese Networks for unsupervised speech representation learning.*
+           In Sixteenth Annual Conference of the International Speech Communication Association
+
+    .. [2] Thiolliere, R., Dunbar, E., Synnaeve, G., Versteegh, M., & Dupoux, E.
            *A hybrid dynamic time warping-deep neural network architecture for unsupervised acoustic modeling.*
            In Sixteenth Annual Conference of the International Speech Communication Association
 
-    .. [2] Zeghidour, N., Synnaeve, G., Usunier, N. & Dupoux, E.
+    .. [3] Zeghidour, N., Synnaeve, G., Usunier, N. & Dupoux, E.
            *Joint Learning of Speaker and Phonetic Similarities with Siamese Networks.*
            In: INTERSPEECH-2016, (pp 1295-1299)
 
