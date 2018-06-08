@@ -416,7 +416,7 @@ def main_wav(args):
         load_mean_variance_path=args.load_mean_var,
         vad_file=args.vad,
         normalization=args.normalization,
-        stack=True,
+        stack=args.stack,
         norm_per_file=args.norm_per_file,
         norm_per_channel=args.norm_per_channel,
     )
@@ -465,6 +465,8 @@ def main():
     parser_wav.add_argument("--load-mean-var", type=str,
                         help="Path to emplacement where mean / var"
                              "are saved. Will be used to compute test features")
+    parser_wav.add_argument("--stack", action="store_true",
+                        help="stack the features")
 
     parser_wav.set_defaults(func=main_wav)
 
