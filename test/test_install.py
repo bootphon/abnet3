@@ -24,6 +24,7 @@ def test_requirements():  # pylint: disable=no-self-use
     requirements = pip.req.parse_requirements(
                    str(requirements_path), session=pip.download.PipSession())
     requirements = [str(r.req) for r in requirements]
+    requirements = [r for r in requirements if r != 'None']
     pkg_resources.require(requirements)
 
 

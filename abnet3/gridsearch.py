@@ -41,9 +41,8 @@ class GridSearch(object):
 
     """
     def __init__(self, input_file=None,
-                 num_jobs=1, gpu_ids=None,
-                 date=None,
-                 embed_only=False):
+                 num_jobs=1, gpu_ids=None, date=None,
+                 embed_only=False, test_files=None, test_only=False):
         self.input_file = input_file
         self.num_jobs = num_jobs
         self.gpu_ids = gpu_ids
@@ -51,6 +50,8 @@ class GridSearch(object):
         self.features_run = False
         self.date = date
         self.embed_only = embed_only
+        self.test_files = test_files
+        self.test_only = test_only
 
     def whoami(self):
         raise NotImplementedError('Unimplemented whoami for class:',
@@ -64,7 +65,7 @@ class GridSearch(object):
             try:
                 self.params = yaml.load(stream)
             except yaml.YAMLError as exc:
-                print(exc)
+                raise
 
     def build_grid_experiments(self):
         """Extract the list of experiments to build the
@@ -76,6 +77,20 @@ class GridSearch(object):
         assert self.params['default_params']['pathname_experience'], \
             msg_yaml_error + 'pathname_experience'
         default_params = self.params['default_params']
+
+        # fill test files
+        if self.test_files:
+            test_files = []
+            for path in self.test_files:
+                with open(path, 'r') as f:
+                    test_files.append(yaml.load(f))
+            self.test_files = test_files
+        else:
+            self.test_files = []
+        # fill test files in the yaml
+        if "test_files" in self.params:
+            for test_file in self.params["test_files"]:
+                self.test_files.append(self.params["test_files"][test_file])
 
         if 'grid_params' not in self.params:
             return [default_params]
@@ -108,6 +123,7 @@ class GridSearch(object):
                         )
                     grid_experiments.append(current_exp)
                     current_exp = copy.deepcopy(default_params)
+
         return grid_experiments
 
     def run_single_experiment(self, single_experiment=None, gpu_id=0):
@@ -122,6 +138,9 @@ class GridSearch(object):
         assert single_experiment['loss'], 'loss properties missing'
 
         os.makedirs(single_experiment['pathname_experience'], exist_ok=True)
+
+        with open(os.path.join(single_experiment['pathname_experience'], 'exp.yml'), 'w') as f:
+            yaml.dump(single_experiment, f, default_flow_style=False)
 
         features_prop = single_experiment['features']
         features_class = getattr(abnet3.features, features_prop['class'])
@@ -154,7 +173,8 @@ class GridSearch(object):
         dataloader_prop = single_experiment['dataloader']
         dataloader_class = getattr(abnet3.dataloader, dataloader_prop['class'])
         arguments = dataloader_prop['arguments']
-        arguments['pairs_path'] = sampler.directory_output
+        if not 'pairs_path' in arguments:
+            arguments['pairs_path'] = sampler.directory_output
         arguments['features_path'] = features.output_path
         dataloader = dataloader_class(**arguments)
 
@@ -181,32 +201,80 @@ class GridSearch(object):
         arguments['network_path'] = model.output_path + '.pth'
         embedder = embedder_class(**arguments)
 
-        if self.embed_only:
+        if not self.test_only:
+            if self.embed_only:
+                embedder.embed()
+                return
+
+            if features.run == 'never':
+                pass
+            elif features.run == 'once' and self.features_run is False:
+                features.generate()
+                self.features_run = True
+            elif features.run == 'always':
+                features.generate()
+            elif features.run == 'if_none' and not os.path.isfile(
+                    features.output_path):
+                features.generate()
+
+            if sampler.run == 'never':
+                pass
+            if sampler.run == 'once' and self.sampler_run is False:
+                sampler.sample()
+                self.sampler_run = True
+            if sampler.run == 'always':
+                sampler.sample()
+            else:
+                pass
+
+            trainer.train()
             embedder.embed()
-            return
 
-        if features.run == 'never':
-            pass
-        if features.run == 'once' and self.features_run is False:
-            features.generate()
-            self.features_run = True
-        if features.run == 'always':
-            features.generate()
-        else:
-            pass
+        # embed test features
+        if self.test_files:
+            for file in self.test_files:
+                test_wavs = file["files"]
+                name = file["name"]
+                if "features" in file:
+                    test_features = file["features"]
+                else:
+                    test_features = os.path.join(
+                            single_experiment['pathname_experience'],
+                            'test-{name}'.format(name=name))
+                vad_file = None
+                if "vad_file" in file:
+                    vad_file = file["vad_file"]
 
-        if sampler.run == 'never':
-            pass
-        if sampler.run == 'once' and self.sampler_run is False:
-            sampler.sample()
-            self.sampler_run = True
-        if sampler.run == 'always':
-            sampler.sample()
-        else:
-            pass
+                if not os.path.exists(test_features):
+                    # create test features
+                    print("Creating test features for %s at path %s" %
+                          (name, test_features))
+                    features_prop = single_experiment['features']
+                    features_class = getattr(abnet3.features,
+                                             features_prop['class'])
+                    arguments = features_prop['arguments']
+                    arguments["files"] = test_wavs
+                    arguments["vad_file"] = vad_file
+                    arguments["output_path"] = test_features
+                    features = features_class(**arguments)
 
-        trainer.train()
-        embedder.embed()
+                    features.generate()
+
+                # run embedding
+                embedder_prop = single_experiment['embedder']
+                embedder_class = getattr(abnet3.embedder, embedder_prop['class'])
+                arguments = embedder_prop['arguments']
+                arguments['network'] = model
+                output_path = os.path.join(
+                    single_experiment['pathname_experience'],
+                    '{name}'.format(name=name))
+                arguments['output_path'] = output_path
+                arguments['feature_path'] = test_features
+                arguments['network_path'] = model.output_path + '.pth'
+                embedder = embedder_class(**arguments)
+                print("Embedding test features {} at path {}"
+                      .format(name, output_path))
+                embedder.embed()
 
     def run(self):
         """Run command to launch the grid search
@@ -235,6 +303,13 @@ def main():
     argparser.add_argument("--embed-only", action='store_true',
                            help="Run only the embedding (if the network is"
                                 "already trained")
+    argparser.add_argument("--test-files", nargs="+",
+                           help="List of the test yaml you want to use.\n"
+                                "Test yaml must contain files, "
+                                "features and name attributes")
+    argparser.add_argument("--test-only", action='store_true',
+                           help="Run only the testing (if the network is"
+                                "already trained")
 
     args = argparser.parse_args()
 
@@ -252,7 +327,9 @@ def main():
                       gpu_ids=args.gpu_id,
                       num_jobs=args.num_jobs,
                       date=args.date,
-                      embed_only=args.embed_only)
+                      embed_only=args.embed_only,
+                      test_files=args.test_files,
+                      test_only=args.test_only)
 
     grid.run()
     print("The experiment took {} s ".format(time.time() - t1))

@@ -14,6 +14,7 @@ import h5features
 from dtw import DTW
 import scipy
 from collections import defaultdict
+import torch.nn as nn
 
 def get_var_name(**variable):
     return list(variable.keys())[0]
@@ -137,6 +138,11 @@ class Features_Accessor(object):
         return self.get_features_between(self.features[filename],
                                          self.times[filename], on, off)
 
+    def get_between_frames(self, f, frame_on, frame_off):
+        filename = f.encode('UTF-8')  # byte
+        if filename not in self.times:
+            filename = f
+        return self.features[filename][frame_on:frame_off]
 
 def get_dtw_alignment(feat1, feat2):
     distance_array = cosine_distance(feat1, feat2)
@@ -231,7 +237,7 @@ def cast_features(features, target_type=np.float32):
 
 def read_vad_file(path):
     """
-    Read vad file of the form 
+    Read vad file of the form
     https://github.com/bootphon/Zerospeech2015/blob/master/english_vad.txt
     returns a dictionnary of the form {file: [[s1, e1], [s2, e2], ...]}
     """
@@ -272,3 +278,102 @@ def progress(max_number, every=0.1, title=""):
             print("Progress: {:.1f}% of process {}".format(next_progress*100, title))
             next_progress = (current // every) * every + every
     return print_progress
+
+class EmbeddingObserver(object):
+    '''
+    Observer pattern implementation for the embedding phase. Can be used to
+    store and save stages of the model's intern response to the features being
+    embedded. It saves the states on the features group with the same items and
+    times that were used to save the embeddings embeddings for analysis.
+    '''
+
+    def __init__(self, status_getter, path):
+        self.status_getter = status_getter
+        self.path = path
+        self.intern_responses = []
+
+    def register_status(self):
+        response = self.status_getter()
+        response = response.cpu()
+        self.intern_responses.append(response.data.numpy())
+
+    def save(self, items, times):
+        '''
+        Save the internal responses
+
+        :param path:    path to save the internal responses
+        :param items:   same items used to save the embeddings
+        :param times:   same times used to save embeddings
+
+        '''
+        data = h5features.Data(items, times, self.intern_responses, check=True)
+        with h5features.Writer(self.path) as fh:
+            fh.write(data, 'features')
+
+class SequentialPartialSave(nn.Sequential):
+    '''
+    Saves partial results from the sequential network. It saves each representation
+    before it goes into a new linear layer
+
+    :usage:     To create the sequential network, use exactly as you would use
+                nn.Sequential. To get a partial result use the method
+                get_partial_result(index). To get the initial features of the network
+                use index = 0, index = 1 is the representations after passing the
+                input layer and before the 1st hidden, index = 2 before the 2nd
+                hidden and so forth. It doesn't save the last result, only partial
+                ones, but if you need that behaviour it should be easy to expand.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super(SequentialPartialSave, self).__init__(*args, **kwargs)
+        self.partial_results = self.create_partial_dict()
+
+    def create_partial_dict(self):
+        partial_dict = {}
+        partial_index = 0
+        for layer_index in range(len(self)):
+            if isinstance(self[layer_index], nn.Linear):
+                partial_dict[partial_index] = 0
+                partial_index += 1
+        return partial_dict
+
+    def get_partial_result(self, index):
+        return self.partial_results[index]
+
+    def forward(self, input):
+        layer_index = 0
+
+        for module in self._modules.values():
+            if isinstance(module, nn.Linear): #saves every input before going into linear
+                self.partial_results[layer_index] = input
+                layer_index += 1
+            input = module(input)
+
+        return input
+
+def expand_dimension_list(dimensions_list):
+    final_list = []
+    for x in dimensions_list:
+        if isinstance(x, int):
+            final_list.append(x)
+        elif isinstance(x, tuple) or isinstance(x, list):
+            assert len(x) == 2
+            for _ in range(x[1]):
+                final_list.append(x[0])
+        else:
+            raise TypeError("Dimension list element must be integer or tuple")
+    return final_list
+
+def to_ordinal(number):
+
+    "Returns ordinal string for the given number"
+
+    suffix = "th"
+    if not 10 < number < 21:
+        if number % 10 == 1:
+            suffix = "st"
+        elif number % 10 == 2:
+            suffix = "nd"
+        elif number % 10 == 3:
+            suffix = "rd"
+    return "{}{}".format(number,suffix)

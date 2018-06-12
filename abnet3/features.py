@@ -12,7 +12,7 @@ from scipy.io import wavfile
 import os
 import h5py
 import shutil
-import tempfile
+import argparse
 
 from abnet3.utils import read_vad_file, read_feats, Features_Accessor
 
@@ -76,7 +76,7 @@ class FeaturesGenerator:
 
         if self.method not in ['mfcc', 'fbanks']:
             raise ValueError("Method %s not recognized" % self.method)
-        assert self.run in ['never', 'once', 'always']
+        assert self.run in ['never', 'once', 'always', 'if_none']
 
         if load_mean_variance_path is not None \
                 and save_mean_variance_path is not None:
@@ -341,6 +341,27 @@ class FeaturesGenerator:
 
         return {'mean': mean_var[0], 'variance': mean_var[1]}
 
+
+    def normalize(self, input_features, output_features):
+        print("Normalizing")
+        if self.norm_per_file:
+            self.mean_var_norm_per_file(input_features, output_features,
+                                        vad_file=self.vad_file)
+        else:
+            if self.load_mean_variance_path is not None:
+                params = self.load_mean_variance(
+                    file_path=self.load_mean_variance_path)
+            else:
+                params = None
+            mean, variance = self.mean_variance_normalisation(
+                input_features, output_features, params=params,
+                vad_file=self.vad_file
+            )
+            if self.save_mean_variance_path is not None:
+                self.save_mean_variance(
+                    mean, variance,
+                    output_file=self.save_mean_variance_path)
+
     def generate(self):
 
         functions = {
@@ -370,23 +391,7 @@ class FeaturesGenerator:
             if self.normalization:
                 print("Normalizing")
                 h5_temp2 = tempdir + '/temp2'
-                if self.norm_per_file:
-                    self.mean_var_norm_per_file(h5_temp1, h5_temp2,
-                                                vad_file=self.vad_file)
-                else:
-                    if self.load_mean_variance_path is not None:
-                        params = self.load_mean_variance(
-                            file_path=self.load_mean_variance_path)
-                    else:
-                        params = None
-                    mean, variance = self.mean_variance_normalisation(
-                        h5_temp1, h5_temp2, params=params,
-                        vad_file=self.vad_file
-                    )
-                    if self.save_mean_variance_path is not None:
-                        self.save_mean_variance(
-                            mean, variance,
-                            output_file=self.save_mean_variance_path)
+                self.normalize(h5_temp1, h5_temp2)
             else:
                 h5_temp2 = h5_temp1
             if self.stack:
@@ -397,3 +402,95 @@ class FeaturesGenerator:
                 shutil.copy(h5_temp2, self.output_path)
         finally:
             shutil.rmtree(tempdir)
+
+
+
+def main_wav(args):
+
+    features_generator = FeaturesGenerator(
+        files=args.wav_dir,
+        output_path=args.output_path,
+        method=args.method,
+        n_filters=args.n_filters,
+        save_mean_variance_path=args.save_mean_var,
+        load_mean_variance_path=args.load_mean_var,
+        vad_file=args.vad,
+        normalization=args.normalization,
+        stack=args.stack,
+        norm_per_file=args.norm_per_file,
+        norm_per_channel=args.norm_per_channel,
+    )
+
+    features_generator.generate()
+
+def main_normalize(args):
+    features_generator = FeaturesGenerator(
+        save_mean_variance_path=args.save_mean_var,
+        load_mean_variance_path=args.load_mean_var,
+        vad_file=args.vad,
+        normalization=True,
+        norm_per_file=args.norm_per_file,
+        norm_per_channel=args.norm_per_channel,
+    )
+
+    features_generator.normalize(
+        args.input_features,
+        args.output_features
+    )
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    subparsers = parser.add_subparsers(help='sub-command help')
+    
+    parser_wav = subparsers.add_parser("wav")
+    parser_normalize = subparsers.add_parser("norm")
+
+
+    parser_wav.add_argument("wav_dir", help="Path to wav directory")
+    parser_wav.add_argument("output_path", help="Path to output h5f file")
+    parser_wav.add_argument("method", choices=["mfcc", "fbanks"],
+                        help="which features to generate")
+    parser_wav.add_argument("--vad", help="Path to vad file "
+                                      "(CSV, seconds with header)")
+    parser_wav.add_argument("--normalization", "-n", action="store_true")
+    parser_wav.add_argument("--norm-per-file", action="store_true",
+                        help="Independent normalization for each file")
+    parser_wav.add_argument("--norm-per-channel", action="store_true",
+                        help="Normalize each channel independently")
+    parser_wav.add_argument("--n-filters", type=int, default=40)
+    parser_wav.add_argument("--save-mean-var", type=str,
+                        help="Path to emplacement where mean / var"
+                             "will be saved")
+    parser_wav.add_argument("--load-mean-var", type=str,
+                        help="Path to emplacement where mean / var"
+                             "are saved. Will be used to compute test features")
+    parser_wav.add_argument("--stack", action="store_true",
+                        help="stack the features")
+
+    parser_wav.set_defaults(func=main_wav)
+
+    parser_normalize.add_argument("input_features", help="Path to input h5f file")
+    parser_normalize.add_argument("output_features", help="Path to output h5f file")
+    parser_normalize.add_argument("--vad", help="Path to vad file "
+                                      "(CSV, seconds with header)")
+    parser_normalize.add_argument("--norm-per-file", action="store_true",
+                        help="Independent normalization for each file")
+    parser_normalize.add_argument("--norm-per-channel", action="store_true",
+                        help="Normalize each channel independently")
+    parser_normalize.add_argument("--save-mean-var", type=str,
+                        help="Path to emplacement where mean / var"
+                             "will be saved")
+    parser_normalize.add_argument("--load-mean-var", type=str,
+                        help="Path to emplacement where mean / var"
+                             "are saved. Will be used to compute test features")
+    
+    parser_normalize.set_defaults(func=main_normalize)
+
+    args = parser.parse_args()
+    if args.func:
+        args.func(args)
+
+
+if __name__ == '__main__':
+    main()

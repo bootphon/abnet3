@@ -29,7 +29,7 @@ Build Representation for speech frames based on side information. Composed of di
 
 To install the ABnet3 package, you can use Anaconda, and either create a conda environment:
 
-    conda create --name abnet3 python=3.6 --file environment.yml
+    conda env create --name abnet3 python=3.6 -f environment.yml
 
 or use a conda environment you already have with python 3 :
     conda env update -f environment.yml
@@ -73,6 +73,8 @@ The default logdir is `./run` in the current directory.
 You can see examples for running the gridsearch and replicating our results
 in the repository https://github.com/Rachine/sampling_siamese2018
 
+The cli documentation is here https://coml.lscp.ens.fr/git/Rachine/abnet3/src/master/gridsearch.md
+
 ### Tests
 
 The package comes with a unit-tests suit. To run it, first install *pytest* on your Python environment:
@@ -82,11 +84,15 @@ The package comes with a unit-tests suit. To run it, first install *pytest* on y
 
 #### References
 
-    .. [1] Thiolliere, R., Dunbar, E., Synnaeve, G., Versteegh, M., & Dupoux, E.
+    .. [1] Riad, R., Dancette, C., Karadayi, J., Zeghidour, N., Schatz, T., Dupoux, E.
+           *Sampling strategies in Siamese Networks for unsupervised speech representation learning.*
+           In Nineteenth Annual Conference of the International Speech Communication Association
+
+    .. [2] Thiolliere, R., Dunbar, E., Synnaeve, G., Versteegh, M., & Dupoux, E.
            *A hybrid dynamic time warping-deep neural network architecture for unsupervised acoustic modeling.*
            In Sixteenth Annual Conference of the International Speech Communication Association
 
-    .. [2] Zeghidour, N., Synnaeve, G., Usunier, N. & Dupoux, E.
+    .. [3] Zeghidour, N., Synnaeve, G., Usunier, N. & Dupoux, E.
            *Joint Learning of Speaker and Phonetic Similarities with Siamese Networks.*
            In: INTERSPEECH-2016, (pp 1295-1299)
 
