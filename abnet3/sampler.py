@@ -645,7 +645,10 @@ class SamplerClusterSiamese(SamplerCluster):
                          }
         for config in p_spk_types.keys():
             keys = np.array(list(p_spk_types[config].keys()))
-            sample_idx = sample_searchidx(cdf[config], sampled_ratio[config])
+            if sampled_ratio[config] > 0:
+                sample_idx = sample_searchidx(cdf[config], sampled_ratio[config])
+            else:
+                continue
             sample = keys[sample_idx]
             if config == 'Stype_Sspk':
                 for key in sample:
@@ -754,7 +757,8 @@ class SamplerClusterSiamese(SamplerCluster):
         print("Cumulative distribution")
         cdf = {}
         for key in proba.keys():
-            cdf[key] = cumulative_distribution(proba[key])
+            if proba[key]:  # sometimes distribution is empty
+                cdf[key] = cumulative_distribution(proba[key])
 
         # This computation is important for the total number of batches/pairs
         # Number of possible pairs in the smallest count
