@@ -791,6 +791,15 @@ class MultiTaskDataLoader(OriginalDataLoader):
                                                                batch_els)
             yield X_batch1, X_batch2, y_spk_batch, y_phn_batch
 
+
+class AdversarialDataLoader(MultiTaskDataLoader):
+
+    def batch_iterator(self, train_mode=True):
+        for X_batch1, X_batch2, y_spk_batch, y_phn_batch  in super(AdversarialDataLoader, self).batch_iterator(train_mode=train_mode):
+            y_spk_batch = (y_spk_batch + 1) / 2
+            yield X_batch1, X_batch2, y_spk_batch, y_phn_batch
+
+
 class MultimodalDataLoader(FramesDataLoader):
     """
     Class to manage multiple inputs, extract features
